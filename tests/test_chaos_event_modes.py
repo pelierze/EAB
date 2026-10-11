@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from src.chaos.exploration import NodeProgressionBot
+from src.chaos.bot import RecognitionTimeout
 from src.chaos.node_observer import NodeObserver
 from src.image_matcher import read_image
 
@@ -228,13 +229,17 @@ class EventModesTest(unittest.TestCase):
             original=self.screen()
             changed=original.copy()
             changed[580:640,100:300]=255
-            bot._capture=Mock(side_effect=[original,changed])
+            bot._capture=Mock(side_effect=[original,changed] * 3)
             cards=tuple(self.observer.event_cards(original))
             bot._wait=Mock(return_value=(cards,bot._event_signature(original)))
+            bot.stop_event = Mock()
+            bot.stop_event.wait.return_value = False
             bot._tap=Mock()
-            with self.assertRaisesRegex(RuntimeError,'입력 직전 선택지 변경'):
+            with self.assertRaisesRegex(RecognitionTimeout,'선택지가 계속 변경'):
                 bot._unknown_event()
             bot._tap.assert_not_called()
+            self.assertEqual(bot._wait.call_count, 3)
+            self.assertEqual(bot.stop_event.wait.call_count, 2)
 
     def test_unregistered_two_choice_result_returns_to_map(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -7,7 +7,7 @@ from .bot import RecognitionTimeout
 
 logger = logging.getLogger(__name__)
 TERMINALS = {'defeat', 'expedition_summary', 'exploration_entry'}
-EVENT_STATES = {'event', 'unknown_event', 'event_result', 'unknown_event_result',
+EVENT_STATES = {'hero_departure', 'event_intro', 'event', 'unknown_event', 'event_result', 'unknown_event_result',
                 'event_loot_consume', 'event_warning', 'unclaimed_reward',
                 'rank_reward', 'rank_menu', 'rank_result', 'event_loot_popup',
                 'loot', 'recruit_reward', 'levelup', 'victory', 'story',
@@ -32,6 +32,7 @@ def run_event_flow(bot):
         if state == 'map':
             bot.stats['nodes'] = starting_nodes + 1
             bot.event_context = False
+            bot._event_intro_pending = False
             bot.pending_event_id = None
             bot.rejected_event_choices.clear()
             bot._last_event_choice_bounds = None

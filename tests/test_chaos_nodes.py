@@ -40,6 +40,34 @@ class NodeImagesTest(unittest.TestCase):
         self.assertEqual([kind for kind,_ in self.observer.candidates(screen)], ['battle','elite'])
         self.assertEqual(self.observer.choose_node(screen), ('battle',(898,100,83,79)))
 
+    def test_map_after_hero_departure_recognizes_three_heroes_and_reachable_node(self):
+        screen = self.screen('map_after_hero_departure_local_live.png')
+        self.assertEqual(self.observer.classify(screen), 'map')
+        self.assertIsNotNone(self.observer.find(screen, 'map_footer'))
+        self.assertEqual(self.observer.choose_node(screen)[0], 'elite')
+
+    def test_map_footer_does_not_depend_on_hero_count(self):
+        screen = self.screen('map_after_hero_departure_local_live.png')
+        for shade in (0, 255):
+            changed = screen.copy()
+            changed[660:684, 400:440] = shade
+            self.assertEqual(self.observer.classify(changed), 'map')
+        no_icon = screen.copy()
+        no_icon[634:689, 308:366] = 0
+        self.assertIsNone(self.observer.find(no_icon, 'map_footer'))
+        self.assertNotEqual(self.observer.classify(no_icon), 'map')
+
+    def test_three_hero_map_resume_does_not_restart_recruitment(self):
+        screen = self.screen('map_after_hero_departure_local_live.png')
+        with tempfile.TemporaryDirectory() as tmp:
+            bot = ExplorationBot(Mock(), ROOT, tmp)
+            bot.nodes._capture = Mock(return_value=screen)
+            bot.nodes.run = Mock(return_value={'status': 'completed'})
+            bot.recruitment.run = Mock()
+            self.assertEqual(bot._run_stages(), {'status': 'completed'})
+            bot.nodes.run.assert_called_once_with()
+            bot.recruitment.run.assert_not_called()
+
     def test_shop_recognition_survives_npc_animation(self):
         screen=self.screen('shop_animated_npc_live.png')
         self.assertIsNone(self.observer.find(screen,'shop_npc'))

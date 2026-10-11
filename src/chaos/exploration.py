@@ -18,7 +18,7 @@ from .event_flow import run_event_flow, EVENT_STATES, TERMINALS
 
 logger = logging.getLogger(__name__)
 
-EVENT_FOLLOWUPS = {'map', 'battle_setup', 'battle', 'story', 'story_confirm',
+EVENT_FOLLOWUPS = {'hero_departure', 'event_intro', 'map', 'battle_setup', 'battle', 'story', 'story_confirm',
     'rank_menu', 'rank_result', 'rank_reward', 'event', 'unknown_event', 'event_result',
     'unknown_event_result', 'loot', 'event_loot_popup', 'event_loot_consume',
     'recruit_reward', 'unclaimed_reward', 'event_warning', 'levelup', 'victory', 'battle_rank_complete'} | TERMINALS
@@ -59,6 +59,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
         self.rank_priority = list(rank_priority) if rank_priority else ['wukong', 'jenua']
         self.last_screen = None
         self.event_context = False
+        self._event_intro_pending = False
         self.report_root = Path(runtime_dir) / 'unknown_events'
         self.report_dir = None
         self.report_sequence = 0
@@ -188,11 +189,19 @@ class NodeProgressionBot(KnightRecruitmentBot):
             known = self.observer.known_event(screen)
             if known:
                 self.pending_event_id = known
-        if state is not None: return state
+        if state is not None:
+            if state in EVENT_FOLLOWUPS:
+                self._event_intro_pending = False
+            return state
         if self.event_context:
             if self.observer.event_cards(screen):
+                self._event_intro_pending = False
                 return 'event' if self.pending_event_id or self.observer.known_event_candidates(screen) else 'unknown_event'
-            if self.observer.find(screen,'event_advance'): return 'unknown_event_result'
+            if self.observer.find(screen,'event_advance'):
+                self._event_intro_pending = False
+                return 'unknown_event_result'
+            if self._event_intro_pending and self.observer.event_intro_panel(screen):
+                return 'event_intro'
         return None
 
     def _state(self, phase, allowed, retry_tap=None, max_retries=3):
@@ -409,8 +418,13 @@ class NodeProgressionBot(KnightRecruitmentBot):
         if not self.observer.find(screen, 'rest_done'):
             self._guarded_tap('휴식: 랭크업 선택', 'rest', 'detail_rest')
             self._state('랭크업 영웅 목록 대기', {'rank_menu'})
-            self._rankup()
+            state = self._rankup()
+            self._settle_reward_popups(state, {'rest', 'map'})
+            state = self._state('휴식 랭크업 결과 닫힘 및 복귀 확인', {'rest', 'map'})
             self._record('rankup_completed')
+            if state == 'map':
+                self.stats['nodes'] += 1
+                return
             def rankup_disabled(s):
                 if self.observer.classify(s) != 'rest':
                     return None
@@ -697,6 +711,10 @@ class NodeProgressionBot(KnightRecruitmentBot):
 
     def _dispatch_event_screen(self, state):
         """A handler performs one verified task, then the flow observes again."""
+        if state == 'hero_departure':
+            return self._event_hero_departure()
+        if state == 'event_intro':
+            return self._event_intro()
         if state in ('event', 'unknown_event'):
             return self._event()
         if state in ('event_result', 'unknown_event_result'):
@@ -815,27 +833,38 @@ class NodeProgressionBot(KnightRecruitmentBot):
             cards = self.observer.event_cards(screen)
             return (tuple(cards),self._event_signature(screen)) if cards else None
 
-        ready_val = self._wait('이벤트 선택지 확인', ready)
-        if ready_val[0] == 'followup':
-            self._accept_event_page(ready_val[1])
-            return ready_val[1]
-        if ready_val[0] == 'result':
-            logger.info('자동 탐사 [미등록 이벤트]: 대기 중 결과/대화 화면 감지 — 결과 닫기 진행')
-            return self._event_result()
-        cards, signature = ready_val
+        for attempt in range(3):
+            if attempt:
+                logger.warning('이벤트 선택지 변경 감지 — 입력 없이 1초 대기 후 새 후보 확인 (%d/3)', attempt + 1)
+                if self.stop_event.wait(1):
+                    raise _Stopped()
+            # _wait requires consecutive stable observations. A retry starts
+            # afresh; it must never reuse the previous cards or selected target.
+            ready_val = self._wait('이벤트 선택지 확인', ready)
+            if ready_val[0] == 'followup':
+                self._accept_event_page(ready_val[1])
+                return ready_val[1]
+            if ready_val[0] == 'result':
+                logger.info('자동 탐사 [미등록 이벤트]: 대기 중 결과/대화 화면 감지 — 결과 닫기 진행')
+                return self._event_result()
+            cards, signature = ready_val
 
-        screen = self._capture()
-        observed = ready(screen)
-        if observed != (cards,signature): raise RuntimeError('이벤트 선택지가 변경됐습니다.')
-        self._start_report(screen,{'mode':self.event_mode,'cards':cards})
-        available = [c for c in self.observer.available_event_cards(screen,cards)
-                     if tuple(c) not in self.rejected_event_choices]
-        if not available: raise RuntimeError('금지/비활성 선택지 제외 후 후보 없음')
-        target = random.choice(available)
-        fresh = self._capture()
-        observed = ready(fresh)
-        if observed != (cards,signature) or target not in self.observer.available_event_cards(fresh,cards):
-            raise RuntimeError('이벤트 입력 직전 선택지 변경')
+            screen = self._capture()
+            if ready(screen) != (cards, signature):
+                continue
+            self._start_report(screen, {'mode': self.event_mode, 'cards': cards})
+            available = [c for c in self.observer.available_event_cards(screen, cards)
+                         if tuple(c) not in self.rejected_event_choices]
+            if not available:
+                raise RuntimeError('금지/비활성 선택지 제외 후 후보 없음')
+            target = random.choice(available)
+            fresh = self._capture()
+            if (ready(fresh) != (cards, signature)
+                    or target not in self.observer.available_event_cards(fresh, cards)):
+                continue
+            break
+        else:
+            raise RecognitionTimeout('이벤트 선택지가 계속 변경됩니다 — 추가 입력 없이 중지')
         self._report('selected',fresh,{'mode':self.event_mode,'target':target})
         logger.info('이벤트 선택 확정: 방식=%s, 후보=%d개, 위치=%s', self.event_mode, len(available), target)
         self._last_event_choice_bounds = target
@@ -849,6 +878,67 @@ class NodeProgressionBot(KnightRecruitmentBot):
         if state == 'map':
             self.stats['nodes'] += 1
         return state
+
+    def _event_hero_departure(self):
+        def candidates(screen):
+            cards = self.observer.hero_departure_candidates(screen)
+            return tuple(cards) if cards else None
+        cards = self._wait('이탈 가능한 영웅 목록 확인', candidates)
+        screen = self._capture()
+        if candidates(screen) != cards:
+            raise RecognitionTimeout('이탈 영웅 목록 변경 — 입력 없이 중지')
+        target = random.choice(cards)
+        _, y, _, _ = target
+        portrait = screen[y+6:y+71, 510:630].copy()
+        logger.info('이벤트 영웅 이탈: %d명 중 무작위 선택, 카드=%s', len(cards), target)
+        self._tap(target)
+
+        def selected(frame):
+            return self.observer.hero_departure_selected(frame, target, portrait)
+        button = self._wait('이탈 영웅 금색 선택 테두리 및 활성 버튼 확인', selected)
+        if not button or selected(self._capture()) != button:
+            raise RecognitionTimeout('이탈 영웅 선택 상태 변경 — 확정 없이 중지')
+        self._tap(button)
+        allowed = EVENT_FOLLOWUPS - {'hero_departure'}
+
+        def outcome(frame):
+            state = self._classify(frame)
+            # Confirmation is authorized only immediately after this handler
+            # clicked the verified departure button, never from a resumed popup.
+            if state in ('event_warning', 'story_confirm', 'unclaimed_reward'):
+                confirm = self.observer.find(frame, 'story_confirm')
+                if confirm and self.observer.find(frame, 'story_cancel'):
+                    return ('confirm', confirm)
+                return None
+            return ('followup', state) if state in allowed else None
+
+        action, value = self._wait('영웅 이탈 이후 화면 확인', outcome)
+        if action == 'confirm':
+            if outcome(self._capture()) != (action, value):
+                raise RecognitionTimeout('영웅 이탈 확인창 변경 — 확정 없이 중지')
+            self._tap(value)
+            value = self._state('영웅 이탈 확인 후 다음 화면',
+                                allowed - {'event_warning', 'story_confirm', 'unclaimed_reward'})
+        self.stats['departed_heroes'] = self.stats.get('departed_heroes', 0) + 1
+        self._accept_event_page(value)
+        logger.info('이벤트 영웅 이탈 완료 — 다음 화면: %s', value)
+        return value
+
+    def _event_intro(self):
+        screen = self._capture()
+        if self._classify(screen) != 'event_intro':
+            raise RecognitionTimeout('이벤트 설명 입력 전 화면 변경')
+        text = self.observer.event_intro_text_mask(screen)
+        logger.info('이벤트 진입 설명창 확인 — 본문을 한 번 눌러 다음 화면 확인')
+        self._tap((640, 490))
+        def changed(frame):
+            state = self._classify(frame)
+            if state == 'event_intro':
+                current = self.observer.event_intro_text_mask(frame)
+                if np.count_nonzero(current != text) < 200:
+                    return None
+            return (state,) if state in EVENT_FOLLOWUPS else None
+        return self._wait('이벤트 설명 다음 화면 확인', changed)[0]
 
     def _event_result(self):
         def ready(screen):
@@ -1012,6 +1102,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
         detail = self._state('노드 상세 대기', detail_states[kind])
         enter_bounds = self._wait('노드 진입 버튼 확인', lambda s: self.observer.find(s, 'enter_node'))
         self._tap(enter_bounds)
+        self._event_intro_pending = kind == 'event'
         target_state = {'battle':'battle_setup','elite':'battle_setup','boss':'battle_setup','rest':'rest','supply':'supply','shop':'shop','event':'event'}[kind]
         allowed = {target_state,'story','story_confirm'}
         if kind == 'event': allowed.update(EVENT_FOLLOWUPS - {'map'})
@@ -1033,7 +1124,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 self.stats['phase'] = state
                 if state in EVENT_STATES and (self.event_context or state in (
                         'event','unknown_event','event_result','unknown_event_result',
-                        'event_loot_consume','event_warning','rank_reward','recruit_reward','battle_rank_complete')):
+                        'event_loot_consume','event_warning','rank_reward','recruit_reward','battle_rank_complete','hero_departure')):
                     run_event_flow(self)
                     continue
                 if state == 'defeat':

@@ -51,6 +51,40 @@ class RankResultTests(unittest.TestCase):
         for name in ('event_loot_popup_live.png', 'event_rank_reward_live.png', 'loot_cards_live.png'):
             self.assertIsNone(self.observer.find(self.frame(name), 'rank_close'))
 
+    def test_latest_rest_result_waits_when_rank_text_is_unreadable(self):
+        frame = self.frame('rest_shadow_rose_rankup_local_live.png')
+        self.assertEqual(self.observer.classify(frame), 'rank_result')
+        self.assertIsNotNone(self.observer.find(frame, 'event_loot_close'))
+        for rows in (None, [['LEVEL UP', .99]], [['RANK UP', .3]]):
+            with self.subTest(rows=rows), patch.object(
+                    self.observer, 'ocr', Mock(return_value=(rows, None))):
+                self.assertIsNone(self.observer.classify(frame))
+                self.assertIsNone(self.observer.find(frame, 'rank_close'))
+
+    def test_actual_loot_popup_still_classifies_with_unreadable_rank_text(self):
+        with patch.object(self.observer, 'ocr', Mock(return_value=(None, None))):
+            self.assertEqual(self.observer.classify(self.frame('event_loot_popup_live.png')),
+                             'event_loot_popup')
+
+    def test_transient_ocr_miss_waits_then_sends_rank_close(self):
+        frame = self.frame('rest_shadow_rose_rankup_local_live.png')
+        reads = [0]
+        def ocr(*args, **kwargs):
+            reads[0] += 1
+            return ([['LEVEL UP' if reads[0] <= 3 else 'RANK UP', .99]], None)
+        with tempfile.TemporaryDirectory() as tmp:
+            bot = NodeProgressionBot(Mock(), ROOT, tmp, self.observer)
+            bot._capture = lambda: frame
+            taps = []
+            bot._tap = lambda bounds: taps.append(tuple(bounds))
+            classify = self.observer.classify
+            with patch.object(self.observer, 'ocr', side_effect=ocr), \
+                 patch.object(self.observer, 'classify', side_effect=lambda s: 'rest' if taps else classify(s)), \
+                 patch.object(self.observer, 'forbidden', return_value=[]):
+                self.assertEqual(bot._dismiss_popup('결과 닫기', 'rank_result', 'rank_close',
+                                                   {'rest', 'event_loot_popup'}), 'rest')
+            self.assertEqual(taps, [tuple(self.observer.config['rank_result_close_bounds'])])
+
     def test_rankup_flow_uses_common_result_without_card_digit_read(self):
         with tempfile.TemporaryDirectory() as tmp:
             bot = NodeProgressionBot(Mock(), ROOT, tmp, self.observer)
@@ -89,6 +123,46 @@ class RankResultTests(unittest.TestCase):
             self.assertEqual(taps, [tuple(self.observer.config['rank_result_close_bounds']),
                                    self.observer.find(frames[1], 'event_reward_continue')])
             bot._rankup.assert_not_called()
+
+
+class RestResultReturnTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.observer = Mock()
+        self.bot = NodeProgressionBot(Mock(), ROOT, tmp.name, self.observer)
+        self.bot._capture = Mock(return_value='rest')
+        self.observer.classify.side_effect = lambda screen: screen
+        self.observer.find.side_effect = lambda screen, marker: (
+            (10, 20, 30, 40) if screen == 'rest' and marker == 'leave' else None)
+        self.bot._guarded_tap = Mock()
+        self.bot._rankup = Mock(return_value='event_loot_popup')
+        self.bot._record = Mock()
+
+    def test_remaining_result_is_closed_before_rest_completion_check(self):
+        calls = []
+        self.bot._dismiss_popup = Mock(side_effect=lambda *args: calls.append('close') or 'rest')
+        self.bot._state = Mock(side_effect=lambda phase, allowed: (
+            calls.append('state') or ('rank_menu' if allowed == {'rank_menu'} else
+                                     'rest' if 'rest' in allowed else 'map')))
+        def wait(phase, predicate):
+            calls.append('disabled')
+            self.assertIsNone(predicate('rank_result'))
+            return predicate('rest')
+        self.bot._wait = wait
+        self.bot._rest()
+        self.assertEqual(calls, ['state', 'close', 'state', 'disabled', 'state'])
+        self.assertEqual(self.bot.stats['nodes'], 1)
+        self.assertEqual(self.bot._guarded_tap.call_args.args[1:3], ('rest', 'leave'))
+
+    def test_verified_map_return_does_not_tap_stale_rest_controls(self):
+        self.bot._dismiss_popup = Mock(return_value='map')
+        self.bot._state = Mock(side_effect=['rank_menu', 'map'])
+        self.bot._wait = Mock()
+        self.bot._rest()
+        self.bot._wait.assert_not_called()
+        self.bot._guarded_tap.assert_called_once()
+        self.assertEqual(self.bot.stats['nodes'], 1)
 
 
 class BattleRankCompletionTests(unittest.TestCase):

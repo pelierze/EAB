@@ -352,6 +352,7 @@ class NodeObserver:
     def classify(self, screen):
         if self.find(screen, 'shop_purchase_dialog'): return 'shop_purchase_confirm'
         if self.find(screen, 'defeat'): return 'defeat'
+        if self.find(screen, 'hero_departure_title') and self.find(screen, 'hero_departure_button'): return 'hero_departure'
         if self.find(screen, 'expedition_summary') and self.find(screen, 'summary_close'): return 'expedition_summary'
         if self.find(screen, 'exploration_entry'): return 'exploration_entry'
         if self.find(screen, 'shop_exit_dialog') and self.find(screen, 'story_confirm'): return 'shop_exit_confirm'
@@ -362,6 +363,9 @@ class NodeObserver:
         if self.find(screen, 'story_confirm'): return 'event_warning'
         if self.levelup_controls(screen): return 'levelup'
         if self.is_rank_result(screen): return 'rank_result'
+        # Rank and loot results share the close icon. Wait for readable rank
+        # text instead of treating a transient OCR miss as a loot transition.
+        if self.find(screen, 'rank_result_arrow'): return None
         if self.find(screen, 'event_loot_close'): return 'event_loot_popup'
         if self.is_loot_consume(screen): return 'event_loot_consume'
         if len(self.all(screen,'loot_reroll')) == 3 and (self.find(screen,'loot_button') or self.find(screen,'loot_button_dim')): return 'loot'
@@ -391,6 +395,70 @@ class NodeObserver:
         if self.find(screen, 'map_footer') and self.arrows(screen): return 'map'
         if self.find(screen, 'battle_ui'): return 'battle'
         return None
+
+    @staticmethod
+    def hero_departure_highlight(screen, bounds):
+        x, y, w, h = bounds
+        regions = ((x+25, y-8, x+w-20, y+9),
+                   (x+25, y+h-5, x+w-20, y+h+10),
+                   (x-10, y+10, x+15, y+h-10))
+        for index, (x1, y1, x2, y2) in enumerate(regions):
+            if x1 < 0 or y1 < 0 or x2 > screen.shape[1] or y2 > screen.shape[0]:
+                return False
+            hsv = cv2.cvtColor(screen[y1:y2, x1:x2], cv2.COLOR_BGR2HSV)
+            gold = cv2.inRange(hsv, np.array([10, 25, 150]), np.array([40, 255, 255]))
+            if (gold > 0).any(axis=0 if index < 2 else 1).mean() < .75:
+                return False
+        return True
+
+    def hero_departure_candidates(self, screen):
+        if not (self.find(screen, 'hero_departure_title')
+                and self.find(screen, 'hero_departure_button')):
+            return []
+        corners = self.all(screen, 'hero_departure_card')
+        cards = []
+        for y in (85, 190, 295, 400):
+            bounds = (350, y, 290, 80)
+            # The same gold border replaces the blue corner on a selected row.
+            if (any(abs(x-353) <= 3 and abs(cy-(y+1)) <= 3 for x, cy, _, _ in corners)
+                    or self.hero_departure_highlight(screen, bounds)):
+                cards.append(bounds)
+        return cards
+
+    def hero_departure_selected(self, screen, bounds, portrait):
+        if not (self.find(screen, 'hero_departure_title')
+                and self.hero_departure_highlight(screen, bounds)):
+            return None
+        button = self.find(screen, 'hero_departure_button')
+        if not button:
+            return None
+        x, y, w, h = button
+        label = cv2.cvtColor(screen[y:y+h, x:x+w], cv2.COLOR_BGR2GRAY)
+        if np.count_nonzero(label >= 200) < 40:
+            return None
+        _, cy, _, _ = bounds
+        # A reordered party must not authorize departing the old row's hero.
+        if not self.matches(screen, portrait, [510, cy+6, 120, 65], .90, .15):
+            return None
+        return button
+
+    def event_intro_panel(self, screen):
+        """Recognize the compact narration panel, never its words or artwork."""
+        if not self.find(screen, 'event_intro_panel') or self.event_cards(screen):
+            return False
+        # The panel's pale violet text forms multiple centered lines beneath
+        # the ornament. Background stars alone must not authorize an input.
+        text = self.event_intro_text_mask(screen)
+        rows = np.count_nonzero(text, axis=1) >= 45
+        starts = np.count_nonzero(rows & ~np.r_[False, rows[:-1]])
+        return bool(starts >= 2 and np.count_nonzero(text) >= 700)
+
+    @staticmethod
+    def event_intro_text_mask(screen):
+        hsv = cv2.cvtColor(screen[460:526, 280:1000], cv2.COLOR_BGR2HSV)
+        return ((hsv[:, :, 0] >= 105) & (hsv[:, :, 0] <= 135)
+                & (hsv[:, :, 1] >= 15) & (hsv[:, :, 1] <= 100)
+                & (hsv[:, :, 2] >= 150))
 
     def event_result_marker(self, screen):
         names = list(dict.fromkeys(self.config.get('event_result_markers', []) + [e['result_marker'] for e in self.config.get('events', []) if e.get('result_marker')]))
