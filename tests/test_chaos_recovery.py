@@ -97,15 +97,14 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.observer.known_event(frame), 'bone_throne')
         self.assertEqual(self.observer.event_choice(frame), (838,556,362,131))
 
-    def test_registered_identity_does_not_fall_back_on_transient_loss(self):
+    def test_event_identity_loss_does_not_choose_without_ready_screen(self):
         self.bot.pending_event_id = 'bone_throne'
         self.bot._capture = Mock(return_value=self.image('boss_map_live.png'))
-        self.bot._unknown_event = Mock()
         self.bot._wait = Mock(side_effect=RecognitionTimeout('대기'))
         with patch('src.chaos.exploration.random.choice') as random_choice:
             with self.assertRaises(RecognitionTimeout): self.bot._event()
             random_choice.assert_not_called()
-        self.bot._unknown_event.assert_not_called()
+        self.bot.adb.tap.assert_not_called()
 
     def test_verification_does_not_accept_a_loading_frame_or_retap(self):
         frame = self.image('event_rank_reward_live.png')

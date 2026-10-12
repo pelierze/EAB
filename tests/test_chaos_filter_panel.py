@@ -60,13 +60,23 @@ class FilterPanelTests(unittest.TestCase):
         self.assertIsNone(self.observer.find(frame, 'filter_panel'))
         self.assertIsNone(self.bot('그림자 로제')._element_state(frame))
 
-    def test_correct_role_is_still_required_for_element_input(self):
-        frame = self.frame('knight_issue15_filter_open.png')
-        hero = next(h for h in self.observer.heroes if h['class'] == 'warrior')
-        bot = object.__new__(PartyRecruitmentBot)
+    def test_issue18_selected_element_does_not_require_hidden_list_icon(self):
+        frame = self.frame('knight_issue18_fire_selected.png')
+        bot = self.bot('모험가 라스')
+        self.assertIsNone(self.observer.header(frame, bot.active_hero))
+        self.assertEqual(bot._element_state(frame),
+                         ('selected', *self.observer.find(frame, 'fire_2')))
+
+    def test_hidden_list_does_not_block_legacy_knight_element_check(self):
+        from src.chaos.bot import KnightRecruitmentBot
+        frame = self.frame('knight_local_filter_open_live.png')
+        frame[400:595, 345:1280] = 0
+        frame[80:400, 935:1280] = 0
+        bot = object.__new__(KnightRecruitmentBot)
         bot.observer = self.observer
-        bot.active_hero = hero
-        self.assertIsNone(bot._element_state(frame))
+        self.assertIsNone(self.observer.find(frame, 'knight_header'))
+        self.assertEqual(bot._element_state(frame),
+                         ('unselected', *self.observer.find(frame, 'dark_1')))
 
     def test_label_is_packaged_but_failure_captures_are_not(self):
         assets = set(used_images(ROOT))

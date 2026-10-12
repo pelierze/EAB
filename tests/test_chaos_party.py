@@ -218,7 +218,7 @@ class PartyObserverTest(unittest.TestCase):
 
 
 class ReplayObserver:
-    config = {'timeout_seconds': .06, 'poll_seconds': 0, 'stable_frames': 2,
+    config = {'timeout_seconds': .06, 'poll_seconds': 0, 'stable_frames': 2, 'filter_settle_seconds': 0,
               'popup_dismiss_point': (640, 590), 'filter_dismiss_point': (960, 590),
               'back_button_point': (42, 35),
               'hero_list_scroll': {'max_swipes_per_direction': 1, 'settle_seconds': 0}}

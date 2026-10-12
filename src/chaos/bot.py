@@ -138,7 +138,7 @@ class KnightRecruitmentBot:
         return None
 
     def _element_state(self, screen):
-        if not self.observer.find(screen, "knight_header") or not self.observer.find(screen, "filter_panel"):
+        if not self.observer.find(screen, "filter_panel"):
             return None
         for other in ("fire_2", "ice_2", "forest_2", "light_2"):
             if self.observer.find(screen, other):
@@ -155,6 +155,62 @@ class KnightRecruitmentBot:
         if self.observer.find(screen, "knight_header") and not self.observer.find(screen, "filter_panel"):
             return self.observer.find(screen, "rose")
         return None
+
+    def _configure_element_filter(self):
+        # Verify the class while the list is visible. The popup may hide every
+        # list icon, so later checks use only the popup and its element buttons.
+        self._wait(f"{self.hero_name}: 목록 및 필터 버튼 확인", self._filter_button)
+
+        def menu_state(screen):
+            if self.observer.find(screen, "filter_panel"):
+                return ("open",)
+            button = self._filter_button(screen)
+            return ("closed", *button) if button else None
+
+        def element_state(screen):
+            value = self._element_state(screen)
+            if value is not None:
+                return value
+            menu = menu_state(screen)
+            return menu if menu and menu[0] == "closed" else None
+
+        def settle():
+            if self.stop_event.wait(self.observer.config.get("filter_settle_seconds", 1)):
+                raise _Stopped()
+
+        for attempt in range(1, 4):
+            try:
+                menu = self._wait("속성 필터 메뉴 상태 확인", menu_state)
+                if menu[0] == "closed":
+                    if menu_state(self._capture()) != menu:
+                        continue
+                    self._tap(menu[1:])
+                    settle()
+                    menu = self._wait("속성 필터 열림 확인", menu_state)
+                    if menu[0] != "open":
+                        logger.warning("필터 열림 변화 없음 — 현재 상태 재확인 (%d/3)", attempt)
+                        continue
+                before = self._wait("속성 버튼 상태 확인", element_state)
+                if before[0] == "closed":
+                    continue
+                if before[0] == "selected":
+                    logger.info("자동 탐사: 속성 선택 완료 확인 — 이미 선택되어 있어 입력 생략")
+                    return
+                fresh = self._element_state(self._capture())
+                if fresh != before:
+                    continue
+                self._tap(before[1:])
+                settle()
+                after = self._wait("속성 선택 완료 확인", element_state)
+                if after[0] == "selected":
+                    _, x, y, w, h = after
+                    _, ox, oy, ow, oh = before
+                    if abs(x+w/2-ox-ow/2) < 10 and abs(y+h/2-oy-oh/2) < 10:
+                        return
+                logger.warning("속성 버튼 선택 변화 미확인 — 현재 상태 재확인 (%d/3)", attempt)
+            except RecognitionTimeout:
+                logger.warning("필터/속성 상태 확인 지연 — 현재 상태 재확인 (%d/3)", attempt)
+        raise RecognitionTimeout("필터/속성 선택을 3회 확인하지 못했습니다 — 추가 입력 없이 중지합니다.")
 
     def _recruit(self, screen):
         if self._selected_portrait(screen):
@@ -192,21 +248,7 @@ class KnightRecruitmentBot:
     def _recruit_one(self):
         self._selection_target = None
         self._tap(self._wait(f"{self.hero_name}: 직업 영입권 확인", self._class_button))
-        self._tap(self._wait(f"{self.hero_name}: 목록 및 필터 버튼 확인", self._filter_button))
-        element = self._wait("속성 필터 메뉴 확인", self._element_state)
-        if element[0] == "unselected":
-            self._tap(element[1:])
-
-        def selected_at_target(screen):
-            value = self._element_state(screen)
-            if value and value[0] == "selected":
-                _, x, y, w, h = value
-                _, ox, oy, ow, oh = element
-                if abs(x + w / 2 - ox - ow / 2) < 10 and abs(y + h / 2 - oy - oh / 2) < 10:
-                    return value
-            return None
-
-        self._wait("속성 선택 완료 확인", selected_at_target)
+        self._configure_element_filter()
         self._point("filter_dismiss_point")
         self._select_hero(self._wait(f"{self.hero_name} 찾기 (스크롤 없음)", self._target_portrait))
         self._tap(self._wait(f"{self.hero_name} 선택 및 영입 버튼 확인", self._recruit))
@@ -283,7 +325,7 @@ class PartyRecruitmentBot(KnightRecruitmentBot):
         return None
 
     def _element_state(self, screen):
-        if not self.observer.header(screen, self.active_hero) or not self.observer.find(screen, "filter_panel"):
+        if not self.observer.find(screen, "filter_panel"):
             return None
         element = self.active_hero["element"]
         for other in ("dark", "fire", "ice", "forest", "light"):
@@ -463,21 +505,7 @@ class PartyRecruitmentBot(KnightRecruitmentBot):
     def _recruit_one(self):
         self._selection_target = None
         self._tap(self._wait(f"{self.hero_name}: 직업 영입권 확인", self._class_button))
-        self._tap(self._wait(f"{self.hero_name}: 목록 및 필터 버튼 확인", self._filter_button))
-        element = self._wait("속성 필터 메뉴 확인", self._element_state)
-        if element[0] == "unselected":
-            self._tap(element[1:])
-
-        def selected_at_target(screen):
-            value = self._element_state(screen)
-            if value and value[0] == "selected":
-                _, x, y, w, h = value
-                _, ox, oy, ow, oh = element
-                if abs(x + w / 2 - ox - ow / 2) < 10 and abs(y + h / 2 - oy - oh / 2) < 10:
-                    return value
-            return None
-
-        self._wait("속성 선택 완료 확인", selected_at_target)
+        self._configure_element_filter()
         self._point("filter_dismiss_point")
 
         portrait = self._wait_hero_portrait()

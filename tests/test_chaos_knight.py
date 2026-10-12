@@ -59,7 +59,7 @@ class KnightObserverTest(unittest.TestCase):
 
 class ScriptedObserver:
     config = {
-        'timeout_seconds': 0.1, 'poll_seconds': 0, 'stable_frames': 2,
+        'timeout_seconds': 0.1, 'poll_seconds': 0, 'stable_frames': 2, 'filter_settle_seconds': 0,
         'popup_dismiss_point': (640, 590), 'filter_dismiss_point': (960, 590),
     }
 
