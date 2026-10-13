@@ -1,0 +1,39 @@
+name: 오류 신고
+description: 앱 실행 또는 자동화 중 발생한 문제를 알려 주세요.
+title: "[오류] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 오류 보고서 첨부 안내
+        자동화가 오류로 중지되면 앱 로그에 **비정상 종료 보고서 저장 위치**가 표시됩니다.
+
+        해당 위치의 `logs/report/날짜_시간_세션` **보고서 폴더 하나를 통째로 ZIP으로 압축해서 아래에 첨부해 주세요.** Windows에서 해당 폴더를 마우스 오른쪽 버튼으로 클릭한 뒤 ZIP 압축 메뉴를 선택하면 됩니다.
+
+        **`bot.log`만 첨부하면 오류 당시 화면을 확인할 수 없습니다.** 보고서 폴더에는 최근 로그, 마지막 스크린샷(`screen.png`), 종료 정보가 함께 들어 있습니다. 화면 캡처에 실패했다면 스크린샷이 없을 수도 있으니, 만들어진 폴더 전체를 첨부해 주세요.
+
+        정상 완료나 사용자 중지에는 보고서가 생성되지 않습니다. 보고서가 없는 실행 오류는 아래에 그 사유를 적고, 확보할 수 있는 로그와 화면을 첨부해 주세요.
+  - type: input
+    id: app_version
+    attributes:
+      label: 사용 중인 앱 버전
+      description: 앱에 표시된 버전을 적어 주세요.
+      placeholder: 예) v1.5.17
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 발생한 문제와 재현 방법
+      description: 사용한 기능, 멈춘 단계, 기대한 동작과 실제 동작을 알려 주세요.
+      placeholder: 예) 자동 탐사에서 오공 영입 버튼을 누른 뒤 다음 영웅으로 넘어가지 않습니다.
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: 보고서 폴더 ZIP 첨부
+      description: 보고서 폴더 전체를 압축한 ZIP을 이 입력칸에 끌어다 놓거나 파일 첨부 기능으로 올려 주세요. 보고서가 없다면 이유를 적어 주세요.
+      placeholder: ZIP 파일을 첨부해 주세요. bot.log 파일 하나가 아니라 오류 발생 시 생성된 보고서 폴더 전체가 필요합니다.
+    validations:
+      required: true
