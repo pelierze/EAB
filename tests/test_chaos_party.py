@@ -8,6 +8,7 @@ import numpy as np
 
 from src.chaos.bot import PartyRecruitmentBot
 from src.chaos.observer import RecruitmentObserver
+from src.display.normalizer import ResolutionNormalizer
 from src.image_matcher import read_image
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,6 +76,36 @@ class PartyObserverTest(unittest.TestCase):
         self.assertIsNotNone(obs.find(screen_full, thief['portrait']))
         self.assertIsNotNone(obs.find(screen_sel, thief['portrait']))
         self.assertIsNotNone(obs.find(screen_sel, thief['selected']))
+
+    def test_destina_matches_default_and_skin_artwork(self):
+        obs = RecruitmentObserver(ROOT)
+        skin, _ = ResolutionNormalizer().normalize(self.screen("soul_weaver_destina_skin_issue20.png"))
+        self.assertEqual(len(obs.template_variants["destina"]), 2)
+        self.assertEqual(obs.template_variants["destina"][0].shape, (49, 131, 3))
+        self.assertEqual(obs.template_variants["destina"][1].shape, (49, 131, 3))
+        for screen, expected in ((skin, (835, 187, 131, 49)),
+                                 (self.screen("soul_weaver_destina_full.png"), (835, 190, 131, 49))):
+            with self.subTest(expected=expected):
+                self.assertEqual(obs.find(screen, "destina"), expected)
+                self.assertIsNotNone(obs.header(screen, obs.heroes[2]))
+                self.assertFalse(obs.hero_selected(screen, expected))
+        self.assertIsNone(obs.find(self.screen("warrier_wukong_full.png"), "destina"))
+
+    def test_destina_variants_share_duplicate_card_selection(self):
+        obs = RecruitmentObserver(ROOT)
+        default, skin = obs.template_variants["destina"]
+        screen = np.zeros((720, 1280, 3), dtype=np.uint8)
+        screen[100:149, 400:531] = skin
+        screen[300:349, 800:931] = default
+        self.assertEqual(obs.find(screen, "destina"), (400, 100, 131, 49))
+
+    def test_destina_skin_is_available_as_lisette_fallback(self):
+        obs = RecruitmentObserver(ROOT, ["shadow_rose", "wukong", "lisette", "jenua"])
+        self.assertEqual(len(obs.template_variants["destina"]), 2)
+        fallback = obs.get_fallback_hero(obs.heroes[2])
+        obs.replace_hero("lisette", fallback)
+        skin, _ = ResolutionNormalizer().normalize(self.screen("soul_weaver_destina_skin_issue20.png"))
+        self.assertEqual(obs.find(skin, obs.heroes[2]["portrait"]), (835, 187, 131, 49))
 
     def test_soul_weaver_lisette_selection_and_matching(self):
         obs = RecruitmentObserver(ROOT, ['shadow_rose', 'wukong', 'lisette', 'jenua'])

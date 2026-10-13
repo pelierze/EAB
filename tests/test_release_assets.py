@@ -8,6 +8,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseAssetsTests(unittest.TestCase):
+    def test_destina_skin_is_packaged_without_issue_screenshot(self):
+        images = set(used_images(ROOT))
+        self.assertIn('images/chaos/hero_selection/templates/heroes/soul_Weaver_destina.png', images)
+        self.assertIn('images/chaos/hero_selection/templates/heroes/soul_weaver_destina_skin.png', images)
+        self.assertNotIn('images/chaos/hero_selection/raw/soul_weaver_destina_skin_issue20.png', images)
+
     def test_unused_captures_excluded_but_dynamic_registries_retained(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

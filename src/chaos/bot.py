@@ -245,6 +245,34 @@ class KnightRecruitmentBot:
     def _current_completed(self, screen):
         return self.observer.completed(screen)
 
+    def _confirm_recruitment(self):
+        sent_at = time.monotonic()
+        retries = 0
+
+        def outcome(screen):
+            if self._current_completed(screen):
+                return ("done",)
+            if retries < 2 and time.monotonic() - sent_at >= 3:
+                # _recruit checks the same clicked hero's portrait, gold
+                # selection outline, closed filter and active recruit button.
+                button = self._recruit(screen)
+                if button:
+                    return ("retry", *button)
+            return None
+
+        while True:
+            state = self._wait(f"{self.hero_name} 영입 완료 확인", outcome)
+            if state[0] == "done":
+                return
+            fresh = self._capture()
+            if self._current_completed(fresh) or self._recruit(fresh) != state[1:]:
+                continue
+            retries += 1
+            logger.warning("%s 영입 완료 미확인 — 같은 영웅 선택 및 활성 버튼 확인 후 재입력 (%d/2)",
+                           self.hero_name, retries)
+            self._tap(state[1:])
+            sent_at = time.monotonic()
+
     def _recruit_one(self):
         self._selection_target = None
         self._tap(self._wait(f"{self.hero_name}: 직업 영입권 확인", self._class_button))
@@ -252,7 +280,7 @@ class KnightRecruitmentBot:
         self._point("filter_dismiss_point")
         self._select_hero(self._wait(f"{self.hero_name} 찾기 (스크롤 없음)", self._target_portrait))
         self._tap(self._wait(f"{self.hero_name} 선택 및 영입 버튼 확인", self._recruit))
-        self._wait(f"{self.hero_name} 영입 완료 확인", lambda s: ("done",) if self._current_completed(s) else None)
+        self._confirm_recruitment()
 
     def _recruit_all(self):
         self._recruit_one()
@@ -521,7 +549,7 @@ class PartyRecruitmentBot(KnightRecruitmentBot):
             return
 
         self._tap(action[1])
-        self._wait(f"{self.hero_name} 영입 완료 확인", lambda s: ("done",) if self._current_completed(s) else None)
+        self._confirm_recruitment()
 
     def _recruit_all(self):
         for hero in list(self.observer.heroes):

@@ -36,6 +36,8 @@ def used_images(root):
         needed.update((role['anchor'],role['header'],role['completed_icon'],hero['portrait'],hero['selected'],
                        hero['completed_name'],hero['element']+'_1'))
     used.update('images/chaos/hero_selection/'+rec['markers'][name]['file'] for name in needed)
+    used.update('images/chaos/hero_selection/'+filename for name in needed
+                for filename in rec['markers'][name].get('alternate_files', []))
     used.update(f'images/chaos/hero_selection/templates/themes/select_supply_{i}.png' for i in (1,2))
     # These directories are runtime registries, not development image dumps.
     for directory, pattern in [('blocked_choices','*.png'),('classes','class_*.png')]:

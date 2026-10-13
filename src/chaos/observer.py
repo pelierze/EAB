@@ -29,6 +29,7 @@ class RecruitmentObserver:
         self.assets = root / "images/chaos/hero_selection"
         self.theme = ThemeSelectionDetector(self.assets / "templates/themes")
         self.templates = {}
+        self.template_variants = {}
         self.role_icon_markers = {role['header'] for role in self.config['classes'].values()}
         self.portrait_markers = {hero["portrait"] for hero in self.config["heroes"].values()}
         sources = {}
@@ -56,6 +57,19 @@ class RecruitmentObserver:
                     raise ValueError(f"잘못된 원본 이미지 영역: {name}")
                 source = source[y:y + h, x:x + w]
             self.templates[name] = source.copy()
+            if name in self.portrait_markers:
+                variants = [self.templates[name]]
+                for filename in definition.get("alternate_files", []):
+                    path = self.assets / filename
+                    if path not in sources:
+                        sources[path] = read_image(str(path))
+                    alternate = sources[path]
+                    if alternate is None:
+                        raise ValueError(f"자동 탐사 이미지 누락: {path}")
+                    if alternate.shape != source.shape:
+                        raise ValueError(f"영웅 대체 이미지 크기 불일치: {name}: {path}")
+                    variants.append(alternate.copy())
+                self.template_variants[name] = tuple(variants)
 
     def validate_screen(self, screen):
         if screen is None:
@@ -101,16 +115,19 @@ class RecruitmentObserver:
             # Multiple owned copies of the requested hero are interchangeable.
             # Use screen order so minor score changes do not move the target.
             candidates = []
-            while True:
-                _, score, _, (mx, my) = cv2.minMaxLoc(result)
-                if score < threshold:
-                    break
-                matched = sample[my:my + th, mx:mx + tw]
-                error = float(np.abs(matched.astype(np.float32) - template).mean() / 255)
-                if error <= definition.get("max_color_error", 0.09):
-                    candidates.append((x + mx, y + my, tw, th))
-                result[max(0, my - th // 2):my + th // 2 + 1,
-                       max(0, mx - tw // 2):mx + tw // 2 + 1] = -1
+            for index, variant in enumerate(self.template_variants[name]):
+                if index:
+                    result = cv2.matchTemplate(sample, variant, cv2.TM_CCOEFF_NORMED)
+                while True:
+                    _, score, _, (mx, my) = cv2.minMaxLoc(result)
+                    if score < threshold:
+                        break
+                    matched = sample[my:my + th, mx:mx + tw]
+                    error = float(np.abs(matched.astype(np.float32) - variant).mean() / 255)
+                    if error <= definition.get("max_color_error", 0.09):
+                        candidates.append((x + mx, y + my, tw, th))
+                    result[max(0, my - th // 2):my + th // 2 + 1,
+                           max(0, mx - tw // 2):mx + tw // 2 + 1] = -1
             return min(candidates, key=lambda bounds: (bounds[1], bounds[0])) if candidates else None
         _, score, _, (mx, my) = cv2.minMaxLoc(result)
         if score < threshold:

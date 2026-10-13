@@ -1,8 +1,11 @@
 import unittest
+import tempfile
 from pathlib import Path
+from unittest.mock import Mock
 
 from build_support.release_assets import used_images
 from src.chaos.observer import RecruitmentObserver
+from src.chaos.bot import PartyRecruitmentBot
 from src.image_matcher import read_image
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +36,52 @@ class CompletionIconTests(unittest.TestCase):
             slot = self.observer.config['classes'][hero['class']]['slot']
             screen[418:505, 100 + slot*280:340 + slot*280] = 0
         self.assertTrue(self.observer.completed(screen))
+
+    def test_issue19_recognizes_completed_warrior_at_shifted_position(self):
+        screen = self.frame('warrior_issue19_recruited.png')
+        knight, warrior, weaver, thief = self.observer.heroes
+        self.assertTrue(self.observer.hero_completed(screen, knight))
+        self.assertTrue(self.observer.hero_completed(screen, warrior))
+        self.assertEqual(self.observer.find(screen, 'warrior_completed_icon'), (567, 505, 28, 28))
+        self.assertFalse(self.observer.hero_completed(screen, weaver))
+        self.assertFalse(self.observer.hero_completed(screen, thief))
+
+    def test_issue19_completed_warrior_does_not_receive_retry_click(self):
+        observer = RecruitmentObserver(ROOT)
+        observer.config['poll_seconds'] = 0
+        with tempfile.TemporaryDirectory() as runtime:
+            adb = Mock()
+            bot = PartyRecruitmentBot(adb, ROOT, runtime, observer=observer)
+            bot.active_hero = observer.heroes[1]
+            bot.hero_name = bot.active_hero['name']
+            bot._capture = Mock(return_value=self.frame('warrior_issue19_recruited.png'))
+            bot._confirm_recruitment()
+            adb.tap.assert_not_called()
+
+    def test_all_roles_accept_icon_offsets_inside_their_own_card(self):
+        original = self.frame('thief_jenua_recruited_live.png')
+        for hero in self.observer.heroes:
+            name = self.observer.config['classes'][hero['class']]['completed_icon']
+            definition = self.observer.config['markers'][name]
+            x,y,w,h = definition['crop']
+            rx,ry,rw,rh = definition['region']
+            for dx,dy in ((-24,0), (12,0), (-13,-8), (0,8)):
+                with self.subTest(role=hero['class'], offset=(dx,dy)):
+                    screen = original.copy()
+                    screen[ry:ry+rh,rx:rx+rw] = 0
+                    screen[y+dy:y+dy+h,x+dx:x+dx+w] = self.observer.templates[name]
+                    self.assertTrue(self.observer.hero_completed(screen, hero))
+
+    def test_icon_outside_own_slot_cannot_complete_it(self):
+        screen = self.frame('thief_jenua_recruited_live.png')
+        for hero in self.observer.heroes:
+            name = self.observer.config['classes'][hero['class']]['completed_icon']
+            definition = self.observer.config['markers'][name]
+            rx,ry,rw,rh = definition['region']
+            sample = screen.copy()
+            sample[ry:ry+rh,rx:rx+rw] = 0
+            sample[505:533,400:428] = self.observer.templates[name]
+            self.assertFalse(self.observer.hero_completed(sample, hero))
 
     def test_wrong_class_icon_or_missing_icon_cannot_complete_a_slot(self):
         original = self.frame('thief_jenua_recruited_live.png')

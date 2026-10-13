@@ -2477,6 +2477,7 @@ class SecretShopGUI:
         file_handler.addFilter(SessionContextFilter())
         file_handler.setFormatter(logging.Formatter("%(asctime)s - [%(session_name)s] - %(levelname)s - %(message)s"))
         root_logger.addHandler(file_handler)
+        logger.info("앱 실행 시작 — 구동 앱 버전: v%s", APP_VERSION)
 
     def _default_macro_definition(self):
         return {
