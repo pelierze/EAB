@@ -181,6 +181,11 @@ class NodeProgressionBot(KnightRecruitmentBot):
     def _classify(self, screen):
         if screen is None: return None
         state = self.observer.classify(screen)
+        if (getattr(self, '_story_skip_confirmation_pending', False)
+                and state in ('story_confirm', 'event_warning')
+                and self.observer.find(screen, 'story_confirm')
+                and self.observer.find(screen, 'story_cancel')):
+            return 'story_confirm'
         if (getattr(self, '_shop_exit_confirmation_pending', False)
                 and self.observer.find(screen, 'story_confirm')
                 and self.observer.find(screen, 'story_cancel')):
@@ -211,7 +216,8 @@ class NodeProgressionBot(KnightRecruitmentBot):
 
     def _guarded_tap(self, phase, state, marker, *, exiting=False, followups=None):
         def ready(screen):
-            kind = (self._classify(screen) if getattr(self, '_shop_exit_confirmation_pending', False)
+            kind = (self._classify(screen) if (getattr(self, '_shop_exit_confirmation_pending', False)
+                    or getattr(self, '_story_skip_confirmation_pending', False))
                     else self.observer.classify(screen))
             if followups and kind in followups:
                 return ('followup', kind)
@@ -281,14 +287,29 @@ class NodeProgressionBot(KnightRecruitmentBot):
             sent_at = time.monotonic()
 
     def _story(self, state):
-        if state == 'story':
-            self._guarded_tap('스토리 건너뛰기', 'story', 'skip')
-            allowed = EVENT_FOLLOWUPS - {'story'} if self.event_context else {'story_confirm'}
-            state = self._state('스토리 건너뛰기 후 화면 확인', allowed)
-            if state != 'story_confirm':
-                return state
-        self._guarded_tap('스토리 건너뛰기 확인', 'story_confirm', 'story_confirm')
-        self._wait('스토리 팝업 닫힘', lambda s: ('closed',) if not self.observer.find(s, 'story_dialog') else None)
+        self._story_skip_confirmation_pending = False
+        try:
+            if state == 'story':
+                self._guarded_tap('스토리 건너뛰기', 'story', 'skip')
+                self._story_skip_confirmation_pending = True
+                allowed = EVENT_FOLLOWUPS - {'story'} if self.event_context else {'story_confirm'}
+                state = self._state('스토리 건너뛰기 후 화면 확인', allowed)
+                if state != 'story_confirm':
+                    return state
+            self._guarded_tap('스토리 건너뛰기 확인', 'story_confirm', 'story_confirm')
+            def closed(screen):
+                # Missing text alone does not mean the dialog closed. Require
+                # its buttons to disappear and a recognized destination.
+                kind = self._classify(screen)
+                if (kind is not None and kind not in ('story_confirm', 'event_warning')
+                        and not self.observer.find(screen, 'story_confirm')
+                        and not self.observer.find(screen, 'story_cancel')
+                        and not self.observer.find(screen, 'story_dialog')):
+                    return ('closed',)
+                return None
+            self._wait('스토리 팝업 닫힘', closed)
+        finally:
+            self._story_skip_confirmation_pending = False
 
     def _settle_reward_popups(self, state, allowed):
         for _ in range(3):
