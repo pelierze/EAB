@@ -137,6 +137,7 @@ class SecretShopBot:
         
         # 스크린샷 임시 저장 경로
         self.screenshot_path = self.runtime_dir / "current_screen.png"
+        self._reset_scroll_diagnostics()
         
         # 통계
         self.stats = {
@@ -244,9 +245,49 @@ class SecretShopBot:
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         self.screenshot_path = screenshot_path
         if self.adb.screenshot(str(self.screenshot_path)):
+            self._last_capture_info = dict(context=context, captured_at=time.time())
+            pending = getattr(self, '_pending_scroll_diagnostic', None)
+            if pending is not None:
+                pending['after'] = self._cached_scroll_frame()
+                self._pending_scroll_diagnostic = None
             return True
+        self._last_capture_info = None
+        pending = getattr(self, '_pending_scroll_diagnostic', None)
+        if pending is not None:
+            pending['after_capture_error'] = context
         logger.error("스크린샷 촬영 실패: %s", context)
         return False
+
+    def _reset_scroll_diagnostics(self):
+        self.scroll_diagnostics = []
+        self._pending_scroll_diagnostic = None
+        self._last_capture_info = None
+        self._scroll_diagnostic_sequence = 0
+
+    def _cached_scroll_frame(self):
+        info = getattr(self, '_last_capture_info', None)
+        if info is None:
+            return dict(error='재사용할 성공 캡처 없음')
+        frame = dict(info)
+        try:
+            frame['png'] = Path(self.screenshot_path).read_bytes()
+        except OSError as exc:
+            frame['error'] = str(exc)
+            logger.warning('드래그 진단용 기존 캡처 보관 실패: %s', exc)
+        return frame
+
+    def _begin_scroll_diagnostic(self, kind, start_y, end_y):
+        self._scroll_diagnostic_sequence += 1
+        record = dict(sequence=self._scroll_diagnostic_sequence, kind=kind,
+                      started_at=time.time(), start=[self.swipe_x, start_y],
+                      end=[self.swipe_x, end_y], duration_ms=self.swipe_duration,
+                      input_success=None, before=self._cached_scroll_frame(), after=None)
+        # Keep at most two drags (four existing PNGs) in memory. Write them
+        # only when creating a failure report; never request an extra capture.
+        self.scroll_diagnostics.append(record)
+        del self.scroll_diagnostics[:-2]
+        self._pending_scroll_diagnostic = record
+        return record
         
     def run(self, max_refresh_count: int, buy_count_per_item: int) -> Dict:
         """
@@ -260,6 +301,8 @@ class SecretShopBot:
             통계 정보 딕셔너리
         """
         import time as time_module
+        self._reset_scroll_diagnostics()
+        logger.info('최근 드래그 전후 화면은 오류 발생 시 보고서 폴더에 함께 저장합니다.')
         
         # 시작 시간 기록
         self.stats["start_time"] = time_module.time()
@@ -361,6 +404,8 @@ class SecretShopBot:
 
     def run_natural_refresh(self, buy_count_per_item: int) -> Dict:
         """자연 갱신 상품만 15분마다 확인합니다. 유료 갱신은 하지 않습니다."""
+        self._reset_scroll_diagnostics()
+        logger.info('최근 드래그 전후 화면은 오류 발생 시 보고서 폴더에 함께 저장합니다.')
         self.stats["start_time"] = time.time()
         logger.info("자연 갱신 구매 시작 - 하늘석 사용 없음, 15분 간격, 중지할 때까지 실행")
         while self._wait_natural_refresh(0):
@@ -882,6 +927,7 @@ class SecretShopBot:
     
     def _scroll_down(self):
         """화면을 위로 스크롤 (두 번째 페이지로 이동)"""
+        diagnostic = self._begin_scroll_diagnostic('normal', self.swipe_start_y, self.swipe_end_y)
         logger.info(
             "화면 스크롤 시도 1/1 - (%s, %s) -> (%s, %s), duration=%sms",
             self.swipe_x,
@@ -899,6 +945,7 @@ class SecretShopBot:
             duration=self.swipe_duration,
             delay=0.5,
         )
+        diagnostic['input_success'] = bool(success)
 
         if success:
             logger.info("화면 스크롤 시도 1/1 성공")
@@ -909,6 +956,7 @@ class SecretShopBot:
     
     def _scroll_up(self):
         """Restore the first-page position before retrying a failed refresh."""
+        diagnostic = self._begin_scroll_diagnostic('recovery', self.swipe_end_y, self.swipe_start_y)
         logger.info(
             "화면 복구 스크롤 시도 1/1 - (%s, %s) -> (%s, %s), duration=%sms",
             self.swipe_x,
@@ -926,6 +974,7 @@ class SecretShopBot:
             duration=self.swipe_duration,
             delay=0.5,
         )
+        diagnostic['input_success'] = bool(success)
 
         if success:
             logger.info("화면 복구 스크롤 시도 1/1 성공")

@@ -98,6 +98,7 @@ class SecretShopBotScrollTest(unittest.TestCase):
 
     def test_scroll_down_calls_single_swipe_once(self):
         bot = object.__new__(SecretShopBot)
+        bot._reset_scroll_diagnostics()
         bot.adb = DummyADB()
         bot.swipe_x = 960
         bot.swipe_start_y = 540
@@ -113,6 +114,7 @@ class SecretShopBotScrollTest(unittest.TestCase):
 
     def test_scroll_up_calls_single_swipe_once(self):
         bot = object.__new__(SecretShopBot)
+        bot._reset_scroll_diagnostics()
         bot.adb = DummyADB()
         bot.swipe_x = 960
         bot.swipe_start_y = 540

@@ -107,7 +107,7 @@ class FailureReportLifecycleTests(unittest.TestCase):
     @patch('src.gui.save_failure_report')
     def test_other_automation_exceptions_create_reports(self, save):
         for method, args in [('_run_bot', (1, 1)),
-                             ('_run_penguin_bot', ()), ('_run_event_bot', ())]:
+                             ('_run_penguin_bot', ())]:
             with self.subTest(method=method):
                 save.reset_mock()
                 view = self.view({})

@@ -68,6 +68,31 @@ def save_failure_report(log_root, log_file, result, bot, session, mode, controll
             except Exception as exc:
                 metadata['screenshot_errors'].append(str(exc))
         metadata['screenshot_saved'] = saved
+        scrolls = getattr(active, 'scroll_diagnostics', None)
+        if isinstance(scrolls, list) and scrolls:
+            metadata['scroll_diagnostics'] = []
+            for record in scrolls[-2:]:
+                entry = {key: value for key, value in record.items() if key not in ('before', 'after')}
+                kind = record.get('kind')
+                kind = kind if kind in ('normal', 'recovery') else 'unknown'
+                index = len(metadata['scroll_diagnostics']) + 1
+                for stage in ('before', 'after'):
+                    frame = record.get(stage)
+                    if not isinstance(frame, dict):
+                        entry[stage] = dict(error='드래그 이후 기존 캡처가 수행되지 않음')
+                        continue
+                    entry[stage] = {key: value for key, value in frame.items() if key != 'png'}
+                    data = frame.get('png')
+                    if isinstance(data, bytes):
+                        relative = f'scrolls/{index:02d}_{kind}_{stage}.png'
+                        try:
+                            destination = folder / relative
+                            destination.parent.mkdir(exist_ok=True)
+                            destination.write_bytes(data)
+                            entry[stage]['file'] = relative
+                        except Exception as exc:
+                            entry[stage]['error'] = str(exc)
+                metadata['scroll_diagnostics'].append(entry)
         runtime_dir = getattr(active, 'runtime_dir', None)
         if isinstance(runtime_dir, (str, Path)):
             for filename in ('failure.json', 'recognition_timeout.json'):
