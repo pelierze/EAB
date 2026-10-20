@@ -28,7 +28,7 @@ def release_assets(release):
     if not re.fullmatch(r'v?\d+\.\d+\.\d+', release.version):
         raise ValueError('자동 업데이트는 정식 버전만 지원합니다.')
     version = release.version.lstrip('v')
-    # Prefer the legacy pair while both are published. Never mix checksums
+    # Prefer the EAB pair while both are published. Never mix checksums
     # between package names or silently accept duplicate release assets.
     candidates = []
     for package_name in SUPPORTED_PACKAGE_NAMES:

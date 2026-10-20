@@ -17,8 +17,8 @@ VSVersionInfo(
           StringStruct(u'CompanyName', u'pelierze'),
           StringStruct(u'FileDescription', u'Epic7 Assist Bot (EAB)'),
           StringStruct(u'FileVersion', u'1.5.19'),
-          StringStruct(u'InternalName', u'SecretShopBot-E7'),
-          StringStruct(u'OriginalFilename', u'SecretShopBot-E7.exe'),
+          StringStruct(u'InternalName', u'EAB'),
+          StringStruct(u'OriginalFilename', u'EAB.exe'),
           StringStruct(u'ProductName', u'Epic7 Assist Bot'),
           StringStruct(u'ProductVersion', u'1.5.19'),
         ]

@@ -68,7 +68,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='SecretShopBot-E7',
+    name='EAB',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -86,16 +86,26 @@ updater_analysis = Analysis(['updater_main.py'], pathex=[], binaries=[], datas=[
                             hiddenimports=[], hookspath=[], runtime_hooks=[], excludes=[], noarchive=False)
 updater_pyz = PYZ(updater_analysis.pure)
 updater_exe = EXE(updater_pyz, updater_analysis.scripts, updater_analysis.binaries,
-                  updater_analysis.datas, [], name='SecretShopBot-Updater',
+                  updater_analysis.datas, [], name='EAB-Updater',
                   console=False, upx=False, icon='assets/icons/app_icon_multi_size.ico')
+
+launcher_analysis = Analysis(['legacy_launcher.py'], pathex=[], binaries=[], datas=[],
+                             hiddenimports=[], hookspath=[], runtime_hooks=[], excludes=[], noarchive=False)
+launcher_pyz = PYZ(launcher_analysis.pure)
+launcher_exe = EXE(launcher_pyz, launcher_analysis.scripts, [], exclude_binaries=True,
+                   name='SecretShopBot-E7', console=False, upx=False,
+                   icon='assets/icons/app_icon_multi_size.ico')
 
 coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
     updater_exe,
+    launcher_exe,
+    launcher_analysis.binaries,
+    launcher_analysis.datas,
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='SecretShopBot-E7',
+    name='EAB',
 )

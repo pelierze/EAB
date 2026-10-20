@@ -58,13 +58,13 @@ class PackageTest(unittest.TestCase):
         self.assertEqual(resolve_updater_executable(p).name, 'EAB-Updater.exe')
         self.assertEqual(release_assets(self.release())[0], self.archive.name)
 
-    def test_assets_prefer_legacy_pair_and_never_mix_checksums(self):
+    def test_assets_prefer_eab_pair_and_never_mix_checksums(self):
         release = self.release()
         new_assets = tuple({'name': a['name'].replace('SecretShopBot-E7', 'EAB'),
                             'browser_download_url': a['browser_download_url'].replace('SecretShopBot-E7-v', 'EAB-v')}
                            for a in release.assets)
         release.assets += new_assets
-        self.assertEqual(release_assets(release)[0], self.archive.name)
+        self.assertEqual(release_assets(release)[0], 'EAB-v1.4.4.zip')
         release.assets = (release.assets[0], *new_assets)
         self.assertEqual(release_assets(release)[0], 'EAB-v1.4.4.zip')
         release.assets = (release.assets[0], new_assets[1])

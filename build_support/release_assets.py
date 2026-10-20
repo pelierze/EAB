@@ -82,13 +82,25 @@ def collect_runtime_files(root):
     return [(str(root / name), str(Path(name).parent)) for name in RUNTIME_FILES]
 
 
-def validate_package(root, source_root=None):
+def validate_package(root, source_root=None, profile='legacy'):
     root = Path(root)
-    required = {'SecretShopBot-E7.exe', 'SecretShopBot-Updater.exe', '_internal'}
+    profiles = {
+        'legacy': {'SecretShopBot-E7.exe', 'SecretShopBot-Updater.exe', '_internal'},
+        'eab': {'EAB.exe', 'EAB-Updater.exe', 'SecretShopBot-E7.exe', '_internal'},
+        'build': {'EAB.exe', 'EAB-Updater.exe', 'SecretShopBot-E7.exe', '_internal'},
+    }
+    required = profiles[profile]
     if {p.name for p in root.iterdir()} != required:
         raise ValueError('Unexpected or missing release root entries')
     if not (root / '_internal').is_dir() or not all((root / name).is_file() for name in required - {'_internal'}):
         raise ValueError('Invalid runtime entry types')
+    if profile in ('eab', 'build'):
+        import hashlib
+        def digest(name):
+            with (root / name).open('rb') as stream:
+                return hashlib.file_digest(stream, 'sha256').digest()
+        if digest('EAB.exe') == digest('SecretShopBot-E7.exe'):
+            raise ValueError('Shortcut launcher must differ from EAB.exe')
     internal = root / '_internal'
     source_root = Path(source_root) if source_root is not None else Path(__file__).resolve().parents[1]
     expected_images = set(used_images(source_root))
@@ -121,4 +133,6 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--validate', required=True)
-    validate_package(parser.parse_args().validate)
+    parser.add_argument('--profile', choices=('legacy', 'eab', 'build'), default='legacy')
+    args = parser.parse_args()
+    validate_package(args.validate, profile=args.profile)

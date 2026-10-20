@@ -1,4 +1,4 @@
-# SecretShopBot-E7 배포 방법
+# Epic7 Assist Bot (EAB) 배포 방법
 
 이 문서는 VSCode에서 Windows 사용자용 배포 zip을 만들고 GitHub Releases에 올리는 절차입니다.
 
@@ -29,9 +29,22 @@ powershell -ExecutionPolicy Bypass -File .\build_release.ps1 -Version 1.0.7
 성공하면 아래 파일이 생성됩니다.
 
 ```text
-release/SecretShopBot-E7-v1.0.7.zip
-release/SecretShopBot-E7-v1.0.7.zip.sha256.txt
+release/EAB-v1.0.7.zip
+release/EAB-v1.0.7.zip.sha256.txt
 ```
+
+기본 다운로드는 EAB ZIP입니다. 이 ZIP에는 `EAB.exe`, `EAB-Updater.exe`,
+기존 바로가기용 연결 프로그램 `SecretShopBot-E7.exe`와 `_internal`이 들어 있습니다.
+연결 프로그램은 같은 폴더의 `EAB.exe`를 실행합니다. 일반 실행에서는 EAB를
+열고 종료하며, 이전 호환성 준비 버전의 자동 업데이트 실행에서는 시작 확인과
+복구 처리를 위해 EAB가 종료될 때까지 대기합니다.
+
+기존 이름의 ZIP은 더 이상 생성하지 않습니다. v1.5.15 이상에서 새 ZIP으로 자동
+업데이트할 수 있습니다. v1.5.14 이하 사용자는 EAB ZIP으로 수동 설치하도록 안내하세요.
+EAB ZIP과 체크섬 파일, 총 두 파일을 첨부합니다.
+기존 릴리즈 파일은 덮어쓰지 않습니다. 같은 버전으로 로컬 검증을 다시 하려면
+`-ReleaseDirectory release/name-transition-launcher-preview`처럼 별도 출력 폴더를 지정하세요.
+버전 번호는 `src/version.py`와 빌드 인자를 일치시켜 배포합니다.
 
 ## 2. GitHub에 코드 푸시
 
@@ -56,16 +69,16 @@ https://github.com/pelierze/SecretShopBot-E7/releases/new
 
 - Tag: `v1.0.7`
 - Target: `master`
-- Release title: `SecretShopBot-E7 v1.0.7`
+- Release title: `Epic7 Assist Bot v1.0.7`
 
 Release description 예시:
 
 ```markdown
 ## 다운로드 및 실행
 
-1. 아래 Assets에서 `SecretShopBot-E7-v1.0.7.zip`을 다운로드합니다.
+1. 아래 Assets에서 `EAB-v1.0.7.zip`을 다운로드합니다.
 2. 압축을 풉니다.
-3. `SecretShopBot-E7.exe`를 실행합니다.
+3. `EAB.exe`를 실행합니다.
 
 ## 주의사항
 
@@ -74,22 +87,13 @@ Release description 예시:
 - 에뮬레이터에서 ADB 디버깅을 켠 뒤 사용하세요.
 - VirusTotal에서 소수 엔진만 탐지하는 경우 PyInstaller, ADB, 화면 캡처, 자동 입력 기능으로 인한 오탐일 수 있습니다.
 
-## SHA256
-
-<SHA256-HERE>  SecretShopBot-E7-v1.0.7.zip
-
-PowerShell 확인 명령:
-
-Get-FileHash -Algorithm SHA256 .\SecretShopBot-E7-v1.0.7.zip
-
-`release/SecretShopBot-E7-v1.0.7.zip.sha256.txt`의 값과 비교하세요.
 ```
 
 Assets에는 아래 파일을 첨부합니다.
 
 ```text
-release/SecretShopBot-E7-v1.0.7.zip
-release/SecretShopBot-E7-v1.0.7.zip.sha256.txt
+release/EAB-v1.0.7.zip
+release/EAB-v1.0.7.zip.sha256.txt
 ```
 
 마지막으로 `Publish release`를 누릅니다.

@@ -1,14 +1,16 @@
 param(
-    [string]$Version = "v1.5.19"
+    [string]$Version = "v1.5.19",
+    [string]$PythonExecutable = "python",
+    [string]$ReleaseDirectory = "release",
+    [switch]$SkipDependencyInstall
 )
 
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-# Stable package name required by existing automatic update clients.
-$AppName = "SecretShopBot-E7"
+$AppName = "EAB"
 $DisplayName = "Epic7 Assist Bot"
-$ReleaseRoot = Join-Path $ProjectRoot "release"
+$ReleaseRoot = [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot $ReleaseDirectory))
 $DistRoot = Join-Path $ProjectRoot "dist"
 $BuildRoot = Join-Path $ProjectRoot "build"
 $NormalizedVersion = if ($Version.StartsWith("v")) { $Version } else { "v$Version" }
@@ -21,10 +23,17 @@ if ($NumericVersion -match '-(?:alpha|beta|rc)[.-]?(\d+)$') {
     $PreReleaseBuild = [int]$Matches[1]
 }
 $FileVersionTuple = "$($CoreParts[0]), $($CoreParts[1]), $($CoreParts[2]), $PreReleaseBuild"
-$PackageName = "$AppName-$NormalizedVersion"
-$PackageDir = Join-Path $ReleaseRoot $PackageName
-$StagingPackageDir = $PackageDir
-$ZipPath = Join-Path $ReleaseRoot "$PackageName.zip"
+if ($NormalizedVersion -notmatch '^v\d+\.\d+\.\d+(-(alpha|beta|rc)[.-]?\d+)?$') {
+    throw "Invalid release version: $Version"
+}
+foreach ($PackagePrefix in @("EAB")) {
+    foreach ($Suffix in @(".zip", ".zip.sha256.txt")) {
+        $ExistingArtifact = Join-Path $ReleaseRoot "$PackagePrefix-$NormalizedVersion$Suffix"
+        if (Test-Path -LiteralPath $ExistingArtifact) {
+            throw "Release artifact already exists; choose another output folder: $ExistingArtifact"
+        }
+    }
+}
 
 Set-Location $ProjectRoot
 
@@ -37,19 +46,16 @@ if (-not (Test-Path "main.py")) {
 }
 
 Write-Host "Checking Python..."
-python --version
+& $PythonExecutable --version
 
-Write-Host "Installing/updating Python dependencies..."
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m pip install pyinstaller
+if (-not $SkipDependencyInstall) {
+    Write-Host "Installing Python dependencies..."
+    & $PythonExecutable -m pip install -r requirements.txt pyinstaller
+    if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
+}
 
 Write-Host "Checking executable icon..."
 $IconPath = Join-Path $ProjectRoot "assets\icons\app_icon_multi_size.ico"
-$IconCacheDir = Join-Path $ProjectRoot "assets\icons\_generated"
-if (Test-Path $IconCacheDir) {
-    Remove-Item -LiteralPath $IconCacheDir -Recurse -Force
-}
 if (-not (Test-Path $IconPath)) {
     throw "Executable icon was not found: $IconPath"
 }
@@ -75,8 +81,8 @@ VSVersionInfo(
           StringStruct(u'CompanyName', u'pelierze'),
           StringStruct(u'FileDescription', u'$DisplayName (EAB)'),
           StringStruct(u'FileVersion', u'$NumericVersion'),
-          StringStruct(u'InternalName', u'SecretShopBot-E7'),
-          StringStruct(u'OriginalFilename', u'SecretShopBot-E7.exe'),
+          StringStruct(u'InternalName', u'EAB'),
+          StringStruct(u'OriginalFilename', u'EAB.exe'),
           StringStruct(u'ProductName', u'$DisplayName'),
           StringStruct(u'ProductVersion', u'$NumericVersion'),
         ]
@@ -87,33 +93,14 @@ VSVersionInfo(
 )
 "@ | Set-Content -Path (Join-Path $ProjectRoot "file_version_info.txt") -Encoding ASCII
 
-Write-Host "Cleaning previous build output..."
-if (Test-Path $DistRoot) {
-    Remove-Item -LiteralPath $DistRoot -Recurse -Force
-}
-if (Test-Path $BuildRoot) {
-    Remove-Item -LiteralPath $BuildRoot -Recurse -Force
-}
-if (Test-Path $PackageDir) {
-    try {
-        Remove-Item -LiteralPath $PackageDir -Recurse -Force
-    }
-    catch {
-        $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-        $StagingPackageDir = Join-Path $ReleaseRoot "$PackageName-staging-$Timestamp"
-        Write-Host "Existing release folder is in use. Using staging folder:"
-        Write-Host "  $StagingPackageDir"
-    }
-}
-if (Test-Path $ZipPath) {
-    Remove-Item -LiteralPath $ZipPath -Force
-}
 New-Item -ItemType Directory -Path $ReleaseRoot -Force | Out-Null
 
 Write-Host "Building Windows app with PyInstaller..."
-python -m PyInstaller `
+& $PythonExecutable -m PyInstaller `
     --noconfirm `
-    SecretShopBot-E7.spec
+    --distpath $DistRoot `
+    --workpath $BuildRoot `
+    EAB.spec
 if ($LASTEXITCODE -ne 0) {
     throw "PyInstaller build failed."
 }
@@ -122,56 +109,16 @@ $BuiltDir = Join-Path $DistRoot $AppName
 if (-not (Test-Path $BuiltDir)) {
     throw "Build failed: $BuiltDir was not created."
 }
-if (-not (Test-Path (Join-Path $BuiltDir "SecretShopBot-Updater.exe"))) {
+if (-not (Test-Path (Join-Path $BuiltDir "EAB-Updater.exe"))) {
     throw "Automatic updater executable is missing from the build."
 }
 
-Write-Host "Preparing release package..."
-if (Test-Path $StagingPackageDir) {
-    Remove-Item -LiteralPath $StagingPackageDir -Recurse -Force
-}
-Copy-Item -LiteralPath $BuiltDir -Destination $StagingPackageDir -Recurse
-
-Write-Host "Validating runtime files and excluding development files..."
-python -m build_support.release_assets --validate $StagingPackageDir
+Write-Host "Validating and creating EAB release package..."
+& $PythonExecutable -m build_support.release_packages --source $BuiltDir --output $ReleaseRoot --version $NormalizedVersion
 if ($LASTEXITCODE -ne 0) {
-    throw "Release package validation failed. Zip creation was skipped."
+    throw "Release package generation failed."
 }
-
-Write-Host "Creating zip package..."
-$ZipCreated = $false
-for ($Attempt = 1; $Attempt -le 5; $Attempt++) {
-    try {
-        if (Test-Path $ZipPath) {
-            Remove-Item -LiteralPath $ZipPath -Force
-        }
-        Start-Sleep -Seconds 2
-        Compress-Archive -Path $StagingPackageDir -DestinationPath $ZipPath -Force
-        $ZipCreated = $true
-        break
-    }
-    catch {
-        if ($Attempt -eq 5) {
-            throw
-        }
-        Write-Host "Zip attempt $Attempt failed, retrying..."
-        Start-Sleep -Seconds 3
-    }
-}
-
-if (-not $ZipCreated) {
-    throw "Zip package was not created."
-}
-
-$Hash = Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath
-$HashPath = "$ZipPath.sha256.txt"
-"$($Hash.Hash)  $(Split-Path -Leaf $ZipPath)" | Set-Content -Path $HashPath -Encoding ASCII
 
 Write-Host ""
-Write-Host "Release package created:"
-Write-Host "  $ZipPath"
-Write-Host "SHA256:"
-Write-Host "  $($Hash.Hash)"
-Write-Host ""
-Write-Host "Upload BOTH the zip and its .sha256.txt file to GitHub Releases:"
+Write-Host "Upload the EAB zip and its .sha256.txt file to GitHub Releases:"
 Write-Host "  https://github.com/pelierze/SecretShopBot-E7/releases/new"
