@@ -231,44 +231,49 @@ class SessionView:
         self.connection_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Row 0: 실행 환경 선택 & 공통 제어 버튼
-        self.backend_label = ttk.Label(self.connection_frame, text="실행 환경:")
-        self.backend_label.grid(row=0, column=0, sticky=tk.W, padx=5)
+        self.connection_header_frame = ttk.Frame(self.connection_frame)
+        self.connection_header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+
+        self.backend_label = ttk.Label(self.connection_header_frame, text="실행 환경:")
+        self.backend_label.pack(side=tk.LEFT, padx=(5, 8))
 
         self.backend_adb_radio = ttk.Radiobutton(
-            self.connection_frame,
+            self.connection_header_frame,
             text="앱플레이어 (ADB)",
             variable=self.backend_type_var,
             value="adb",
             command=self._on_backend_type_changed,
         )
-        self.backend_adb_radio.grid(row=0, column=1, columnspan=2, sticky=tk.W, padx=5)
+        self.backend_adb_radio.pack(side=tk.LEFT, padx=(0, 16))
 
         self.backend_stove_radio = ttk.Radiobutton(
-            self.connection_frame,
+            self.connection_header_frame,
             text="STOVE PC 클라이언트",
             variable=self.backend_type_var,
             value="stove",
             command=self._on_backend_type_changed,
         )
-        self.backend_stove_radio.grid(row=0, column=3, columnspan=2, sticky=tk.W, padx=5)
-
-        self.connect_btn = ttk.Button(self.connection_frame, text="연결", command=self._connect_device)
-        self.connect_btn.grid(row=0, column=5, padx=5)
+        self.backend_stove_radio.pack(side=tk.LEFT, padx=(0, 16))
 
         self.disconnect_btn = ttk.Button(
-            self.connection_frame,
+            self.connection_header_frame,
             text="연결 해제",
             command=self._disconnect_device,
             state=tk.DISABLED,
         )
-        self.disconnect_btn.grid(row=0, column=6, padx=5)
+        self.disconnect_btn.pack(side=tk.RIGHT, padx=(4, 5))
 
-        self.connection_status = ttk.Label(self.connection_frame, text="● 연결 안됨", foreground="#E53935")
-        self.connection_status.grid(row=0, column=7, padx=10)
-        self.connection_frame.columnconfigure(8, weight=1)
+        self.connect_btn = ttk.Button(self.connection_header_frame, text="연결", command=self._connect_device)
+        self.connect_btn.pack(side=tk.RIGHT, padx=(4, 4))
+
+        self.connection_status = ttk.Label(self.connection_header_frame, text="● 연결 안됨", foreground="#E53935")
+        self.connection_status.pack(side=tk.RIGHT, padx=(10, 12))
+
+        self.connection_frame.columnconfigure(0, weight=1)
+        self.connection_frame.columnconfigure(1, weight=0)
 
         self.release_info_frame = ttk.Frame(self.connection_frame, style="CardInner.TFrame")
-        self.release_info_frame.grid(row=0, column=8, rowspan=3, sticky=tk.E, padx=(12, 4))
+        self.release_info_frame.grid(row=1, column=1, rowspan=2, sticky=tk.E, padx=(12, 5))
 
         self.version_badge = ttk.Label(
             self.release_info_frame,
@@ -295,7 +300,7 @@ class SessionView:
 
         # Row 1-A: ADB 연결 컨트롤 프레임
         self.adb_ctrl_frame = ttk.Frame(self.connection_frame)
-        self.adb_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+        self.adb_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
 
         self.ip_label = ttk.Label(self.adb_ctrl_frame, text="IP 주소:")
         self.ip_label.grid(row=0, column=0, sticky=tk.W, padx=5)
@@ -320,7 +325,7 @@ class SessionView:
 
         # Row 1-B: STOVE 연결 컨트롤 프레임
         self.stove_ctrl_frame = ttk.Frame(self.connection_frame)
-        self.stove_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+        self.stove_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
 
         self.stove_label = ttk.Label(self.stove_ctrl_frame, text="에픽세븐 창:")
         self.stove_label.grid(row=0, column=0, sticky=tk.W, padx=5)
@@ -347,7 +352,7 @@ class SessionView:
         # 초기 실행 환경에 맞춰 컨트롤 프레임 표시
         if self.backend_type_var.get() == "stove":
             self.adb_ctrl_frame.grid_remove()
-            self.stove_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+            self.stove_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
             self.mumu_checkbox.config(state=tk.DISABLED)
             self.connection_frame.config(text="연결 설정 (STOVE PC 클라이언트)")
         else:
@@ -355,7 +360,7 @@ class SessionView:
 
         # Row 2: 공통 옵션
         self.options_row_frame = ttk.Frame(self.connection_frame)
-        self.options_row_frame.grid(row=2, column=0, columnspan=8, sticky=tk.W, padx=0, pady=2)
+        self.options_row_frame.grid(row=2, column=0, sticky=tk.W, padx=0, pady=2)
 
         self.debug_mode_var = tk.BooleanVar(value=False)
         self.debug_checkbox = ttk.Checkbutton(
@@ -1449,7 +1454,7 @@ class SessionView:
         backend_type = self.backend_type_var.get()
         if backend_type == "stove":
             self.adb_ctrl_frame.grid_remove()
-            self.stove_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+            self.stove_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
             self.mumu_checkbox.config(state=tk.DISABLED)
             self.connection_frame.config(text=i18n.tr("연결 설정 (STOVE PC 클라이언트)"))
             found = self._scan_stove_windows()
@@ -1457,7 +1462,7 @@ class SessionView:
                 self._connect_stove()
         else:
             self.stove_ctrl_frame.grid_remove()
-            self.adb_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+            self.adb_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
             self.mumu_checkbox.config(state=tk.NORMAL)
             self.connection_frame.config(text=i18n.tr("연결 설정 (ADB)"))
         if hasattr(self, 'frame') and hasattr(self.frame, 'options'):

@@ -529,7 +529,7 @@ class SecretShopBot:
             return {}
         self._sleep(self._timing("after_screenshot", 0.3))
 
-        # 2페이지 진입 시 스크롤 전 화면과 비교하여 변화가 없으면 재스크롤
+        # 2페이지 진입 시 스크롤 전 화면과 비교하여 변화가 없으면 재스크롤 (아래 2회, 위로 2회 총 4회)
         if page_num == 2:
             diagnostic = getattr(self, "_last_scroll_diagnostic", None)
             if diagnostic and diagnostic.get("kind") == "normal":
@@ -537,18 +537,24 @@ class SecretShopBot:
                 if before_data:
                     before_img = cv2.imdecode(np.frombuffer(before_data, dtype=np.uint8), cv2.IMREAD_COLOR)
                     after_img = read_image(self.screenshot_path)
-                    max_scroll_retries = int(self.macro_settings.get("scroll_retry_count", 2))
+                    max_scroll_retries = int(self.macro_settings.get("scroll_retry_count", 4))
                     for retry in range(max_scroll_retries):
                         if self.user_action == 'stop':
                             break
                         if self._is_screen_scrolled(before_img, after_img):
                             break
+                        scroll_down = retry < 2
+                        direction_text = "아래로" if scroll_down else "위로"
                         logger.warning(
-                            "⚠️ 스크롤 후 화면 변화가 감지되지 않아 다시 스크롤합니다 (%s/%s)",
+                            "⚠️ 스크롤 후 화면 변화가 감지되지 않아 %s 다시 스크롤합니다 (%s/%s)",
+                            direction_text,
                             retry + 1,
                             max_scroll_retries,
                         )
-                        self._scroll_down()
+                        if scroll_down:
+                            self._scroll_down()
+                        else:
+                            self._scroll_up()
                         self._sleep(self._timing("after_scroll", 0.5))
                         if not self._capture_screenshot(f"상점 스캔 2페이지 (재시도 {retry + 1})"):
                             break
@@ -556,7 +562,7 @@ class SecretShopBot:
                         after_img = read_image(self.screenshot_path)
                     else:
                         if not self._is_screen_scrolled(before_img, after_img):
-                            logger.warning("⚠️ 재스크롤 시도 후에도 화면 이동이 감지되지 않았습니다.")
+                            logger.warning("⚠️ 재스크롤 4회 시도 후에도 화면 이동이 감지되지 않았습니다.")
         
         found_items = {}
         
