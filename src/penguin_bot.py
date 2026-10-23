@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 from .adb_controller import ADBController
-from .image_matcher import read_image
+from .image_matcher import ImageMatcher, read_image
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,9 @@ class PenguinBot:
 
     ASSET_DIR = "images/penguin"
     EGG_IMAGE = "egg.png"
-    BUY_BUTTON_IMAGE = "buy_button.png"
-    MAX_BUTTON_IMAGE = "max_button.png"
+    STIGMA_IMAGE = "stigma.png"
+    PLUS_ONE_IMAGE = "+1.png"
+    QUANTITY_BUTTON_IMAGE = "quantity_button.png"
     FIFTY_CHECK_IMAGE = "50check.png"
     CLOSE_IMAGE = "close.png"
 
@@ -44,9 +45,9 @@ class PenguinBot:
     EGG_MAX_X = 344
     EGG_MATCH_SCALES = (0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0)
     POPUP_FIFTY_CHECK_ROI = (540, 380, 740, 470)
-    POPUP_MAX_BUTTON_ROI = (840, 430, 980, 520)
-    POPUP_FINAL_BUY_ROI = (700, 540, 940, 630)
-    POPUP_FINAL_BUY_SCALES = (0.95, 1.0, 1.05, 1.1, 1.15)
+    POPUP_PLUS_ONE_ROI = (780, 430, 880, 520)
+    POPUP_FINAL_BUY_ROI = (580, 550, 940, 630)
+    STIGMA_MATCH_SCALES = (0.95, 1.0, 1.05)
 
     CYCLE_RETRY_COUNT = 3
     SCREEN_RETRY_COUNT = 3
@@ -58,6 +59,7 @@ class PenguinBot:
         "egg": 0.9,
         "buy_button": 0.9,
         "max_button": 0.9,
+        "plus_one": 0.9,
         "fifty_check": 0.9,
         "close": 0.9,
     }
@@ -82,6 +84,7 @@ class PenguinBot:
         self.user_action = None
         self.paused = False
         self._template_cache: Dict[str, np.ndarray] = {}
+        self._image_matcher = ImageMatcher()
         self.stats = {
             "cycles_completed": 0,
             "purchase_attempts": 0,
@@ -177,7 +180,7 @@ class PenguinBot:
                 return False
             if not self._sleep_with_stop(0.4):
                 return False
-            popup_screen = self._capture_purchase_popup()
+            popup_screen = self._capture_purchase_popup(require_maximum=True)
             if popup_screen is None:
                 logger.warning("최대 버튼을 누른 뒤 구매 팝업을 다시 확인하지 못했습니다.")
                 return False
@@ -214,16 +217,13 @@ class PenguinBot:
         self.stats["penguins_bought"] += 1
         return self._sleep_with_stop(0.5)
 
-    def _capture_purchase_popup(self) -> Optional[np.ndarray]:
+    def _capture_purchase_popup(self, require_maximum: bool = False) -> Optional[np.ndarray]:
         for attempt in range(1, self.POPUP_RETRY_COUNT + 1):
             screen = self._capture_screen_image("구매 팝업 확인", attempts=1)
             if screen is None:
                 continue
-            if (
-                self._has_popup_fifty_check(screen)
-                or self._find_popup_max_button(screen) is not None
-                or self._find_popup_final_buy_button(screen) is not None
-            ):
+            if (self._find_popup_final_buy_button(screen) is not None
+                    and (not require_maximum or self._has_popup_fifty_check(screen))):
                 return screen
             if attempt < self.POPUP_RETRY_COUNT:
                 logger.warning("구매 팝업 요소를 찾지 못해 %s/%s회 재확인합니다.", attempt, self.POPUP_RETRY_COUNT)
@@ -316,23 +316,17 @@ class PenguinBot:
         egg_x, egg_y, egg_w, egg_h = egg_match
         egg_center_x = egg_x + (egg_w // 2)
         egg_bottom_y = egg_y + egg_h
-
-        candidates = self._find_all_matches(screen, self.BUY_BUTTON_IMAGE, self.thresholds["buy_button"])
-        filtered = []
-        for candidate in candidates:
-            btn_x, btn_y, btn_w, btn_h = candidate
-            btn_center_x = btn_x + (btn_w // 2)
-            btn_center_y = btn_y + (btn_h // 2)
-            if btn_center_y <= egg_bottom_y:
-                continue
-            filtered.append((abs(btn_center_x - egg_center_x), btn_center_y, candidate))
-
-        if not filtered:
+        # Recheck the anchor on this capture. A dimmed egg behind a popup
+        # must not send a stale list coordinate to another product's button.
+        if self._match_score_for_box(screen, self.EGG_IMAGE, egg_match) < self.thresholds["egg"]:
             return None
-
-        filtered.sort(key=lambda item: (item[0], item[1]))
-        best = filtered[0][2]
-        logger.info("펭귄 칸의 구매 버튼 발견: %s", best)
+        roi = (max(self.EGG_MIN_X, egg_center_x - 145), egg_bottom_y + 80,
+               min(self.EGG_MAX_X, egg_center_x + 145),
+               min(screen.shape[0], egg_bottom_y + 260))
+        best = self._find_in_roi(screen, roi, self.STIGMA_IMAGE,
+                                 self.thresholds["buy_button"], scales=self.STIGMA_MATCH_SCALES)
+        if best is not None:
+            logger.info("펭귄 칸의 스티그마 구매 버튼 발견: %s", best)
         return best
 
     def _has_popup_fifty_check(self, screen: np.ndarray) -> bool:
@@ -343,21 +337,30 @@ class PenguinBot:
             self.thresholds["fifty_check"],
         ) is not None
 
-    def _find_popup_max_button(self, screen: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
+    def _find_popup_plus_one_button(self, screen: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
         return self._find_in_roi(
-            screen,
-            self.POPUP_MAX_BUTTON_ROI,
-            self.MAX_BUTTON_IMAGE,
-            self.thresholds["max_button"],
+            screen, self.POPUP_PLUS_ONE_ROI, self.PLUS_ONE_IMAGE, self.thresholds["plus_one"],
         )
 
+    def _find_popup_max_button(self, screen: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
+        plus = self._find_popup_plus_one_button(screen)
+        if plus is None:
+            return None
+        x, y, width, height = plus
+        # Find the adjacent dark box by its border, ignoring its localized text.
+        roi = (x + width, max(0, y - 6), min(screen.shape[1], x + width + 110),
+               min(screen.shape[0], y + height + 6))
+        return self._find_in_roi(screen, roi, self.QUANTITY_BUTTON_IMAGE, self.thresholds["max_button"])
+
     def _find_popup_final_buy_button(self, screen: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
+        if self._find_popup_plus_one_button(screen) is None:
+            return None
         return self._find_in_roi(
             screen,
             self.POPUP_FINAL_BUY_ROI,
-            self.BUY_BUTTON_IMAGE,
+            self.STIGMA_IMAGE,
             self.thresholds["buy_button"],
-            scales=self.POPUP_FINAL_BUY_SCALES,
+            scales=self.STIGMA_MATCH_SCALES,
         )
 
     def _find_best_match(
@@ -416,7 +419,7 @@ class PenguinBot:
         if image.shape[0] < template.shape[0] or image.shape[1] < template.shape[1]:
             return None
 
-        result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
+        result = ImageMatcher.match_template(image, template)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
         if max_val < threshold:
             if self.debug_mode:
@@ -441,7 +444,7 @@ class PenguinBot:
             if screen.shape[0] < template.shape[0] or screen.shape[1] < template.shape[1]:
                 continue
 
-            result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+            result = ImageMatcher.match_template(screen, template)
             points = np.where(result >= threshold)
             height, width = template.shape[:2]
             for point in zip(*points[::-1]):
@@ -463,13 +466,22 @@ class PenguinBot:
             return self._template_cache[cache_key]
 
         path = self.resource_dir / self.ASSET_DIR / image_name
-        template = read_image(str(path), cv2.IMREAD_COLOR)
+        template = self._image_matcher.load_template(path)
         if template is None:
             logger.error("템플릿 이미지를 불러오지 못했습니다: %s", path)
             return None
         if scale != 1.0:
-            interpolation = cv2.INTER_CUBIC if scale > 1.0 else cv2.INTER_AREA
-            template = cv2.resize(template, None, fx=scale, fy=scale, interpolation=interpolation)
+            if template.shape[2] == 4:
+                # Resize color and exclusion coverage with the same filter. Only
+                # fully retained pixels may contribute after scaling; otherwise
+                # excluded lettering can bleed into the visible button border.
+                interpolation = cv2.INTER_LINEAR if scale > 1.0 else cv2.INTER_AREA
+                resized = cv2.resize(template, None, fx=scale, fy=scale, interpolation=interpolation)
+                resized[:, :, 3] = np.where(resized[:, :, 3] == 255, 255, 0)
+                template = resized
+            else:
+                interpolation = cv2.INTER_CUBIC if scale > 1.0 else cv2.INTER_AREA
+                template = cv2.resize(template, None, fx=scale, fy=scale, interpolation=interpolation)
         self._template_cache[cache_key] = template
         return template
 
@@ -492,7 +504,7 @@ class PenguinBot:
         template = self._load_template(image_name, scale=target_scale)
         if template is None or roi.shape[:2] != template.shape[:2]:
             return 0.0
-        result = cv2.matchTemplate(roi, template, cv2.TM_CCOEFF_NORMED)
+        result = ImageMatcher.match_template(roi, template)
         _, max_val, _, _ = cv2.minMaxLoc(result)
         return float(max_val)
 

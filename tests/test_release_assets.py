@@ -35,7 +35,10 @@ class ReleaseAssetsTests(unittest.TestCase):
                 path = root/name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.touch()
+            penguin_masks = root / 'images/penguin/template_masks.json'
+            penguin_masks.write_text('{}', encoding='utf-8')
             result = set(used_images(root))
+            self.assertIn('images/penguin/template_masks.json', result)
             self.assertFalse(result.intersection(unused))
             self.assertTrue(set(dynamic).issubset(result))
             (root/'images/chaos/hero_selection/templates/themes/select_supply_1.png').unlink()

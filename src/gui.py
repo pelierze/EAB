@@ -1540,7 +1540,7 @@ class SessionView:
             resizer = WindowResizer()
             resizer.request(hwnd)
         except (OSError, ValueError) as exc:
-            self.stove_resize_status.config(text=str(exc))
+            self.stove_resize_status.config(text=i18n.tr(str(exc)))
             logger.warning('STOVE 창 크기 조정 실패: %s', exc)
             return
         self._stove_resize_pending = True
@@ -1572,7 +1572,7 @@ class SessionView:
             self.stove_resize_status.config(text=text)
             logger.info('STOVE 창 크기 조정: %s', text)
         except (OSError, ValueError) as exc:
-            self.stove_resize_status.config(text=str(exc))
+            self.stove_resize_status.config(text=i18n.tr(str(exc)))
             logger.warning('STOVE 창 크기 확인 실패: %s', exc)
         for session in self._stove_resize_sessions:
             session._stove_resize_pending = False
@@ -1748,7 +1748,7 @@ class SessionView:
                     raise ValueError()
                 for key, val in thresholds.items():
                     if not 0.7 <= val <= 0.99:
-                        raise ValueError(f"{key} 임계값은 70~99 사이여야 합니다.")
+                        raise ValueError(i18n.tr("{key} 임계값은 70~99 사이여야 합니다.", key=key))
             except ValueError as e:
                 messagebox.showerror(
                     i18n.tr("오류"),
@@ -1803,7 +1803,7 @@ class SessionView:
             if self.is_running or getattr(self, '_stove_resize_pending', False):
                 return
             if not self.adb_controller:
-                messagebox.showerror("오류", "장치(ADB/STOVE)가 연결되지 않았습니다.")
+                messagebox.showerror(i18n.tr("오류"), i18n.tr("장치(ADB/STOVE)가 연결되지 않았습니다."))
                 return
 
             self.was_stopped_by_user = False
@@ -1811,9 +1811,9 @@ class SessionView:
             try:
                 cycle_count = int(self.penguin_cycle_entry.get())
                 if cycle_count <= 0:
-                    raise ValueError("구매 사이클 횟수는 1 이상이어야 합니다.")
-            except ValueError as e:
-                messagebox.showerror("오류", f"펭귄 구매 설정값이 올바르지 않습니다.\n{str(e)}")
+                    raise ValueError()
+            except ValueError:
+                messagebox.showerror(i18n.tr("오류"), i18n.tr("구매 사이클 횟수는 1 이상의 정수여야 합니다."))
                 return
 
             self.runtime_dir.mkdir(parents=True, exist_ok=True)
@@ -1962,7 +1962,8 @@ class SessionView:
                 logger.error("봇 실행 중 오류: %s", e, exc_info=True)
                 self._save_failure_report({'status': 'failed', 'reason': str(e)})
                 if not self.app.is_closing:
-                    self.root.after(0, lambda: messagebox.showerror("오류", f"{self.name} 실행 중 오류 발생:\n{str(e)}"))
+                    self.root.after(0, lambda error=str(e): messagebox.showerror(
+                        i18n.tr("오류"), i18n.tr("{name} 실행 중 오류 발생:\n{error}", name=i18n.tr(self.name), error=error)))
             finally:
                 self.is_running = False
                 if not self.app.is_closing:
@@ -1989,7 +1990,8 @@ class SessionView:
                 logger.error("펭귄 구매 실행 중 오류: %s", e, exc_info=True)
                 self._save_failure_report({'status': 'failed', 'reason': str(e)})
                 if not self.app.is_closing:
-                    self.root.after(0, lambda: messagebox.showerror("오류", f"{self.name} 펭귄 구매 중 오류 발생:\n{str(e)}"))
+                    self.root.after(0, lambda error=str(e): messagebox.showerror(
+                        i18n.tr("오류"), i18n.tr("{name} 펭귄 구매 중 오류 발생:\n{error}", name=i18n.tr(self.name), error=error)))
             finally:
                 self.is_running = False
                 if not self.app.is_closing:
@@ -2453,14 +2455,7 @@ class SecretShopGUI:
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
         self.header_actions = ttk.Frame(self.root_container, style="Root.TFrame")
-        self.lang_button = ttk.Button(
-            self.header_actions,
-            text=i18n.get_language_button_text(),
-            command=self._on_toggle_language,
-            style="Language.TButton",
-            cursor="hand2",
-        )
-        self.lang_button.pack(side=tk.LEFT, padx=(0, 6))
+        self._create_language_selector()
 
         self.support_button = ttk.Button(
             self.header_actions,
@@ -2493,7 +2488,26 @@ class SecretShopGUI:
         if event is None or getattr(event, "widget", None) is self.root:
             i18n.remove_language_listener(self._on_language_changed)
 
+    def _create_language_selector(self):
+        self.language_var = tk.StringVar(master=self.root, value=i18n.get_language())
+        self.lang_button = ttk.Menubutton(
+            self.header_actions,
+            text=i18n.get_language_button_text(),
+            style="Language.TMenubutton",
+            cursor="hand2",
+        )
+        self.language_menu = tk.Menu(self.lang_button, tearoff=False)
+        for lang in i18n.SUPPORTED_LANGUAGES:
+            self.language_menu.add_radiobutton(
+                label=i18n.LANGUAGE_LABELS[lang], value=lang, variable=self.language_var,
+                command=lambda code=lang: self._select_language(code),
+            )
+        self.lang_button.configure(menu=self.language_menu)
+        self.lang_button.pack(side=tk.LEFT, padx=(0, 6))
+
     def _on_language_changed(self, lang: str):
+        if hasattr(self, "language_var"):
+            self.language_var.set(lang)
         if hasattr(self, "lang_button"):
             self.lang_button.config(text=i18n.get_language_button_text(lang))
         if hasattr(self, "support_button"):
@@ -2509,10 +2523,11 @@ class SecretShopGUI:
             if hasattr(session, "apply_ui_language"):
                 session.apply_ui_language(lang)
 
-    def _on_toggle_language(self):
-        new_lang = i18n.toggle_language()
-        self._on_language_changed(new_lang)
-        logger.info("언어가 변경되었습니다: %s", new_lang)
+    def _select_language(self, lang: str):
+        if lang not in i18n.SUPPORTED_LANGUAGES or lang == i18n.get_language():
+            return
+        i18n.set_language(lang)
+        logger.info("언어가 변경되었습니다: %s", lang)
 
     def _on_main_tab_changed(self, _event=None):
         if hasattr(self, "header_actions"):
@@ -2674,9 +2689,10 @@ class SecretShopGUI:
         lang_bg = "#35302c"
         lang_hover = "#4a443e"
         style.configure(
-            "Language.TButton",
+            "Language.TMenubutton",
             background=lang_bg,
             foreground="#ffffff",
+            arrowcolor="#ffffff",
             bordercolor=lang_bg,
             lightcolor=lang_bg,
             darkcolor=lang_bg,
@@ -2686,7 +2702,7 @@ class SecretShopGUI:
             padding=(10, 4),
         )
         style.map(
-            "Language.TButton",
+            "Language.TMenubutton",
             background=[("active", lang_hover), ("disabled", colors["surface_alt"])],
             foreground=[("disabled", "#a79888"), ("active", "#ffffff")],
             bordercolor=[("active", lang_hover), ("disabled", colors["line"])],
@@ -2908,11 +2924,11 @@ class SecretShopGUI:
             try:
                 resolve_updater_executable(Path(sys.executable).parent)
             except ValueError:
-                raise ValueError('자동 업데이트 프로그램이 없습니다. 이번 버전은 수동 설치해 주세요.')
+                raise ValueError(i18n.tr('자동 업데이트 프로그램이 없습니다. 이번 버전은 수동 설치해 주세요.'))
         except ValueError as exc:
             if messagebox.askyesno(
                 i18n.tr('자동 업데이트 안내'),
-                i18n.tr('{error}\n\n다운로드 페이지를 여시겠습니까?', error=exc),
+                i18n.tr('{error}\n\n다운로드 페이지를 여시겠습니까?', error=i18n.tr(str(exc))),
                 parent=self.root,
             ):
                 self._open_release_page()
@@ -2952,7 +2968,8 @@ class SecretShopGUI:
         self.update_window.grab_release()
         self.update_window.destroy()
         messagebox.showerror(i18n.tr('업데이트 실패'),
-            f'{error}\n\n현재 버전은 그대로 사용할 수 있습니다.\n진단 로그: {diagnostic_path(update_logger)}',
+            i18n.tr('{error}\n\n현재 버전은 그대로 사용할 수 있습니다.\n진단 로그: {path}',
+                    error=i18n.tr(str(error)), path=diagnostic_path(update_logger)),
             parent=self.root)
 
     def _app_update_downloaded(self, plan):
@@ -3024,8 +3041,6 @@ class SecretShopGUI:
                 lang = raw.get('language')
                 if lang:
                     i18n.set_language(lang)
-                    if hasattr(self, 'lang_button'):
-                        self.lang_button.config(text=i18n.get_language_button_text(lang))
             else:
                 values = raw
             self._apply_update_settings(values)

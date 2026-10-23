@@ -1,6 +1,8 @@
 import json
 import tempfile
 import unittest
+import tkinter as tk
+from tkinter import ttk
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -13,23 +15,62 @@ class TestGuiI18n(unittest.TestCase):
         i18n._listeners.clear()
         i18n.set_language("ko", persist=False)
 
-    def test_toggle_language_updates_button_text(self):
+    def make_gui(self):
         gui = MagicMock()
         gui.lang_button = MagicMock()
         gui.support_button = MagicMock()
         gui.sessions = []
         gui._on_language_changed.side_effect = lambda lang: SecretShopGUI._on_language_changed(gui, lang)
+        i18n.add_language_listener(gui._on_language_changed)
+        return gui
 
-        # Call the actual unbound method on gui mock
-        SecretShopGUI._on_toggle_language(gui)
+    def test_select_language_updates_button_and_checked_language(self):
+        gui = self.make_gui()
+        SecretShopGUI._select_language(gui, "en")
         self.assertEqual(i18n.get_language(), "en")
         gui.lang_button.config.assert_called_with(text="Language: English")
+        gui.language_var.set.assert_called_with("en")
         gui.support_button.config.assert_called_with(text="Support Creator · Buy Me a Coffee")
 
-        SecretShopGUI._on_toggle_language(gui)
+        SecretShopGUI._select_language(gui, "ko")
         self.assertEqual(i18n.get_language(), "ko")
         gui.lang_button.config.assert_called_with(text="Language: 한국어")
         gui.support_button.config.assert_called_with(text="제작자 후원 · Buy Me a Coffee")
+
+    def test_current_or_unknown_selection_does_not_reapply_or_save(self):
+        gui = self.make_gui()
+        with patch.object(i18n, "save_language_preference") as save:
+            SecretShopGUI._select_language(gui, "ko")
+            SecretShopGUI._select_language(gui, "unknown")
+        save.assert_not_called()
+        gui._on_language_changed.assert_not_called()
+
+    def test_menu_lists_registered_languages_and_accepts_a_third_language(self):
+        root = tk.Tk()
+        root.withdraw()
+        self.addCleanup(root.destroy)
+        gui = object.__new__(SecretShopGUI)
+        gui.root = root
+        gui.sessions = []
+        gui.header_actions = ttk.Frame(root)
+        gui._apply_modern_style()
+        i18n.add_language_listener(gui._on_language_changed)
+        with patch.dict(i18n.LANGUAGE_LABELS, {"ja": "日本語"}), \
+             patch.object(i18n, "SUPPORTED_LANGUAGES", ("ko", "en", "ja")), \
+             patch.object(i18n, "save_language_preference") as save:
+            gui._create_language_selector()
+            self.assertIsInstance(gui.lang_button, ttk.Menubutton)
+            self.assertEqual([gui.language_menu.entrycget(i, "label") for i in range(3)],
+                             ["한국어", "English", "日本語"])
+            gui.language_menu.invoke(2)
+            self.assertEqual(i18n.get_language(), "ja")
+            self.assertEqual(gui.language_var.get(), "ja")
+            self.assertEqual(gui.lang_button.cget("text"), "Language: 日本語")
+            save.assert_called_once_with("ja")
+            # An external restore also updates the check mark, without invoking a menu command.
+            i18n.set_language("en", persist=False)
+            self.assertEqual(gui.language_var.get(), "en")
+        i18n.remove_language_listener(gui._on_language_changed)
 
     def test_apply_language_feature_support_disables_unsupported_tabs_in_english(self):
         session = MagicMock()
@@ -37,13 +78,13 @@ class TestGuiI18n(unittest.TestCase):
         session.penguin_tab = "tab_penguin"
         session.chaos_tab = "tab_chaos"
         session.event_tab = "tab_event"
-        # Suppose user was on penguin_tab before switching to English
-        session.mode_notebook.select.return_value = "tab_penguin"
+        # Exploration remains unsupported; Penguin is now available in English.
+        session.mode_notebook.select.return_value = "tab_chaos"
 
         SessionView._apply_language_feature_support(session, "en")
 
         session.mode_notebook.tab.assert_any_call("tab_shop", state="normal")
-        session.mode_notebook.tab.assert_any_call("tab_penguin", state="disabled")
+        session.mode_notebook.tab.assert_any_call("tab_penguin", state="normal")
         session.mode_notebook.tab.assert_any_call("tab_chaos", state="disabled")
         session.mode_notebook.tab.assert_any_call("tab_event", state="disabled")
         session.mode_notebook.select.assert_called_with("tab_shop")
@@ -97,9 +138,7 @@ class TestGuiI18n(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             settings_file = Path(tmpdir) / "updates" / "app-update-settings.json"
 
-            gui = MagicMock()
-            gui.sessions = []
-            gui.lang_button = MagicMock()
+            gui = self.make_gui()
             gui._update_variables = MagicMock(return_value=[])
             gui._apply_update_settings = MagicMock()
 
@@ -125,6 +164,7 @@ class TestGuiI18n(unittest.TestCase):
                 SecretShopGUI._restore_update_settings(gui)
                 self.assertEqual(i18n.get_language(), "en")
                 gui.lang_button.config.assert_called_with(text="Language: English")
+                gui.language_var.set.assert_called_with("en")
                 gui._apply_update_settings.assert_called_once_with(content["sessions"])
 
 
