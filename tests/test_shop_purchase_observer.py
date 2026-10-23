@@ -191,6 +191,16 @@ class ShopPurchaseObserverTests(ShopPurchaseFixtures, unittest.TestCase):
         with patch.object(self.observer, '_glyphs', return_value=None):
             self.assertFalse(self.observer.purchase_complete(self.scene(sold=False), self.baseline()))
 
+    def test_locate_item_falls_back_to_color_match_when_grayscale_is_below_threshold(self):
+        screen = self.scene(sold=False)
+        with patch.object(
+            ShopPurchaseObserver,
+            '_shape_scores',
+            return_value=np.full((49, 49), 0.942, dtype=np.float32),
+        ):
+            located = self.observer.locate_item(screen, self.icon, self.item, threshold=0.95)
+        self.assertEqual(located, self.item)
+
 
 class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
     def make_bot(self, frames):

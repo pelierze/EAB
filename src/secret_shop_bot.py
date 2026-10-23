@@ -704,7 +704,9 @@ class SecretShopBot:
             if template is None:
                 return None
             current_item = observer.locate_item(screen, template, item_location,
-                                                self.thresholds.get(item_name, .95), diagnostics=self._shop_debug)
+                                                self.thresholds.get(item_name, .95),
+                                                stable_inner=True,
+                                                diagnostics=self._shop_debug)
             if current_item is None:
                 if self._shop_debug is not None:
                     self._shop_debug.record('purchase_check', result=False, reason='same_item_not_found', same_item=False)

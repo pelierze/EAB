@@ -128,6 +128,14 @@ class ShopPurchaseObserver:
         full_score = score
         match_region = 'full'
         inner_score = None
+        if score < threshold:
+            _, color_score, _, color_point = cv2.minMaxLoc(
+                ImageMatcher.match_template(region, template, shape_only=False)
+            )
+            if color_score > score:
+                score, point = color_score, color_point
+                full_score = color_score
+                match_region = 'full_color'
         if score < threshold and stable_inner:
             # Purchase overlays change the frame, count label and outer glow.
             # Keep a substantial part of the artwork and the original row bounds.
