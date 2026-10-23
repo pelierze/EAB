@@ -48,7 +48,7 @@ if __package__ in (None, ""):
     from src.auto_update import get_runtime_root
     from src.chaos.exploration import ExplorationBot
     from src.chaos.observer import RecruitmentObserver
-    from src.image_matcher import read_image, matching_failure_guidance
+    from src.image_matcher import ImageMatcher, read_image, matching_failure_guidance
     from src.json_macro_engine import JsonMacroEngine
     from src.penguin_bot import PenguinBot
     from src.release_checker import get_available_update
@@ -68,7 +68,7 @@ else:
     from .auto_update import get_runtime_root
     from .chaos.exploration import ExplorationBot
     from .chaos.observer import RecruitmentObserver
-    from .image_matcher import read_image, matching_failure_guidance
+    from .image_matcher import ImageMatcher, read_image, matching_failure_guidance
     from .json_macro_engine import JsonMacroEngine
     from .penguin_bot import PenguinBot
     from .release_checker import get_available_update
@@ -206,7 +206,7 @@ class SessionView:
         self.selected_device_info = None
         self.current_mode = None
         self.input_profile_label_text = "MuMu 앱플레이어 사용 (호환 드래그 사용)"
-        self.buy_count_default_label_text = "구매 완료 검증 횟수:"
+        self.buy_count_default_label_text = "구매 완료 확인 최대 횟수:"
         self.buy_count_default_unit_text = "회"
         # STOVE 모드는 단일 클라이언트 연결이므로 세션 1만 기본 활성화
         initial_backend = "stove" if ("--stove" in sys.argv and self.session_id == 1) else "adb"
@@ -418,7 +418,7 @@ class SessionView:
         )
         self.natural_refresh_checkbox.grid(row=3, column=0, columnspan=6, sticky=tk.W, padx=5, pady=5)
 
-        self.buy_count_label = ttk.Label(self.settings_frame, text="구매 완료 검증 횟수:")
+        self.buy_count_label = ttk.Label(self.settings_frame, text="구매 완료 확인 최대 횟수:")
         self.buy_count_label.grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
         self.buy_count_entry = ttk.Entry(self.settings_frame, width=10)
         self.buy_count_entry.insert(0, "3")
@@ -1018,7 +1018,10 @@ class SessionView:
         }
         for key, widget in label_widgets.items():
             if key in labels:
-                widget.config(text=labels[key])
+                text = labels[key]
+                if key == "purchase_verification_count" and text == "구매 완료 검증 횟수:":
+                    text = "구매 완료 확인 최대 횟수:"
+                widget.config(text=text)
         if "debug_mode" in labels:
             self.debug_checkbox.config(text=labels["debug_mode"])
         if "buy_friendship_point" in labels:
@@ -2091,10 +2094,15 @@ class SessionView:
 
                 template_path = diagnostic_dir / ("template" + Path(image_path).suffix)
                 shutil.copy2(image_path, template_path)
-                template = read_image(str(template_path))
+                matcher = ImageMatcher()
+                template = matcher.load_template(image_path)
                 if template is None:
                     logger.error("❌ 테스트 이미지를 로드할 수 없습니다: %s", image_path)
                     return
+
+                if template.shape[2] == 4:
+                    cv2.imencode('.png', template)[1].tofile(str(diagnostic_dir / 'masked_template.png'))
+                    logger.info("문자 제외 마스크를 적용합니다. masked_template.png에서 비교 영역을 확인하세요.")
 
                 logger.info("✅ 스크린샷 크기: %s", screenshot.shape)
                 logger.info("✅ 템플릿 크기: %s", template.shape)
@@ -2126,7 +2134,10 @@ class SessionView:
                     threshold_name = "갱신 버튼"
 
                 logger.info("📊 현재 임계값 (%s): %s%%", threshold_name, int(current_threshold * 100))
-                result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+                quantity_button = image_filename.startswith('purchase_button')
+                if quantity_button:
+                    logger.info("구입 버튼은 색상 대신 모양 점수를 표시합니다. 실제 구매 가능·완료 판정에는 수량과 같은 상품 확인을 함께 사용합니다.")
+                result = matcher.match_template(screenshot, template, shape_only=quantity_button)
                 _, max_val, _, max_loc = cv2.minMaxLoc(result)
                 logger.info("🔍 다양한 임계값 테스트 결과:")
                 for threshold in [0.99, 0.95, 0.92, 0.90, 0.85, 0.80, 0.75, 0.70]:

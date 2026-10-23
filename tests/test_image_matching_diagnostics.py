@@ -1,4 +1,5 @@
 import tempfile
+import json
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -74,3 +75,27 @@ class ImageMatchingDiagnosticsTest(unittest.TestCase):
             self.view._run_image_test(str(self.template_path))
         match.assert_not_called()
         self.assertIn("템플릿이 스크린샷보다 큽니다", logger.error.call_args.args[0])
+
+    def test_masked_test_preserves_effective_template_and_ignores_text(self):
+        (self.root / 'template_masks.json').write_text(json.dumps({
+            self.template_path.name: {'size': [8, 8], 'exclude': [[2, 2, 4, 4]]}}))
+
+        def capture_changed(path):
+            source = cv2.imdecode(np.fromfile(str(self.template_path), dtype=np.uint8), cv2.IMREAD_COLOR)
+            source[2:6, 2:6] = 255
+            screen = np.zeros((32, 32, 3), dtype=np.uint8)
+            screen[10:18, 10:18] = source
+            cv2.imencode('.png', screen)[1].tofile(path)
+            return True
+
+        self.view.adb_controller.screenshot.side_effect = capture_changed
+        with patch('src.gui.logger') as logger:
+            self.view._run_image_test(str(self.template_path))
+        folder = next(self.view.runtime_dir.iterdir())
+        data = np.fromfile(str(folder / 'masked_template.png'), dtype=np.uint8)
+        effective = cv2.imdecode(data, cv2.IMREAD_UNCHANGED)
+        self.assertTrue(np.all(effective[2:6, 2:6, 3] == 0))
+        scores = [c.args[1] for c in logger.info.call_args_list
+                  if c.args[0].startswith('📈')]
+        self.assertGreater(scores[0], .99)
+        logger.error.assert_not_called()

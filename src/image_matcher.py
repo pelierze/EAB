@@ -3,8 +3,10 @@
 OpenCV를 사용하여 화면에서 이미지 찾기
 """
 import os
+import json
 import threading
 from collections import OrderedDict
+from pathlib import Path
 import cv2
 import numpy as np
 from typing import Optional, Tuple, List
@@ -62,6 +64,66 @@ class ImageMatcher:
         stat = os.stat(path)
         return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
 
+    @classmethod
+    def _template_signature(cls, path):
+        mask_path = Path(path).with_name('template_masks.json')
+        return (cls._file_signature(path),
+                cls._file_signature(mask_path) if mask_path.exists() else None)
+
+    @staticmethod
+    def _load_template(path):
+        image = read_image(path, cv2.IMREAD_UNCHANGED)
+        if image is None:
+            return None
+        if image.ndim == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        alpha = image[:, :, 3].copy() if image.shape[2] == 4 else None
+        image = np.ascontiguousarray(image[:, :, :3])
+        mask_path = Path(path).with_name('template_masks.json')
+        definitions = (json.loads(mask_path.read_text(encoding='utf-8'))
+                       if mask_path.exists() else {})
+        definition = definitions.get(Path(path).name)
+        if definition is None:
+            if alpha is not None and np.any(alpha != 255):
+                if not np.any(alpha):
+                    raise ValueError(f'Empty template mask: {path}')
+                return np.dstack((image, np.where(alpha > 0, 255, 0).astype(np.uint8)))
+            return image
+        height, width = image.shape[:2]
+        if definition['size'] != [width, height]:
+            raise ValueError(f'Template mask size mismatch: {path}')
+        mask = (np.where(alpha > 0, 255, 0).astype(np.uint8) if alpha is not None
+                else np.full((height, width), 255, dtype=np.uint8))
+        for x, y, w, h in definition['exclude']:
+            if min(x, y) < 0 or min(w, h) <= 0 or x + w > width or y + h > height:
+                raise ValueError(f'Invalid template mask rectangle: {path}')
+            mask[y:y+h, x:x+w] = 0
+        if not np.any(mask):
+            raise ValueError(f'Empty template mask: {path}')
+        return np.dstack((image, mask))
+
+    @staticmethod
+    def match_template(screen, template, *, shape_only=False):
+        if shape_only:
+            gray = cv2.cvtColor(screen[:, :, :3], cv2.COLOR_BGR2GRAY)
+            reference = cv2.cvtColor(template[:, :, :3], cv2.COLOR_BGR2GRAY)
+            mask = np.ascontiguousarray(template[:, :, 3]) if template.shape[2] == 4 else None
+            scores = cv2.matchTemplate(gray, reference, cv2.TM_CCOEFF_NORMED, mask=mask)
+            return np.nan_to_num(scores, nan=-1., posinf=-1., neginf=-1.)
+        if template.shape[2] == 3:
+            return cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+        colors = np.ascontiguousarray(template[:, :, :3])
+        mask = np.ascontiguousarray(template[:, :, 3])
+        # Shape alone cannot distinguish a dimmed button from an active one.
+        # Keep absolute color error as a second, independent bound on the score.
+        shape = cv2.matchTemplate(screen, colors, cv2.TM_CCOEFF_NORMED, mask=mask)
+        shape = np.nan_to_num(shape, nan=-1.0, posinf=-1.0, neginf=-1.0)
+        squared_error = cv2.matchTemplate(screen, colors, cv2.TM_SQDIFF, mask=mask)
+        color = 1 - np.sqrt(np.maximum(squared_error, 0) /
+                            (np.count_nonzero(mask) * 3)) / 255
+        scores = np.minimum(shape, color)
+        return np.nan_to_num(scores, nan=-1.0, posinf=-1.0, neginf=-1.0)
+
     def _discard_template(self, path):
         entry = self._template_cache.pop(path, None)
         if entry is not None:
@@ -74,14 +136,14 @@ class ImageMatcher:
 
     def _read_template(self, path):
         if not self._template_cache_bytes:
-            return read_image(path, cv2.IMREAD_COLOR)
+            return self._load_template(path)
         normalized = os.path.normcase(os.path.abspath(os.fspath(path)))
         # Only immutable templates are cached. Screenshots are always re-read.
         # Serialize lookup/replacement/eviction when a matcher is shared.
         with self._template_lock:
             for _ in range(2):
                 try:
-                    signature = self._file_signature(normalized)
+                    signature = self._template_signature(normalized)
                 except OSError:
                     self._discard_template(normalized)
                     return None
@@ -90,11 +152,11 @@ class ImageMatcher:
                     self._template_cache.move_to_end(normalized)
                     return entry[1]
                 self._discard_template(normalized)
-                image = read_image(path, cv2.IMREAD_COLOR)
+                image = self._load_template(path)
                 if image is None:
                     return None
                 try:
-                    if self._file_signature(normalized) != signature:
+                    if self._template_signature(normalized) != signature:
                         continue  # Do not cache a file replaced during decoding.
                 except OSError:
                     return None
@@ -107,6 +169,10 @@ class ImageMatcher:
                         self._discard_template(oldest)
                 return image
         return None
+
+    def load_template(self, path):
+        """Load the effective template, including its optional exclusion mask."""
+        return self._read_template(path)
         
     def find_image(self, screen_img_path: str, template_img_path: str, 
                    threshold: Optional[float] = None) -> Optional[Tuple[int, int, int, int]]:
@@ -135,7 +201,7 @@ class ImageMatcher:
                 return None
             
             # 템플릿 매칭
-            result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+            result = self.match_template(screen, template)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
             
             # 임계값 확인
@@ -179,7 +245,7 @@ class ImageMatcher:
                 return []
             
             # 템플릿 매칭
-            result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+            result = self.match_template(screen, template)
             
             # 임계값 확인
             threshold_value = threshold if threshold is not None else self.threshold
@@ -225,7 +291,7 @@ class ImageMatcher:
                 return 0.0
             
             # 템플릿 매칭
-            result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+            result = self.match_template(screen, template)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
             
             return float(max_val)
@@ -261,14 +327,16 @@ class ImageMatcher:
             screen_region = screen[y:y+h, x:x+w]
             
             # 템플릿과 비교
-            if screen_region.shape != template.shape:
+            if screen_region.shape[:2] != template.shape[:2]:
+                if template.shape[2] == 4:
+                    return 0.0
                 # 크기가 다르면 템플릿 매칭 사용
-                result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+                result = self.match_template(screen, template)
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
                 return float(max_val)
             else:
                 # 크기가 같으면 직접 비교
-                result = cv2.matchTemplate(screen_region, template, cv2.TM_CCOEFF_NORMED)
+                result = self.match_template(screen_region, template)
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
                 return float(max_val)
             

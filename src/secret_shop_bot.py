@@ -14,7 +14,8 @@ from typing import Optional, Dict
 from pathlib import Path
 
 from .adb_controller import ADBController
-from .image_matcher import ImageMatcher
+from .image_matcher import ImageMatcher, read_image
+from .shop_purchase_observer import ShopPurchaseObserver
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,8 @@ class SecretShopBot:
         
         # 기본 매칭 객체 (범용)
         self.matcher = ImageMatcher(threshold=0.92)
+        self._purchase_observer = None
+        self._purchase_baseline = None
         
         # 스크린샷 임시 저장 경로
         self.screenshot_path = self.runtime_dir / "current_screen.png"
@@ -509,7 +512,7 @@ class SecretShopBot:
         Args:
             item_name: 아이템 이름 (통계 업데이트용)
             item_location: 아이템 위치 (x, y, w, h)
-            verification_count: 구매 완료 검증 횟수 (비활성화 버튼 확인 반복 횟수)
+            verification_count: 구매 완료 확인 최대 시도 횟수 (확인되면 즉시 종료)
             
         Returns:
             구매 성공 여부
@@ -520,7 +523,7 @@ class SecretShopBot:
             return False
         
         # 1단계: 아이템과 같은 라인의 오른쪽에 있는 구입 버튼 찾기 및 클릭
-        purchase_btn = self._find_purchase_button_on_item_line(item_location)
+        purchase_btn = self._find_purchase_button_on_item_line(item_location, item_name)
         if purchase_btn is False:
             # 비활성화된 버튼 (이미 구매한 아이템) - 조용히 건너뛰기
             logger.debug("비활성화된 버튼이므로 구매 건너뜀")
@@ -586,160 +589,88 @@ class SecretShopBot:
         
         # 2단계: 구매 버튼 클릭 (최종 구매)
         if self._click_button("buy"):
-            # 구매 버튼 클릭 성공 - 통계 즉시 업데이트
-            stat_key = self.item_definitions.get(item_name, {}).get("stat_key")
-            if stat_key:
-                self.stats[stat_key] = self.stats.get(stat_key, 0) + 1
-                logger.info(f"📊 {self._item_label(item_name)} 구매 카운트 +1")
-            
             time.sleep(self._timing("after_purchase_tap", 0.5))
-            
-            # 구매 완료 검증: 비활성화된 구입 버튼 확인 (여러 번 검증)
-            verification_success = 0
-            for verify_attempt in range(verification_count):
+            # Reuse the pre-click baseline and each existing verification capture.
+            # Only an inconclusive result consumes another attempt/capture.
+            attempts = max(1, int(verification_count))
+            for verify_attempt in range(attempts):
+                if self.user_action == 'stop':
+                    return False
                 if self._verify_purchase_complete():
-                    verification_success += 1
-                    logger.debug(f"검증 성공 ({verify_attempt + 1}/{verification_count})")
-                else:
-                    logger.debug(f"검증 실패 ({verify_attempt + 1}/{verification_count})")
-                
-                # 마지막 시도가 아니면 잠시 대기 후 재확인
-                if verify_attempt < verification_count - 1:
+                    stat_key = self.item_definitions.get(item_name, {}).get("stat_key")
+                    if stat_key:
+                        self.stats[stat_key] = self.stats.get(stat_key, 0) + 1
+                    logger.info("✅ %s 구매 완료 (동일 상품 수량 1/1 → 0/1, 확인 %s회)",
+                                self._item_label(item_name), verify_attempt + 1)
+                    self.adb.tap(self.screen_width // 4, self.screen_height // 2,
+                                 delay=self._timing("close_popup_delay", 0.3))
+                    return True
+                if verify_attempt < attempts - 1:
                     time.sleep(self._timing("verify_interval", 0.3))
-            
-            # 과반수 이상 성공하면 구매 성공으로 판단
-            if verification_success > verification_count // 2:
-                logger.info(f"✅ 구매 완료 검증 성공 ({verification_success}/{verification_count} 성공)")
-                # 화면 닫기
-                self.adb.tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
-                return True
-            else:
-                logger.warning(f"⚠️  구매 완료 검증 실패 ({verification_success}/{verification_count} 성공) - 골드 부족 또는 구매 실패 가능성")
-                # 화면 왼쪽 클릭하여 창 닫기
-                self.adb.tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
-                return False
+            logger.warning("⚠️ 구매 완료를 확인하지 못했습니다. 골드 부족, 화면 전환 또는 수량 인식을 확인하세요.")
+            self.adb.tap(self.screen_width // 4, self.screen_height // 2,
+                         delay=self._timing("close_popup_delay", 0.3))
+            return False
         else:
             logger.warning("구매 버튼(2단계)을 찾을 수 없음")
             # 취소 또는 뒤로가기 처리
             self.adb.tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
             return False
     
-    def _find_purchase_button_on_item_line(self, item_location: tuple):
-        """
-        아이템과 같은 라인(비슷한 Y 좌표)의 오른쪽에 있는 구입 버튼 찾기
-        활성화/비활성화 이미지 유사도를 비교하여 판단
-        
-        Args:
-            item_location: 아이템 위치 (x, y, w, h)
-            
-        Returns:
-            tuple: 구입 버튼 위치 (x, y, w, h) - 활성화된 버튼
-            False: 비활성화된 버튼 (이미 구매한 아이템)
-            None: 버튼을 찾을 수 없음
-        """
-        # 스크린샷 촬영
+    def _get_purchase_observer(self):
+        if self._purchase_observer is None:
+            templates = []
+            for name in ("purchase", "purchase_disabled"):
+                path = self._find_image_file(self.resource_dir / self.BUTTONS_DIR, self.button_images[name])
+                if path is None:
+                    raise ValueError("구입 수량 확인에 필요한 버튼 이미지가 없습니다.")
+                template = self.matcher.load_template(path)
+                if template is None:
+                    raise ValueError("구입 버튼 이미지를 읽을 수 없습니다.")
+                templates.append(template)
+            self._purchase_observer = ShopPurchaseObserver(*templates)
+        return self._purchase_observer
+
+    def _find_purchase_button_on_item_line(self, item_location: tuple, item_name: str):
+        """Find the same product row, then read 1/1 or 0/1 without color states."""
+        self._purchase_baseline = None
         if not self._capture_screenshot("구입 버튼 탐색"):
             return None
         time.sleep(self._timing("after_screenshot", 0.2))
-        
-        # 구입 버튼 이미지 경로 (활성화)
-        purchase_button_path = self._find_image_file(
-            self.resource_dir / self.BUTTONS_DIR,
-            self.button_images["purchase"],
-        )
-        
-        if not purchase_button_path:
-            logger.debug("구입 버튼 이미지 파일을 찾을 수 없음")
+        screen = read_image(self.screenshot_path)
+        if screen is None:
             return None
-        
-        # 비활성화된 구입 버튼 이미지 경로
-        purchase_button_disabled_path = self._find_image_file(
-            self.resource_dir / self.BUTTONS_DIR,
-            self.button_images["purchase_disabled"],
-        )
-        
-        if not purchase_button_disabled_path:
-            logger.warning("비활성화된 구입 버튼 이미지를 찾을 수 없음 - 기존 방식으로 동작")
-            # 기존 방식: 활성화된 버튼만 찾기
-            all_buttons = self.matcher.find_all_images(
-                str(self.screenshot_path),
-                str(purchase_button_path),
-                threshold=self.thresholds.get("purchase_button", 0.92),
-            )
-            if not all_buttons:
+        item = self.item_definitions.get(item_name, {})
+        item_path = self._find_image_file(self.resource_dir / self.ITEMS_DIR,
+                                          item.get("image", f"{item_name}.png"))
+        if item_path is None:
+            return None
+        try:
+            observer = self._get_purchase_observer()
+            template = self.matcher.load_template(item_path)
+            if template is None:
                 return None
-            
-            item_x, item_y, item_w, item_h = item_location
-            item_center_y = item_y + item_h // 2
-            y_tolerance = int(self.macro_layout.get("purchase_line_y_tolerance", 50))
-            
-            for button in all_buttons:
-                btn_x, btn_y, btn_w, btn_h = button
-                btn_center_y = btn_y + btn_h // 2
-                if abs(btn_center_y - item_center_y) <= y_tolerance and btn_x > item_x:
-                    return button
+            current_item = observer.locate_item(screen, template, item_location,
+                                                self.thresholds.get(item_name, .95))
+            if current_item is None:
+                logger.debug("구입 전 동일 상품 위치를 재확인하지 못했습니다: %s", item_name)
+                return None
+            result = observer.find_button(screen, current_item,
+                                           self.thresholds.get("purchase_button", .92),
+                                           int(self.macro_layout.get("purchase_line_y_tolerance", 50)))
+            if result is None:
+                logger.debug("동일 상품 행의 버튼 또는 수량을 확인하지 못했습니다: %s", item_name)
+                return None
+            bounds, state = result
+            if state == 'sold':
+                logger.info("⏭️ 이미 구매한 %s 건너뜀 (수량 0/1)", self._item_label(item_name))
+                return False
+            self._purchase_baseline = observer.baseline(screen, current_item, bounds)
+            return bounds
+        except (ValueError, OSError):
+            logger.warning("구입 버튼 관측 실패", exc_info=True)
             return None
-        
-        # 화면에서 모든 구입 버튼 후보 찾기 (활성화 + 비활성화 모두)
-        # 임계값을 낮춰서 모든 후보를 찾음
-        candidate_threshold = self._macro_threshold("purchase_candidate", 70)
-        all_active_buttons = self.matcher.find_all_images(
-            str(self.screenshot_path),
-            str(purchase_button_path),
-            threshold=candidate_threshold,
-        )
-        all_disabled_buttons = self.matcher.find_all_images(
-            str(self.screenshot_path),
-            str(purchase_button_disabled_path),
-            threshold=candidate_threshold,
-        )
-        
-        # 모든 버튼 후보 합치기
-        all_button_candidates = list(set(all_active_buttons + all_disabled_buttons))
-        
-        if not all_button_candidates:
-            logger.debug("구입 버튼 후보를 찾을 수 없음")
-            return None
-        
-        # 아이템의 Y 좌표
-        item_x, item_y, item_w, item_h = item_location
-        item_center_y = item_y + item_h // 2
-        
-        # 같은 라인에 있는 버튼 찾기 (약간의 여유 있게 ±50 픽셀)
-        y_tolerance = int(self.macro_layout.get("purchase_line_y_tolerance", 50))
-        
-        for button in all_button_candidates:
-            btn_x, btn_y, btn_w, btn_h = button
-            btn_center_y = btn_y + btn_h // 2
-            
-            # Y 좌표가 비슷하고, 아이템보다 오른쪽에 있는 버튼
-            if abs(btn_center_y - item_center_y) <= y_tolerance and btn_x > item_x:
-                # 활성화/비활성화 이미지 유사도 비교
-                active_similarity = self.matcher.get_similarity_at_location(
-                    str(self.screenshot_path), 
-                    str(purchase_button_path), 
-                    button
-                )
-                disabled_similarity = self.matcher.get_similarity_at_location(
-                    str(self.screenshot_path), 
-                    str(purchase_button_disabled_path), 
-                    button
-                )
-                
-                logger.debug(f"버튼 ({btn_x}, {btn_y}) - 활성화: {active_similarity:.3f}, 비활성화: {disabled_similarity:.3f}")
-                
-                # 비활성화 이미지가 더 유사하면 비활성화된 버튼
-                if disabled_similarity > active_similarity:
-                    logger.info(f"⏭️  이미 구매한 아이템 건너뜀 (비활성화 유사도: {disabled_similarity:.3f} > 활성화: {active_similarity:.3f})")
-                    return False
-                else:
-                    # 활성화 이미지가 더 유사하면 활성화된 버튼
-                    logger.debug(f"같은 라인의 활성화된 구입 버튼 발견 (활성화 유사도: {active_similarity:.3f} > 비활성화: {disabled_similarity:.3f})")
-                    return button
-        
-        logger.warning("아이템과 같은 라인의 구입 버튼을 찾을 수 없음")
-        return None
-    
+
     def _refresh_shop(self) -> bool:
         """상점 리프레시 (갱신 -> 확인 2단계 프로세스)
         
@@ -891,40 +822,17 @@ class SecretShopBot:
             return False
     
     def _verify_purchase_complete(self) -> bool:
-        """
-        구매 완료 검증: 비활성화된 구입 버튼 확인
-        
-        Returns:
-            구매 완료 여부 (비활성화된 버튼이 보이면 True)
-        """
-        # 스크린샷 촬영
+        """Confirm the same product's 1/1 -> 0/1 transition on this capture."""
+        if self._purchase_baseline is None or self.user_action == 'stop':
+            return False
         if not self._capture_screenshot("구매 완료 검증"):
             return False
         time.sleep(self._timing("after_screenshot", 0.2))
-        
-        # 비활성화된 구입 버튼 찾기 (약간 낮은 임계값 사용)
-        disabled_button_path = self._find_image_file(
-            self.resource_dir / self.BUTTONS_DIR,
-            self.button_images["purchase_disabled"],
-        )
-        
-        if not disabled_button_path:
-            logger.warning("비활성화된 구입 버튼 이미지 파일을 찾을 수 없음")
+        screen = read_image(self.screenshot_path)
+        if screen is None:
             return False
-        
-        result = self.matcher.find_image(
-            str(self.screenshot_path),
-            str(disabled_button_path),
-            threshold=self._macro_threshold("verification_disabled_button", 85),
-        )
-        
-        if result:
-            logger.debug("구매 완료: 비활성화된 구입 버튼 확인됨")
-            return True
-        else:
-            logger.debug("구매 완료 검증 실패: 비활성화된 구입 버튼을 찾을 수 없음")
-            return False
-    
+        return self._get_purchase_observer().purchase_complete(screen, self._purchase_baseline)
+
     def _scroll_down(self):
         """화면을 위로 스크롤 (두 번째 페이지로 이동)"""
         diagnostic = self._begin_scroll_diagnostic('normal', self.swipe_start_y, self.swipe_end_y)

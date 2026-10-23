@@ -1,0 +1,12 @@
+{
+  "buy_button.png": {"size": [63, 39], "exclude": [[3, 6, 57, 29]]},
+  "buy_button_backup.png": {"size": [63, 39], "exclude": [[3, 6, 57, 29]]},
+  "confirm_button.png": {"size": [102, 41], "exclude": [[6, 5, 90, 29]]},
+  "confirm_button_backup.png": {"size": [102, 41], "exclude": [[6, 5, 90, 29]]},
+  "purchase_button.png": {"size": [183, 53], "exclude": [[90, 5, 89, 43]]},
+  "purchase_button_backup.png": {"size": [183, 53], "exclude": [[90, 5, 89, 43]]},
+  "purchase_button_disabled.png": {"size": [183, 53], "exclude": [[90, 5, 89, 43]]},
+  "purchase_button_disabled_backup.png": {"size": [183, 53], "exclude": [[90, 5, 89, 43]]},
+  "refresh_button.png": {"size": [104, 46], "exclude": [[3, 6, 98, 34]]},
+  "refresh_button_backup.png": {"size": [104, 46], "exclude": [[3, 6, 98, 34]]}
+}
