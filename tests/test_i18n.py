@@ -16,15 +16,15 @@ class TestI18n(unittest.TestCase):
     def test_default_language_is_korean(self):
         self.assertEqual(i18n.DEFAULT_LANGUAGE, "ko")
 
-    def test_toggle_language(self):
+    def test_select_language(self):
         i18n.set_language("ko", persist=False)
         self.assertEqual(i18n.get_language(), "ko")
 
-        new_lang = i18n.toggle_language()
+        new_lang = i18n.set_language("en", persist=False)
         self.assertEqual(new_lang, "en")
         self.assertEqual(i18n.get_language(), "en")
 
-        next_lang = i18n.toggle_language()
+        next_lang = i18n.set_language("ko", persist=False)
         self.assertEqual(next_lang, "ko")
         self.assertEqual(i18n.get_language(), "ko")
 

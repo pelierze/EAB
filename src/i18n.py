@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 LANG_KO = "ko"
 LANG_EN = "en"
-SUPPORTED_LANGUAGES = (LANG_KO, LANG_EN)
 DEFAULT_LANGUAGE = LANG_KO
 
 # Display labels for UI buttons / selectors
@@ -23,6 +22,7 @@ LANGUAGE_LABELS = {
     LANG_KO: "한국어",
     LANG_EN: "English",
 }
+SUPPORTED_LANGUAGES = tuple(LANGUAGE_LABELS)
 
 # Per-language feature availability
 FEATURE_SUPPORT: dict[str, dict[str, bool]] = {
@@ -169,14 +169,8 @@ def set_language(lang: str, persist: bool = True) -> str:
     return _current_language
 
 
-def toggle_language() -> str:
-    """Toggle between Korean and English, then persist and return new language."""
-    new_lang = LANG_EN if get_language() == LANG_KO else LANG_KO
-    return set_language(new_lang, persist=True)
-
-
 def get_language_button_text(lang: Optional[str] = None) -> str:
-    """Return label formatted for the language switch button."""
+    """Return the current language label for the language menu button."""
     if lang is None:
         lang = get_language()
     label = LANGUAGE_LABELS.get(lang, "한국어")

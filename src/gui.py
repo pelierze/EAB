@@ -2455,14 +2455,7 @@ class SecretShopGUI:
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
         self.header_actions = ttk.Frame(self.root_container, style="Root.TFrame")
-        self.lang_button = ttk.Button(
-            self.header_actions,
-            text=i18n.get_language_button_text(),
-            command=self._on_toggle_language,
-            style="Language.TButton",
-            cursor="hand2",
-        )
-        self.lang_button.pack(side=tk.LEFT, padx=(0, 6))
+        self._create_language_selector()
 
         self.support_button = ttk.Button(
             self.header_actions,
@@ -2495,7 +2488,26 @@ class SecretShopGUI:
         if event is None or getattr(event, "widget", None) is self.root:
             i18n.remove_language_listener(self._on_language_changed)
 
+    def _create_language_selector(self):
+        self.language_var = tk.StringVar(master=self.root, value=i18n.get_language())
+        self.lang_button = ttk.Menubutton(
+            self.header_actions,
+            text=i18n.get_language_button_text(),
+            style="Language.TMenubutton",
+            cursor="hand2",
+        )
+        self.language_menu = tk.Menu(self.lang_button, tearoff=False)
+        for lang in i18n.SUPPORTED_LANGUAGES:
+            self.language_menu.add_radiobutton(
+                label=i18n.LANGUAGE_LABELS[lang], value=lang, variable=self.language_var,
+                command=lambda code=lang: self._select_language(code),
+            )
+        self.lang_button.configure(menu=self.language_menu)
+        self.lang_button.pack(side=tk.LEFT, padx=(0, 6))
+
     def _on_language_changed(self, lang: str):
+        if hasattr(self, "language_var"):
+            self.language_var.set(lang)
         if hasattr(self, "lang_button"):
             self.lang_button.config(text=i18n.get_language_button_text(lang))
         if hasattr(self, "support_button"):
@@ -2511,10 +2523,11 @@ class SecretShopGUI:
             if hasattr(session, "apply_ui_language"):
                 session.apply_ui_language(lang)
 
-    def _on_toggle_language(self):
-        new_lang = i18n.toggle_language()
-        self._on_language_changed(new_lang)
-        logger.info("언어가 변경되었습니다: %s", new_lang)
+    def _select_language(self, lang: str):
+        if lang not in i18n.SUPPORTED_LANGUAGES or lang == i18n.get_language():
+            return
+        i18n.set_language(lang)
+        logger.info("언어가 변경되었습니다: %s", lang)
 
     def _on_main_tab_changed(self, _event=None):
         if hasattr(self, "header_actions"):
@@ -2676,9 +2689,10 @@ class SecretShopGUI:
         lang_bg = "#35302c"
         lang_hover = "#4a443e"
         style.configure(
-            "Language.TButton",
+            "Language.TMenubutton",
             background=lang_bg,
             foreground="#ffffff",
+            arrowcolor="#ffffff",
             bordercolor=lang_bg,
             lightcolor=lang_bg,
             darkcolor=lang_bg,
@@ -2688,7 +2702,7 @@ class SecretShopGUI:
             padding=(10, 4),
         )
         style.map(
-            "Language.TButton",
+            "Language.TMenubutton",
             background=[("active", lang_hover), ("disabled", colors["surface_alt"])],
             foreground=[("disabled", "#a79888"), ("active", "#ffffff")],
             bordercolor=[("active", lang_hover), ("disabled", colors["line"])],
@@ -3027,8 +3041,6 @@ class SecretShopGUI:
                 lang = raw.get('language')
                 if lang:
                     i18n.set_language(lang)
-                    if hasattr(self, 'lang_button'):
-                        self.lang_button.config(text=i18n.get_language_button_text(lang))
             else:
                 values = raw
             self._apply_update_settings(values)
