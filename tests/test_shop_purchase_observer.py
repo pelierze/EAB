@@ -8,7 +8,7 @@ import numpy as np
 
 from src.image_matcher import ImageMatcher, read_image
 from src.secret_shop_bot import SecretShopBot
-from src.shop_purchase_observer import ShopPurchaseObserver
+from src.shop_purchase_observer import ShopPurchaseObserver, PurchaseBaseline
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -100,6 +100,67 @@ class ShopPurchaseObserverTests(ShopPurchaseFixtures, unittest.TestCase):
 
     def test_small_row_movement_is_reanchored_to_the_product_icon(self):
         self.assertTrue(self.observer.purchase_complete(self.scene(sold=True, shift=(7, -9)), self.baseline()))
+
+    def test_live_purchased_friendship_row_recovers_inner_anchor_and_button_alignment(self):
+        with np.load(ROOT / 'tests/fixtures/shop_purchase/friendship_sold_20261023.npz', allow_pickle=False) as fixture:
+            row, before_button = fixture['row'], fixture['before_button']
+        item = (24, 24, 82, 82)
+        button = (526, 62, 183, 53)
+        # Confirm this fixture reproduces the original strict-anchor failure.
+        self.assertIsNone(self.observer.locate_item(row, self.other_icon, item))
+        recovered = self.observer.locate_item(row, self.other_icon, item, stable_inner=True)
+        self.assertIsNotNone(recovered)
+        self.assertEqual(recovered[0], item[0])
+        self.assertLessEqual(abs(recovered[1]-item[1]), 1)
+        baseline = PurchaseBaseline(item, button, self.other_icon.copy(),
+                                    self.observer.counter_mask(before_button))
+        self.assertTrue(self.observer.purchase_complete(row, baseline))
+        self.assertIsNone(self.observer.ocr)
+
+    def test_inner_anchor_rejects_different_missing_covered_and_other_row_products(self):
+        before = self.baseline()
+        scenes = []
+        for replacement in (np.zeros_like(self.icon), self.other_icon):
+            screen = self.scene(sold=True)
+            x, y, w, h = self.item
+            screen[y:y+h, x:x+w] = 0
+            self.put(screen, replacement, x, y)
+            scenes.append(screen)
+        # A copy of the real target plus a sold button on a different row must
+        # not rescue a missing target at the recorded slot.
+        screen = self.scene(sold=True)
+        x, y, w, h = self.item
+        screen[y:y+h, x:x+w] = 0
+        self.put(screen, self.icon, x, y+100)
+        self.put(screen, self.disabled, self.button[0], self.button[1]+100)
+        scenes.append(screen)
+        covered = self.scene(sold=True)
+        covered[200:310, 150:1150] = 35
+        scenes.append(covered)
+        for index, screen in enumerate(scenes):
+            with self.subTest(case=index):
+                self.assertFalse(self.observer.purchase_complete(screen, before))
+        self.assertIsNone(self.observer.ocr)
+
+    def test_unstable_icon_border_uses_inner_art_at_same_threshold(self):
+        screen = self.scene(sold=True)
+        x, y, w, h = self.item
+        patch = screen[y:y+h, x:x+w]
+        changed = np.random.default_rng(30).integers(0, 256, patch.shape, dtype=np.uint8)
+        cx, cy, right, bottom = round(w*.12), round(h*.12), round(w*.88), round(h*.80)
+        dimmed = np.clip(patch.astype(np.float32)*.6, 0, 255).astype(np.uint8)
+        changed[cy:bottom, cx:right] = dimmed[cy:bottom, cx:right]
+        screen[y:y+h, x:x+w] = changed
+        self.assertIsNone(self.observer.locate_item(screen, self.icon, self.item))
+        self.assertTrue(self.observer.purchase_complete(screen, self.baseline()))
+
+    def test_button_refinement_never_searches_another_row_for_completion(self):
+        screen = self.scene(sold=False)
+        x, y, w, h = self.button
+        screen[y:y+h, x:x+w] = 0
+        self.put(screen, self.disabled, x, y+100)
+        self.assertFalse(self.observer.purchase_complete(screen, self.baseline()))
+        self.assertIsNone(self.observer.ocr)
 
     def test_missing_or_different_product_and_covered_row_never_complete(self):
         before = self.baseline()

@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 from typing import Optional, Tuple, List
 import logging
+from .shop_debug import debug_timed
 
 # libpng 경고 메시지 숨기기
 os.environ['OPENCV_LOG_LEVEL'] = 'ERROR'
@@ -174,6 +175,7 @@ class ImageMatcher:
         """Load the effective template, including its optional exclusion mask."""
         return self._read_template(path)
         
+    @debug_timed('recognition')
     def find_image(self, screen_img_path: str, template_img_path: str, 
                    threshold: Optional[float] = None) -> Optional[Tuple[int, int, int, int]]:
         """
@@ -222,6 +224,7 @@ class ImageMatcher:
             logger.error(f"이미지 매칭 중 오류: {e}")
             return None
     
+    @debug_timed('recognition')
     def find_all_images(self, screen_img_path: str, template_img_path: str,
                        threshold: Optional[float] = None) -> List[Tuple[int, int, int, int]]:
         """
@@ -271,6 +274,7 @@ class ImageMatcher:
             logger.error(f"이미지 매칭 중 오류: {e}")
             return []
     
+    @debug_timed('recognition')
     def get_similarity(self, screen_img_path: str, template_img_path: str) -> float:
         """
         화면과 템플릿 이미지의 유사도 계산
@@ -300,6 +304,7 @@ class ImageMatcher:
             logger.error(f"유사도 계산 중 오류: {e}")
             return 0.0
     
+    @debug_timed('recognition')
     def get_similarity_at_location(self, screen_img_path: str, template_img_path: str, 
                                     location: Tuple[int, int, int, int]) -> float:
         """

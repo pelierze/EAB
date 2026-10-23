@@ -16,6 +16,7 @@ from pathlib import Path
 from .adb_controller import ADBController
 from .image_matcher import ImageMatcher, read_image
 from .shop_purchase_observer import ShopPurchaseObserver
+from .shop_debug import ShopDebugRecorder, debug_timed, debug_run, debug_purchase
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,7 @@ class SecretShopBot:
         self.matcher = ImageMatcher(threshold=0.92)
         self._purchase_observer = None
         self._purchase_baseline = None
+        self._shop_debug = None
         
         # 스크린샷 임시 저장 경로
         self.screenshot_path = self.runtime_dir / "current_screen.png"
@@ -176,6 +178,12 @@ class SecretShopBot:
         self.swipe_start_y = int(self.screen_height * float(swipe_settings.get("start_y_ratio", 0.75)))
         self.swipe_end_y = int(self.screen_height * float(swipe_settings.get("end_y_ratio", 0.25)))
         self.refresh_recovery_attempts = int(self.timings.get("refresh_recovery_attempts", 1))
+        if self.debug_mode:
+            try:
+                self._shop_debug = ShopDebugRecorder(self.runtime_dir)
+                self.matcher._shop_debug = self._shop_debug
+            except OSError:
+                logger.warning("비밀상점 디버그 파일을 만들지 못했습니다.", exc_info=True)
 
     def _build_item_definitions(self) -> Dict[str, Dict[str, str]]:
         defaults = {
@@ -243,6 +251,22 @@ class SecretShopBot:
     def _item_label(self, item_name: str) -> str:
         return self.item_definitions.get(item_name, {}).get("label", item_name)
 
+    def _sleep(self, seconds, category='wait'):
+        trace = getattr(self, '_shop_debug', None)
+        if trace is None:
+            return time.sleep(seconds)
+        with trace.span(category):
+            return time.sleep(seconds)
+
+    @debug_timed('input')
+    def _tap(self, *args, **kwargs):
+        return self.adb.tap(*args, **kwargs)
+
+    @debug_timed('input')
+    def _swipe(self, *args, **kwargs):
+        return self.adb.swipe(*args, **kwargs)
+
+    @debug_timed('capture')
     def _capture_screenshot(self, context: str) -> bool:
         screenshot_path = Path(self.screenshot_path)
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
@@ -292,6 +316,7 @@ class SecretShopBot:
         self._pending_scroll_diagnostic = record
         return record
         
+    @debug_run('paid')
     def run(self, max_refresh_count: int, buy_count_per_item: int) -> Dict:
         """
         비밀상점 자동화 실행
@@ -324,11 +349,13 @@ class SecretShopBot:
             
             # 일시정지 상태 확인
             while self.paused:
-                time.sleep(0.1)  # 빠른 반응을 위해 0.1초로 감소
+                self._sleep(0.1, category='pause')  # 빠른 반응을 위해 0.1초로 감소
                 if self.user_action == 'stop':
                     logger.info("⛔ 사용자가 중지를 선택했습니다.")
                     return self._finish_stats()
             
+            if self._shop_debug is not None:
+                self._shop_debug.begin_cycle(refresh_num + 1, refresh_planned=refresh_num < max_refresh_count - 1)
             # 상점 첫 페이지 스캔
             found_items = self._scan_shop_page(page_num=1)
             
@@ -347,14 +374,14 @@ class SecretShopBot:
                         pass
                     else:
                         # 구매 실패 (골드 부족 등) - 중지
-                        logger.error("⚠️  구매 검증 실패! 골드 부족 가능성. 매크로를 중지합니다.")
-                        self.stats.update(status='failed', reason='구매 검증 실패 (골드 부족 가능성)')
+                        logger.error("⚠️ 구매 완료를 확인하지 못해 중지합니다. 상품 위치·수량과 실제 구매 결과를 확인하세요.")
+                        self.stats.update(status='failed', reason='구매 완료 확인 실패 (상품 위치·수량 또는 구매 결과 확인 필요)')
                         return self._finish_stats()
             
             # 첫 페이지 처리 완료 → 드래그하여 두 번째 페이지로 이동
             logger.debug("두 번째 페이지로 이동")
             self._scroll_down()
-            time.sleep(self._timing("after_scroll", 0.5))
+            self._sleep(self._timing("after_scroll", 0.5))
             
             # 두 번째 페이지 스캔
             found_items = self._scan_shop_page(page_num=2)
@@ -374,8 +401,8 @@ class SecretShopBot:
                         pass
                     else:
                         # 구매 실패 (골드 부족 등) - 중지
-                        logger.error("⚠️  구매 검증 실패! 골드 부족 가능성. 매크로를 중지합니다.")
-                        self.stats.update(status='failed', reason='구매 검증 실패 (골드 부족 가능성)')
+                        logger.error("⚠️ 구매 완료를 확인하지 못해 중지합니다. 상품 위치·수량과 실제 구매 결과를 확인하세요.")
+                        self.stats.update(status='failed', reason='구매 완료 확인 실패 (상품 위치·수량 또는 구매 결과 확인 필요)')
                         return self._finish_stats()
             else:
                 logger.debug("두 번째 페이지에도 아이템 없음")
@@ -384,11 +411,13 @@ class SecretShopBot:
             if refresh_num < max_refresh_count - 1:  # 마지막 회차가 아니면
                 if self._refresh_shop_with_recovery():
                     self.stats["successful_refreshes"] += 1
-                    time.sleep(self._timing("after_refresh", 1.0))  # 리프레시 후 대기
+                    self._sleep(self._timing("after_refresh", 1.0))  # 리프레시 후 대기
                 else:
                     logger.error("Refresh recovery failed; stopping to avoid repeated scroll-only loops.")
                     self.stats.update(status='failed', reason='상점 갱신 복구 실패')
                     return self._finish_stats()
+            if self._shop_debug is not None:
+                self._shop_debug.end_cycle('completed')
         
         self._finish_stats()
         
@@ -405,6 +434,7 @@ class SecretShopBot:
         
         return self.stats
 
+    @debug_run('natural')
     def run_natural_refresh(self, buy_count_per_item: int) -> Dict:
         """자연 갱신 상품만 15분마다 확인합니다. 유료 갱신은 하지 않습니다."""
         self._reset_scroll_diagnostics()
@@ -413,6 +443,8 @@ class SecretShopBot:
         logger.info("자연 갱신 구매 시작 - 하늘석 사용 없음, 15분 간격, 중지할 때까지 실행")
         while self._wait_natural_refresh(0):
             cycle_started = time.monotonic()
+            if self._shop_debug is not None:
+                self._shop_debug.begin_cycle(self.stats["completed_runs"] + 1)
             self._scroll_up()
             if not self._wait_natural_refresh(self._timing("after_scroll", 0.5)):
                 break
@@ -432,10 +464,16 @@ class SecretShopBot:
                         return self._finish_stats()
             self.stats["completed_runs"] += 1
             logger.info("자연 갱신 상품 확인 완료 (%s회) - 다음 확인까지 대기", self.stats["completed_runs"])
+            if self._shop_debug is not None:
+                self._shop_debug.end_cycle('completed')
             remaining = max(0, self.NATURAL_REFRESH_INTERVAL - (time.monotonic() - cycle_started))
-            if not self._wait_natural_refresh(remaining):
+            if not self._wait_for_next_natural_refresh(remaining):
                 break
         return self._finish_stats()
+
+    @debug_timed('natural_idle')
+    def _wait_for_next_natural_refresh(self, seconds):
+        return self._wait_natural_refresh(seconds)
 
     def _wait_natural_refresh(self, seconds: float) -> bool:
         """대기 중에는 ADB를 호출하지 않고 일시정지/중지에 응답합니다."""
@@ -444,7 +482,7 @@ class SecretShopBot:
             remaining = deadline - time.monotonic()
             if not self.paused and remaining <= 0:
                 return True
-            time.sleep(0.1 if self.paused else min(0.1, remaining))
+            self._sleep(0.1 if self.paused else min(0.1, remaining), category='pause' if self.paused else 'wait')
         return False
 
     def _finish_stats(self) -> Dict:
@@ -470,7 +508,7 @@ class SecretShopBot:
         # 스크린샷 촬영
         if not self._capture_screenshot(f"상점 스캔 {page_num}페이지"):
             return {}
-        time.sleep(self._timing("after_screenshot", 0.3))
+        self._sleep(self._timing("after_screenshot", 0.3))
         
         found_items = {}
         
@@ -505,6 +543,7 @@ class SecretShopBot:
         
         return found_items
     
+    @debug_purchase
     def _purchase_item(self, item_name: str, item_location: tuple, verification_count: int) -> bool:
         """
         아이템 구매 (구입 -> 구매 2단계 프로세스) 및 구매 완료 검증
@@ -547,14 +586,16 @@ class SecretShopBot:
             btn_center_x,
             btn_center_y,
         )
-        self.adb.tap(btn_center_x, btn_center_y, delay=0.5)
-        time.sleep(self._timing("after_purchase_tap", 0.5))  # 구매 팝업이 뜰 때까지 대기
+        self._tap(btn_center_x, btn_center_y, delay=0.5)
+        if self._shop_debug is not None:
+            self._shop_debug.phase = 'purchase_dialog'
+        self._sleep(self._timing("after_purchase_tap", 0.5))  # 구매 팝업이 뜰 때까지 대기
         
         # 중지 확인
         if self.user_action == 'stop':
             logger.info("⛔ 중지 요청 - 구매 중단")
             # 화면 닫기
-            self.adb.tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
+            self._tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
             return False
         
         # 구매 버튼이 나타날 때까지 대기 (최대 2초)
@@ -564,7 +605,7 @@ class SecretShopBot:
         for wait_attempt in range(buy_button_wait_attempts):
             if not self._capture_screenshot(f"구매 버튼 대기 - {item_name}"):
                 return False
-            time.sleep(self._timing("after_screenshot", 0.2))
+            self._sleep(self._timing("after_screenshot", 0.2))
             
             buy_button_path = self._find_image_file(self.resource_dir / self.BUTTONS_DIR, self.button_images["buy"])
             if buy_button_path:
@@ -579,42 +620,49 @@ class SecretShopBot:
                     break
             
             if wait_attempt < buy_button_wait_attempts - 1:  # 마지막 시도가 아니면 대기
-                time.sleep(wait_interval)
+                self._sleep(wait_interval)
         
         if not buy_button_found:
             logger.warning("⚠️ 구매 버튼이 나타나지 않음 - 구매 팝업 로딩 실패")
             # 화면 닫기
-            self.adb.tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
+            self._tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
             return False
         
         # 2단계: 구매 버튼 클릭 (최종 구매)
         if self._click_button("buy"):
-            time.sleep(self._timing("after_purchase_tap", 0.5))
+            self._sleep(self._timing("after_purchase_tap", 0.5))
             # Reuse the pre-click baseline and each existing verification capture.
             # Only an inconclusive result consumes another attempt/capture.
             attempts = max(1, int(verification_count))
             for verify_attempt in range(attempts):
                 if self.user_action == 'stop':
                     return False
+                if self._shop_debug is not None:
+                    self._shop_debug.phase = 'verify'
+                    self._shop_debug.count('verification_attempts')
+                    self._shop_debug.count('verification_retries', int(verify_attempt > 0))
+                    self._shop_debug.record('verification_attempt', attempt=verify_attempt + 1, maximum=attempts)
                 if self._verify_purchase_complete():
+                    if self._shop_debug is not None:
+                        self._shop_debug.count('purchases')
                     stat_key = self.item_definitions.get(item_name, {}).get("stat_key")
                     if stat_key:
                         self.stats[stat_key] = self.stats.get(stat_key, 0) + 1
                     logger.info("✅ %s 구매 완료 (동일 상품 수량 1/1 → 0/1, 확인 %s회)",
                                 self._item_label(item_name), verify_attempt + 1)
-                    self.adb.tap(self.screen_width // 4, self.screen_height // 2,
+                    self._tap(self.screen_width // 4, self.screen_height // 2,
                                  delay=self._timing("close_popup_delay", 0.3))
                     return True
                 if verify_attempt < attempts - 1:
-                    time.sleep(self._timing("verify_interval", 0.3))
+                    self._sleep(self._timing("verify_interval", 0.3))
             logger.warning("⚠️ 구매 완료를 확인하지 못했습니다. 골드 부족, 화면 전환 또는 수량 인식을 확인하세요.")
-            self.adb.tap(self.screen_width // 4, self.screen_height // 2,
+            self._tap(self.screen_width // 4, self.screen_height // 2,
                          delay=self._timing("close_popup_delay", 0.3))
             return False
         else:
             logger.warning("구매 버튼(2단계)을 찾을 수 없음")
             # 취소 또는 뒤로가기 처리
-            self.adb.tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
+            self._tap(self.screen_width // 4, self.screen_height // 2, delay=self._timing("close_popup_delay", 0.3))
             return False
     
     def _get_purchase_observer(self):
@@ -628,22 +676,27 @@ class SecretShopBot:
                 if template is None:
                     raise ValueError("구입 버튼 이미지를 읽을 수 없습니다.")
                 templates.append(template)
-            self._purchase_observer = ShopPurchaseObserver(*templates)
+            self._purchase_observer = ShopPurchaseObserver(*templates, diagnostics=self._shop_debug)
         return self._purchase_observer
 
+    @debug_timed('recognition')
     def _find_purchase_button_on_item_line(self, item_location: tuple, item_name: str):
         """Find the same product row, then read 1/1 or 0/1 without color states."""
         self._purchase_baseline = None
         if not self._capture_screenshot("구입 버튼 탐색"):
             return None
-        time.sleep(self._timing("after_screenshot", 0.2))
+        self._sleep(self._timing("after_screenshot", 0.2))
         screen = read_image(self.screenshot_path)
         if screen is None:
+            if self._shop_debug is not None:
+                self._shop_debug.record('purchase_check', result=False, reason='screen_unreadable')
             return None
         item = self.item_definitions.get(item_name, {})
         item_path = self._find_image_file(self.resource_dir / self.ITEMS_DIR,
                                           item.get("image", f"{item_name}.png"))
         if item_path is None:
+            if self._shop_debug is not None:
+                self._shop_debug.record('purchase_check', result=False, reason='item_template_missing')
             return None
         try:
             observer = self._get_purchase_observer()
@@ -651,23 +704,35 @@ class SecretShopBot:
             if template is None:
                 return None
             current_item = observer.locate_item(screen, template, item_location,
-                                                self.thresholds.get(item_name, .95))
+                                                self.thresholds.get(item_name, .95), diagnostics=self._shop_debug)
             if current_item is None:
+                if self._shop_debug is not None:
+                    self._shop_debug.record('purchase_check', result=False, reason='same_item_not_found', same_item=False)
+                    x, y, w, h = item_location
+                    self._shop_debug.evidence('initial_item_not_found', screen[max(0, y):y+h, max(0, x):x+w])
                 logger.debug("구입 전 동일 상품 위치를 재확인하지 못했습니다: %s", item_name)
                 return None
             result = observer.find_button(screen, current_item,
                                            self.thresholds.get("purchase_button", .92),
                                            int(self.macro_layout.get("purchase_line_y_tolerance", 50)))
             if result is None:
+                if self._shop_debug is not None:
+                    self._shop_debug.record('purchase_check', result=False, reason='button_or_quantity_missing', same_item=True)
+                    x, y, w, h = current_item
+                    self._shop_debug.evidence('button_or_quantity_missing', screen[max(0, y-50):y+h+50, x+w:])
                 logger.debug("동일 상품 행의 버튼 또는 수량을 확인하지 못했습니다: %s", item_name)
                 return None
             bounds, state = result
             if state == 'sold':
+                if self._shop_debug is not None:
+                    self._shop_debug.count('skipped_items')
                 logger.info("⏭️ 이미 구매한 %s 건너뜀 (수량 0/1)", self._item_label(item_name))
                 return False
             self._purchase_baseline = observer.baseline(screen, current_item, bounds)
             return bounds
         except (ValueError, OSError):
+            if self._shop_debug is not None:
+                self._shop_debug.record('purchase_check', result=False, reason='initial_observation_error')
             logger.warning("구입 버튼 관측 실패", exc_info=True)
             return None
 
@@ -694,7 +759,7 @@ class SecretShopBot:
                 retry_interval=self._timing("refresh_confirm_retry_interval", 0.3),
             ):
                 logger.info("✅ 상점 갱신 성공")
-                time.sleep(self._timing("after_refresh", 0.8))
+                self._sleep(self._timing("after_refresh", 0.8))
                 return True
             else:
                 # 중지 요청이면 로그 생략
@@ -733,7 +798,7 @@ class SecretShopBot:
                 recovery_attempts,
             )
             self._scroll_up()
-            time.sleep(self._timing("refresh_retry", 2.0))
+            self._sleep(self._timing("refresh_retry", 2.0))
 
             if self._refresh_shop():
                 logger.info("Refresh succeeded after resetting the scroll position.")
@@ -753,7 +818,7 @@ class SecretShopBot:
     ) -> bool:
         attempts = max(1, int(attempts))
         if initial_delay > 0:
-            time.sleep(initial_delay)
+            self._sleep(initial_delay)
 
         for attempt in range(attempts):
             if self.user_action == "stop":
@@ -761,7 +826,7 @@ class SecretShopBot:
             if self._click_button(button_type):
                 return True
             if attempt < attempts - 1 and retry_interval > 0:
-                time.sleep(retry_interval)
+                self._sleep(retry_interval)
         return False
     
     def _click_button(self, button_type: str) -> bool:
@@ -785,7 +850,7 @@ class SecretShopBot:
         # 스크린샷 촬영
         if not self._capture_screenshot(f"버튼 탐색 - {button_type}"):
             return False
-        time.sleep(self._timing("after_screenshot", 0.2))
+        self._sleep(self._timing("after_screenshot", 0.2))
         
         # 버튼 이미지 경로 선택
         button_filename = self.button_images.get(button_type)
@@ -814,22 +879,25 @@ class SecretShopBot:
         if result:
             # 버튼 중심 클릭
             center_x, center_y = self.matcher.get_center(result)
-            self.adb.tap(center_x, center_y, delay=0.3)
+            self._tap(center_x, center_y, delay=0.3)
             logger.debug(f"{button_type} 버튼 클릭: ({center_x}, {center_y})")
             return True
         else:
             logger.debug(f"{button_type} 버튼을 찾을 수 없음")
             return False
     
+    @debug_timed('verification')
     def _verify_purchase_complete(self) -> bool:
         """Confirm the same product's 1/1 -> 0/1 transition on this capture."""
         if self._purchase_baseline is None or self.user_action == 'stop':
             return False
         if not self._capture_screenshot("구매 완료 검증"):
             return False
-        time.sleep(self._timing("after_screenshot", 0.2))
+        self._sleep(self._timing("after_screenshot", 0.2))
         screen = read_image(self.screenshot_path)
         if screen is None:
+            if self._shop_debug is not None:
+                self._shop_debug.record('purchase_check', result=False, reason='screen_unreadable')
             return False
         return self._get_purchase_observer().purchase_complete(screen, self._purchase_baseline)
 
@@ -845,7 +913,7 @@ class SecretShopBot:
             self.swipe_duration,
         )
 
-        success = self.adb.swipe(
+        success = self._swipe(
             self.swipe_x,
             self.swipe_start_y,
             self.swipe_x,
@@ -874,7 +942,7 @@ class SecretShopBot:
             self.swipe_duration,
         )
 
-        success = self.adb.swipe(
+        success = self._swipe(
             self.swipe_x,
             self.swipe_end_y,
             self.swipe_x,
