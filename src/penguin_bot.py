@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 from .adb_controller import ADBController
-from .image_matcher import read_image
+from .image_matcher import ImageMatcher, read_image
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,7 @@ class PenguinBot:
         self.user_action = None
         self.paused = False
         self._template_cache: Dict[str, np.ndarray] = {}
+        self._image_matcher = ImageMatcher()
         self.stats = {
             "cycles_completed": 0,
             "purchase_attempts": 0,
@@ -416,7 +417,7 @@ class PenguinBot:
         if image.shape[0] < template.shape[0] or image.shape[1] < template.shape[1]:
             return None
 
-        result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
+        result = ImageMatcher.match_template(image, template)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
         if max_val < threshold:
             if self.debug_mode:
@@ -441,7 +442,7 @@ class PenguinBot:
             if screen.shape[0] < template.shape[0] or screen.shape[1] < template.shape[1]:
                 continue
 
-            result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+            result = ImageMatcher.match_template(screen, template)
             points = np.where(result >= threshold)
             height, width = template.shape[:2]
             for point in zip(*points[::-1]):
@@ -463,13 +464,22 @@ class PenguinBot:
             return self._template_cache[cache_key]
 
         path = self.resource_dir / self.ASSET_DIR / image_name
-        template = read_image(str(path), cv2.IMREAD_COLOR)
+        template = self._image_matcher.load_template(path)
         if template is None:
             logger.error("템플릿 이미지를 불러오지 못했습니다: %s", path)
             return None
         if scale != 1.0:
-            interpolation = cv2.INTER_CUBIC if scale > 1.0 else cv2.INTER_AREA
-            template = cv2.resize(template, None, fx=scale, fy=scale, interpolation=interpolation)
+            if template.shape[2] == 4:
+                # Resize color and exclusion coverage with the same filter. Only
+                # fully retained pixels may contribute after scaling; otherwise
+                # excluded lettering can bleed into the visible button border.
+                interpolation = cv2.INTER_LINEAR if scale > 1.0 else cv2.INTER_AREA
+                resized = cv2.resize(template, None, fx=scale, fy=scale, interpolation=interpolation)
+                resized[:, :, 3] = np.where(resized[:, :, 3] == 255, 255, 0)
+                template = resized
+            else:
+                interpolation = cv2.INTER_CUBIC if scale > 1.0 else cv2.INTER_AREA
+                template = cv2.resize(template, None, fx=scale, fy=scale, interpolation=interpolation)
         self._template_cache[cache_key] = template
         return template
 
@@ -492,7 +502,7 @@ class PenguinBot:
         template = self._load_template(image_name, scale=target_scale)
         if template is None or roi.shape[:2] != template.shape[:2]:
             return 0.0
-        result = cv2.matchTemplate(roi, template, cv2.TM_CCOEFF_NORMED)
+        result = ImageMatcher.match_template(roi, template)
         _, max_val, _, _ = cv2.minMaxLoc(result)
         return float(max_val)
 
