@@ -100,7 +100,7 @@ class TestI18n(unittest.TestCase):
 
         self.assertTrue(i18n.is_feature_supported("secret_shop", "en"))
         self.assertFalse(i18n.is_feature_supported("dimensional_exploration", "en"))
-        self.assertFalse(i18n.is_feature_supported("penguin", "en"))
+        self.assertTrue(i18n.is_feature_supported("penguin", "en"))
         self.assertFalse(i18n.is_feature_supported("event", "en"))
 
     def test_unsupported_feature_message_localized(self):

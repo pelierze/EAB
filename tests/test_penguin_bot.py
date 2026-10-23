@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -54,20 +54,18 @@ class PenguinBotTest(unittest.TestCase):
 
         self.assertEqual(match, (100, 100, 20, 20))
 
-    def test_find_buy_button_for_egg_picks_button_in_same_column_below_egg(self):
+    def test_find_buy_button_for_egg_searches_only_anchored_product_column(self):
         bot = object.__new__(PenguinBot)
-        bot.thresholds = {"buy_button": 0.9}
-        bot.BUY_BUTTON_IMAGE = PenguinBot.BUY_BUTTON_IMAGE
-        bot._find_all_matches = lambda *_args, **_kwargs: [
-            (220, 220, 50, 18),
-            (145, 300, 50, 18),
-            (320, 310, 50, 18),
-        ]
+        bot.thresholds = {"buy_button": 0.9, "egg": 0.9}
+        bot._match_score_for_box = Mock(return_value=.95)
+        bot._find_in_roi = Mock(return_value=(96, 515, 39, 42))
 
-        screen = np.zeros((400, 500, 3), dtype=np.uint8)
-        match = PenguinBot._find_buy_button_for_egg(bot, screen, (100, 120, 20, 24))
+        screen = np.zeros((720, 1280, 3), dtype=np.uint8)
+        match = PenguinBot._find_buy_button_for_egg(bot, screen, (169, 288, 57, 71))
 
-        self.assertEqual(match, (145, 300, 50, 18))
+        self.assertEqual(match, (96, 515, 39, 42))
+        self.assertEqual(bot._find_in_roi.call_args.args[1], (52, 439, 342, 619))
+        self.assertEqual(bot._find_in_roi.call_args.args[2], 'stigma.png')
 
     @patch("src.penguin_bot.time.sleep", return_value=None)
     def test_single_cycle_clicks_max_when_not_fifty_fifty(self, _sleep):
@@ -79,7 +77,7 @@ class PenguinBotTest(unittest.TestCase):
         bot._capture_screen = lambda _context: True
         bot._find_egg_match = lambda _screen: (80, 100, 30, 30)
         bot._find_buy_button_for_egg = lambda _screen, _egg: (500, 100, 60, 24)
-        bot._has_popup_fifty_check = lambda _screen: False
+        bot._has_popup_fifty_check = Mock(side_effect=[False, True])
         bot._find_popup_max_button = lambda _screen: (520, 420, 70, 24)
         bot._find_popup_final_buy_button = lambda _screen: (530, 430, 70, 24)
         bot._find_best_match = lambda _screen, image_name, _threshold: (
