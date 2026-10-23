@@ -56,7 +56,7 @@ class EabReleaseTest(unittest.TestCase):
         artifacts = self.packages()
         release = ReleaseInfo('v1.5.20', '', '', assets=tuple(
             {'name': path.name, 'browser_download_url':
-             'https://github.com/pelierze/SecretShopBot-E7/releases/download/v1.5.20/' + path.name}
+             'https://github.com/pelierze/EAB/releases/download/v1.5.20/' + path.name}
             for path in artifacts))
         self.assertEqual(release_assets(release)[0], 'EAB-v1.5.20.zip')
 
@@ -72,7 +72,7 @@ class EabReleaseTest(unittest.TestCase):
         artifacts = self.packages()
         release = ReleaseInfo('v1.5.20', '', '', assets=tuple(
             {'name': path.name, 'browser_download_url':
-             'https://github.com/pelierze/SecretShopBot-E7/releases/download/v1.5.20/' + path.name}
+             'https://github.com/pelierze/EAB/releases/download/v1.5.20/' + path.name}
             for path in artifacts if path.name != 'EAB-v1.5.20.zip.sha256.txt'))
         with self.assertRaises(ValueError):
             release_assets(release)

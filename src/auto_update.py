@@ -12,15 +12,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .version import APP_VERSION
-from .app_identity import SUPPORTED_RELEASE_REPOSITORIES
+from .app_identity import RELEASE_REPOSITORY
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_UPDATE_URL = (
-    "https://raw.githubusercontent.com/pelierze/SecretShopBot-E7/master/update_config.json"
-)
-UPDATE_URLS = tuple(f"https://raw.githubusercontent.com/{repo}/master/update_config.json"
-                   for repo in SUPPORTED_RELEASE_REPOSITORIES)
+DEFAULT_UPDATE_URL = f"https://raw.githubusercontent.com/{RELEASE_REPOSITORY}/master/update_config.json"
+UPDATE_URLS = (DEFAULT_UPDATE_URL,)
 
 THRESHOLD_KEYS = {
     "mystic_medal",
@@ -83,7 +80,7 @@ def read_json(path: Path) -> Optional[Dict[str, Any]]:
 def fetch_json(url: str) -> Dict[str, Any]:
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": f"SecretShopBot-E7/{APP_VERSION}"},
+        headers={"User-Agent": f"EAB/{APP_VERSION}"},
     )
     with urllib.request.urlopen(request, timeout=5) as response:
         if response.status != 200:

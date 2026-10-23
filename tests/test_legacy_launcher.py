@@ -21,6 +21,12 @@ class LauncherTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         (self.root / 'EAB.exe').touch()
+        migrator = patch('legacy_launcher.migrate_shortcut', return_value={'shortcut': 'EAB.lnk'})
+        self.migrate = migrator.start()
+        self.addCleanup(migrator.stop)
+        invoked = patch('legacy_launcher.invoked_shortcut', return_value=self.root / 'old.lnk')
+        invoked.start()
+        self.addCleanup(invoked.stop)
 
     def test_shortcut_starts_eab_forwards_arguments_and_exits(self):
         args = ['--admin', '공백 포함 인자', 'quote"here']
@@ -33,6 +39,7 @@ class LauncherTest(unittest.TestCase):
         self.assertEqual(start.call_args.kwargs['env']['PYINSTALLER_RESET_ENVIRONMENT'], '1')
         child.wait.assert_not_called()
         protect.assert_not_called()
+        self.migrate.assert_called_once_with(self.root / 'EAB.exe', args, self.root / 'old.lnk')
 
     def test_bridge_update_waits_for_child_instead_of_failing_startup_check(self):
         child = Mock(wait=Mock(return_value=17))
@@ -42,6 +49,7 @@ class LauncherTest(unittest.TestCase):
             self.assertEqual(legacy_launcher.launch(self.root, ['--update-ready', 'app-ready']), 17)
         self.assertEqual(order, ['protect', 'launch'])
         child.wait.assert_called_once()
+        self.migrate.assert_not_called()
 
     def test_missing_eab_does_not_run_a_different_program(self):
         (self.root / 'EAB.exe').unlink()
@@ -49,6 +57,19 @@ class LauncherTest(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 legacy_launcher.launch(self.root, [])
         start.assert_not_called()
+        self.migrate.assert_not_called()
+
+    def test_failed_app_launch_does_not_replace_shortcuts(self):
+        with patch('legacy_launcher.subprocess.Popen', side_effect=OSError('blocked')):
+            with self.assertRaises(OSError):
+                legacy_launcher.launch(self.root, [])
+        self.migrate.assert_not_called()
+
+    def test_failed_shortcut_migration_does_not_prevent_app_launch(self):
+        self.migrate.side_effect = PermissionError('read-only shortcut')
+        with patch('legacy_launcher.subprocess.Popen') as start:
+            self.assertEqual(legacy_launcher.launch(self.root, []), 0)
+        start.assert_called_once()
 
     @unittest.skipUnless(os.name == 'nt', 'Windows job object integration')
     def test_update_launcher_termination_also_stops_child(self):

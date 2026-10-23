@@ -13,15 +13,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .version import APP_VERSION
-from .app_identity import SUPPORTED_RELEASE_REPOSITORIES
+from .app_identity import RELEASE_REPOSITORY
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SCRIPT_URL = (
-    "https://raw.githubusercontent.com/pelierze/SecretShopBot-E7/master/remote_script.json"
-)
-SCRIPT_URLS = tuple(f"https://raw.githubusercontent.com/{repo}/master/remote_script.json"
-                   for repo in SUPPORTED_RELEASE_REPOSITORIES)
+DEFAULT_SCRIPT_URL = f"https://raw.githubusercontent.com/{RELEASE_REPOSITORY}/master/remote_script.json"
+SCRIPT_URLS = (DEFAULT_SCRIPT_URL,)
 
 SAFE_FILENAME = re.compile(r"^[A-Za-z0-9_. -]+$")
 SAFE_KEY = re.compile(r"^[A-Za-z0-9_]+$")
@@ -107,7 +104,7 @@ def read_json(path: Path) -> Optional[Dict[str, Any]]:
 def fetch_json(url: str) -> Dict[str, Any]:
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": f"SecretShopBot-E7/{APP_VERSION}"},
+        headers={"User-Agent": f"EAB/{APP_VERSION}"},
     )
     with urllib.request.urlopen(request, timeout=5) as response:
         if response.status != 200:

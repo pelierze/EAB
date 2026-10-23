@@ -6,10 +6,10 @@
 
 ## 다운로드와 실행
 
-1. [최신 릴리즈](https://github.com/pelierze/SecretShopBot-E7/releases/latest)에서 `EAB-v버전.zip`을 다운로드합니다.
+1. [최신 릴리즈](https://github.com/pelierze/EAB/releases/latest)에서 `EAB-v버전.zip`을 다운로드합니다.
 2. 압축을 풀고 폴더 안의 `EAB.exe`를 실행합니다. 실행 파일만 따로 옮기지 말고, 압축을 푼 폴더 그대로 사용하세요.
 
-EAB는 기존 SecretShopBot-E7의 새 이름입니다. 기존 바로가기로 실행해도 `EAB.exe`가 열리도록 연결 프로그램인 `SecretShopBot-E7.exe`를 함께 제공합니다. v1.5.14 이하에서는 새 EAB ZIP을 내려받아 수동으로 설치해 주세요.
+EAB는 기존 SecretShopBot-E7의 새 이름입니다. 기존 바로가기를 누르면 EAB가 실행되고 같은 위치에 새 바로가기를 만든 뒤 사용한 기존 바로가기를 제거합니다. 기존 이름의 EXE를 직접 실행하면 바탕화면에 새 바로가기를 만듭니다. `EAB.exe`를 직접 실행하거나 자동 업데이트할 때는 바로가기를 만들지 않습니다. v1.5.14 이하에서는 새 EAB ZIP을 내려받아 수동으로 설치해 주세요.
 
 ## 게임 연결
 

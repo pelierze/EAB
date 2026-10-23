@@ -40,8 +40,8 @@ class PackageTest(unittest.TestCase):
 
     def release(self):
         names = (self.archive.name, self.checksum.name)
-        return ReleaseInfo('v1.4.4', 'https://github.com/pelierze/SecretShopBot-E7/releases/tag/v1.4.4', 'new',
-            assets=tuple({'name': n, 'browser_download_url': 'https://github.com/pelierze/SecretShopBot-E7/releases/download/v1.4.4/' + n} for n in names))
+        return ReleaseInfo('v1.4.4', 'https://github.com/pelierze/EAB/releases/tag/v1.4.4', 'new',
+            assets=tuple({'name': n, 'browser_download_url': 'https://github.com/pelierze/EAB/releases/download/v1.4.4/' + n} for n in names))
 
     def test_valid_package_and_assets(self):
         self.package()

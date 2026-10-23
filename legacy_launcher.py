@@ -6,6 +6,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+from shortcut_migration import invoked_shortcut, migrate_shortcut
+from src.runtime_diagnostics import diagnostic_logger
+
 
 def protect_update_process_tree():
     """Let an older updater terminate both this launcher and its child on rollback."""
@@ -60,6 +63,13 @@ def launch(directory, arguments):
     child = subprocess.Popen([str(target), *arguments], cwd=str(target.parent),
                              env={**os.environ, 'PYINSTALLER_RESET_ENVIRONMENT': '1'},
                              close_fds=True)
+    if not updating and os.name == 'nt':
+        try:
+            result = migrate_shortcut(target, arguments, invoked_shortcut())
+            diagnostic_logger('launcher').info('Shortcut migration: %s', result)
+        except Exception:
+            # A read-only desktop or shortcut must not prevent using the app.
+            diagnostic_logger('launcher').exception('Shortcut migration failed; EAB was launched')
     # Bridge updaters monitor this process during startup. Keep it alive for
     # their health check and rollback; normal shortcut launches exit immediately.
     return child.wait() if updating else 0

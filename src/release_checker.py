@@ -5,7 +5,6 @@ import json
 import logging
 import urllib.request
 import re
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Optional
 
@@ -46,7 +45,7 @@ def _fetch_release_at(api_url: str) -> ReleaseInfo:
     request = urllib.request.Request(
         api_url,
         headers={
-            "User-Agent": f"SecretShopBot-E7/{APP_VERSION}",
+            "User-Agent": f"EAB/{APP_VERSION}",
             "Accept": "application/vnd.github+json",
         },
     )
@@ -75,22 +74,10 @@ def fetch_latest_release(api_url: str = DEFAULT_RELEASE_API_URL) -> ReleaseInfo:
     # Explicit custom endpoints keep their previous single-address behavior.
     if api_url not in RELEASE_API_URLS:
         return _fetch_release_at(api_url)
-    releases = []
-    # Query both in parallel so the absent future repository does not add a
-    # second timeout. Retain legacy preference when both return the same tag.
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        pending = [(url, executor.submit(_fetch_release_at, url)) for url in RELEASE_API_URLS]
-        for url, future in pending:
-            try:
-                release = future.result()
-                if not re.fullmatch(r'v?\d+\.\d+\.\d+', release.version):
-                    raise ValueError('release is not a stable version')
-                releases.append(release)
-            except Exception as exc:
-                logger.info('릴리즈 주소 조회 실패: %s; %s', url, exc)
-    if not releases:
-        raise RuntimeError('기존 주소와 새 주소에서 릴리즈를 확인할 수 없습니다.')
-    return max(releases, key=lambda release: parse_version(release.version))
+    release = _fetch_release_at(api_url)
+    if not re.fullmatch(r'v?\d+\.\d+\.\d+', release.version):
+        raise ValueError('release is not a stable version')
+    return release
 
 
 def get_available_update(

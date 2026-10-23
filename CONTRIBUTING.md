@@ -4,7 +4,7 @@
 
 ## 오류 제보와 기능 제안
 
-[Issues](https://github.com/pelierze/SecretShopBot-E7/issues)에서 같은 문제가 등록되어 있는지 확인해 주세요. 오류는 `오류 신고` 양식으로 작성하고 다음 내용을 포함해 주세요.
+[Issues](https://github.com/pelierze/EAB/issues)에서 같은 문제가 등록되어 있는지 확인해 주세요. 오류는 `오류 신고` 양식으로 작성하고 다음 내용을 포함해 주세요.
 
 - 앱 버전과 실행 환경(STOVE PC 클라이언트 또는 앱플레이어·ADB)
 - 사용한 기능, 재현 순서, 기대한 동작과 실제 동작

@@ -15,7 +15,7 @@
 앱은 아래 JSON 파일을 확인합니다.
 
 ```text
-https://raw.githubusercontent.com/pelierze/SecretShopBot-E7/master/remote_script.json
+https://raw.githubusercontent.com/pelierze/EAB/master/remote_script.json
 ```
 
 이 파일은 JSON 데이터로만 사용됩니다. 원격 Python 코드, 셸 명령, 임의 실행 파일은 다운로드하거나 실행하지 않습니다.
@@ -27,7 +27,7 @@ GitHub Release에는 zip 파일과 SHA256 해시를 함께 공개합니다.
 다운로드한 zip 파일이 배포자가 올린 파일과 같은지 확인하려면 PowerShell에서 아래 명령을 실행하세요.
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\SecretShopBot-E7-v1.0.7.zip
+Get-FileHash -Algorithm SHA256 .\EAB-v1.0.7.zip
 ```
 
 출력된 해시가 릴리즈 노트 또는 `.sha256.txt` 파일의 값과 같으면 같은 파일입니다.

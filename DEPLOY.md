@@ -35,9 +35,15 @@ release/EAB-v1.0.7.zip.sha256.txt
 
 기본 다운로드는 EAB ZIP입니다. 이 ZIP에는 `EAB.exe`, `EAB-Updater.exe`,
 기존 바로가기용 연결 프로그램 `SecretShopBot-E7.exe`와 `_internal`이 들어 있습니다.
-연결 프로그램은 같은 폴더의 `EAB.exe`를 실행합니다. 일반 실행에서는 EAB를
-열고 종료하며, 이전 호환성 준비 버전의 자동 업데이트 실행에서는 시작 확인과
-복구 처리를 위해 EAB가 종료될 때까지 대기합니다.
+연결 프로그램은 같은 폴더의 `EAB.exe`를 실행합니다. 기존 바로가기를 눌렀을 때만
+같은 위치에 EAB 바로가기를 만들고, 사용한 기존 바로가기의 대상 경로를 확인해
+해당 파일만 제거합니다. 기존 EXE를 직접 실행하면 현재 사용자의 바탕화면에
+새 바로가기를 만듭니다. 새 바로가기 생성에 실패하면 기존 파일을 유지합니다.
+이전 호환성 준비 버전의 자동 업데이트 실행에서는 바로가기를 만들지 않고,
+시작 확인과 복구 처리를 위해 EAB가 종료될 때까지 대기합니다.
+
+업데이트·원격 설정·JSON 스크립트는 `pelierze/EAB`만 조회합니다. 이전 저장소
+주소를 추가로 조회하거나 실패 시 대체 주소로 사용하는 동작은 종료했습니다.
 
 기존 이름의 ZIP은 더 이상 생성하지 않습니다. v1.5.15 이상에서 새 ZIP으로 자동
 업데이트할 수 있습니다. v1.5.14 이하 사용자는 EAB ZIP으로 수동 설치하도록 안내하세요.
@@ -62,7 +68,7 @@ git push
 브라우저에서 아래 주소를 엽니다.
 
 ```text
-https://github.com/pelierze/SecretShopBot-E7/releases/new
+https://github.com/pelierze/EAB/releases/new
 ```
 
 입력값:
@@ -101,7 +107,7 @@ release/EAB-v1.0.7.zip.sha256.txt
 사용자에게는 아래 링크를 안내하면 됩니다.
 
 ```text
-https://github.com/pelierze/SecretShopBot-E7/releases/latest
+https://github.com/pelierze/EAB/releases/latest
 ```
 
 ## 4. 원격 스크립트 동기화 운영
@@ -109,7 +115,7 @@ https://github.com/pelierze/SecretShopBot-E7/releases/latest
 앱은 실행 시 아래 원격 스크립트 파일을 확인합니다.
 
 ```text
-https://raw.githubusercontent.com/pelierze/SecretShopBot-E7/master/remote_script.json
+https://raw.githubusercontent.com/pelierze/EAB/master/remote_script.json
 ```
 
 배포자가 `remote_script.json`을 수정해서 `master`에 푸시하면 사용자는 exe를 새로 받지 않아도 다음 실행 시 GUI 표시값과 매크로 동작 정의를 자동으로 적용받습니다.
@@ -141,12 +147,12 @@ https://raw.githubusercontent.com/pelierze/SecretShopBot-E7/master/remote_script
 
 ## 5. 앱 내부 자동 업데이트 배포
 
-자동 업데이트가 포함된 버전을 한 번 수동 설치하면 이후에는 앱의 **업데이트 후 재시작** 버튼으로 설치합니다. `SecretShopBot-Updater.exe`를 앱 EXE 옆에 함께 배포해야 합니다. 태그만 푸시하지 말고 GitHub의 정식 Release에 아래 두 파일을 업로드하세요.
+자동 업데이트가 포함된 버전을 한 번 수동 설치하면 이후에는 앱의 **업데이트 후 재시작** 버튼으로 설치합니다. `EAB-Updater.exe`를 앱 EXE 옆에 함께 배포해야 합니다. 태그만 푸시하지 말고 GitHub의 정식 Release에 아래 두 파일을 업로드하세요.
 
-- `SecretShopBot-E7-vX.Y.Z.zip`
-- `SecretShopBot-E7-vX.Y.Z.zip.sha256.txt`
+- `EAB-vX.Y.Z.zip`
+- `EAB-vX.Y.Z.zip.sha256.txt`
 
-ZIP 최상위 폴더는 `SecretShopBot-E7-vX.Y.Z`여야 합니다. `build_release.ps1`이 두 파일을 생성합니다. ZIP에는 EXE 두 개, `_internal`, 배포 문서만 포함합니다. 기존의 미사용 이미지 제외 정책을 유지합니다. 릴리즈 파일을 다시 만들었다면 체크섬도 함께 교체하세요.
+ZIP 최상위 폴더는 `EAB-vX.Y.Z`여야 합니다. `build_release.ps1`이 두 파일을 생성합니다. ZIP에는 앱·업데이트·전환 EXE 세 개와 `_internal`을 포함합니다. 배포 문서는 넣지 않으며 기존의 미사용 이미지 제외 정책을 유지합니다. 릴리즈 파일을 다시 만들었다면 체크섬도 함께 교체하세요.
 
 앱은 공식 저장소의 정식 릴리즈만 받고 SHA256 검증 후 설치합니다. 다운로드·압축 해제까지 기존 봇은 계속 실행되며, 준비가 끝나면 모든 세션을 중지하고 앱이 종료된 뒤 교체합니다. 새 앱 GUI가 시작됐다는 응답을 확인해야 성공입니다. 재시작 후 봇은 자동 실행하지 않습니다.
 

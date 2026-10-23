@@ -121,4 +121,4 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "Upload the EAB zip and its .sha256.txt file to GitHub Releases:"
-Write-Host "  https://github.com/pelierze/SecretShopBot-E7/releases/new"
+Write-Host "  https://github.com/pelierze/EAB/releases/new"
