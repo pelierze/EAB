@@ -172,13 +172,14 @@ class ShopPurchaseObserver:
         return best
 
     @debug_timed('recognition')
-    def find_button(self, screen, item_bounds, threshold=.92, y_tolerance=50):
+    def find_button(self, screen, item_bounds, threshold=.88, y_tolerance=50):
         x, y, w, h = item_bounds
         center_y = y + h / 2
         left, top = x+w, max(0, int(center_y-y_tolerance-27))
         bottom = min(screen.shape[0], int(center_y+y_tolerance+27))
         region = screen[top:bottom, left:]
         candidates = []
+        cand_threshold = min(threshold, 0.88)
         for template in self.templates:
             th, tw = template.shape[:2]
             if region.shape[0] < th or region.shape[1] < tw:
@@ -186,7 +187,7 @@ class ShopPurchaseObserver:
             scores = self._shape_scores(region, template)
             for _ in range(8):
                 _, score, _, point = cv2.minMaxLoc(scores)
-                if score < threshold:
+                if score < cand_threshold:
                     break
                 bx, by = point
                 bounds = (left+bx, top+by, tw, th)
@@ -215,9 +216,10 @@ class ShopPurchaseObserver:
                                 screen[by:by+bh, bx:bx+bw].copy() if self._shop_debug is not None else None)
 
     @debug_timed('recognition')
-    def purchase_complete(self, screen, before):
+    def purchase_complete(self, screen, before, threshold=.92):
         item = self.locate_item(screen, before.item_image, before.item_bounds,
-                                stable_inner=True, diagnostics=self._shop_debug)
+                                threshold=threshold, stable_inner=True,
+                                diagnostics=self._shop_debug)
         if item is None:
             if self._shop_debug is not None:
                 self._shop_debug.record('purchase_check', result=False, reason='same_item_not_found', same_item=False)

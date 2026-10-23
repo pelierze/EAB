@@ -246,6 +246,14 @@ class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
         self.assertEqual(bot.adb.taps, [])
         self.assertEqual(bot.stats['mystic_medal_bought'], 0)
 
+    def test_find_button_recognizes_disabled_button_at_088_threshold(self):
+        screen = self.scene(sold=True)
+        # Verify find_button finds the sold button with threshold 0.88
+        result = self.observer.find_button(screen, self.item, threshold=0.88)
+        self.assertIsNotNone(result)
+        bounds, state = result
+        self.assertEqual(state, 'sold')
+
     @patch('src.secret_shop_bot.time.sleep')
     def test_failed_capture_does_not_reuse_old_success_image(self, sleep):
         bot = self.make_bot([None])

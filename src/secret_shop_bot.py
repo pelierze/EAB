@@ -13,6 +13,9 @@ import logging
 from typing import Optional, Dict
 from pathlib import Path
 
+import cv2
+import numpy as np
+
 from .adb_controller import ADBController
 from .image_matcher import ImageMatcher, read_image
 from .shop_purchase_observer import ShopPurchaseObserver
@@ -314,6 +317,7 @@ class SecretShopBot:
         self.scroll_diagnostics.append(record)
         del self.scroll_diagnostics[:-2]
         self._pending_scroll_diagnostic = record
+        self._last_scroll_diagnostic = record
         return record
         
     @debug_run('paid')
@@ -494,9 +498,24 @@ class SecretShopBot:
             self.stats["elapsed_time"] = int(self.stats["end_time"] - self.stats["start_time"])
         return self.stats
     
+    @classmethod
+    def _is_screen_scrolled(cls, before_img, after_img, threshold: float = 4.0) -> bool:
+        """스크롤 전후 화면의 상점 아이템 영역을 비교하여 화면 이동 여부를 판별합니다."""
+        if before_img is None or after_img is None:
+            return True
+        if before_img.shape != after_img.shape:
+            return True
+        h, w = before_img.shape[:2]
+        top, bottom = int(h * 0.2), int(h * 0.9)
+        left, right = int(w * 0.4), int(w * 0.98)
+        region_b = before_img[top:bottom, left:right]
+        region_a = after_img[top:bottom, left:right]
+        diff = cv2.absdiff(region_b, region_a)
+        return float(diff.mean()) >= threshold
+
     def _scan_shop_page(self, page_num: int = 1) -> Dict[str, tuple]:
         """
-        현재 상점 페이지 스캠
+        현재 상점 페이지 스캔
         
         Returns:
             발견한 아이템 딕셔너리 {아이템명: (x, y, w, h)}
@@ -509,6 +528,35 @@ class SecretShopBot:
         if not self._capture_screenshot(f"상점 스캔 {page_num}페이지"):
             return {}
         self._sleep(self._timing("after_screenshot", 0.3))
+
+        # 2페이지 진입 시 스크롤 전 화면과 비교하여 변화가 없으면 재스크롤
+        if page_num == 2:
+            diagnostic = getattr(self, "_last_scroll_diagnostic", None)
+            if diagnostic and diagnostic.get("kind") == "normal":
+                before_data = diagnostic.get("before", {}).get("png")
+                if before_data:
+                    before_img = cv2.imdecode(np.frombuffer(before_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                    after_img = read_image(self.screenshot_path)
+                    max_scroll_retries = int(self.macro_settings.get("scroll_retry_count", 2))
+                    for retry in range(max_scroll_retries):
+                        if self.user_action == 'stop':
+                            break
+                        if self._is_screen_scrolled(before_img, after_img):
+                            break
+                        logger.warning(
+                            "⚠️ 스크롤 후 화면 변화가 감지되지 않아 다시 스크롤합니다 (%s/%s)",
+                            retry + 1,
+                            max_scroll_retries,
+                        )
+                        self._scroll_down()
+                        self._sleep(self._timing("after_scroll", 0.5))
+                        if not self._capture_screenshot(f"상점 스캔 2페이지 (재시도 {retry + 1})"):
+                            break
+                        self._sleep(self._timing("after_screenshot", 0.3))
+                        after_img = read_image(self.screenshot_path)
+                    else:
+                        if not self._is_screen_scrolled(before_img, after_img):
+                            logger.warning("⚠️ 재스크롤 시도 후에도 화면 이동이 감지되지 않았습니다.")
         
         found_items = {}
         
@@ -714,8 +762,9 @@ class SecretShopBot:
                     self._shop_debug.evidence('initial_item_not_found', screen[max(0, y):y+h, max(0, x):x+w])
                 logger.debug("구입 전 동일 상품 위치를 재확인하지 못했습니다: %s", item_name)
                 return None
+            button_threshold = min(self.thresholds.get("purchase_button", .92), 0.88)
             result = observer.find_button(screen, current_item,
-                                           self.thresholds.get("purchase_button", .92),
+                                           button_threshold,
                                            int(self.macro_layout.get("purchase_line_y_tolerance", 50)))
             if result is None:
                 if self._shop_debug is not None:
@@ -901,7 +950,7 @@ class SecretShopBot:
             if self._shop_debug is not None:
                 self._shop_debug.record('purchase_check', result=False, reason='screen_unreadable')
             return False
-        return self._get_purchase_observer().purchase_complete(screen, self._purchase_baseline)
+        return self._get_purchase_observer().purchase_complete(screen, self._purchase_baseline, threshold=0.92)
 
     def _scroll_down(self):
         """화면을 위로 스크롤 (두 번째 페이지로 이동)"""
