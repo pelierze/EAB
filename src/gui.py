@@ -48,7 +48,7 @@ if __package__ in (None, ""):
     from src.auto_update import get_runtime_root
     from src.chaos.exploration import ExplorationBot
     from src.chaos.observer import RecruitmentObserver
-    from src.image_matcher import read_image, matching_failure_guidance
+    from src.image_matcher import ImageMatcher, read_image, matching_failure_guidance
     from src.json_macro_engine import JsonMacroEngine
     from src.penguin_bot import PenguinBot
     from src.release_checker import get_available_update
@@ -58,6 +58,7 @@ if __package__ in (None, ""):
     from src.app_identity import APP_WINDOW_TITLE, resolve_updater_executable, resolve_window_title
     from src.version import APP_VERSION
     from src.failure_report import save_failure_report
+    from src import i18n
 else:
     from .adb_controller import ADBController
     from .backend.manager import BackendFactory
@@ -68,7 +69,7 @@ else:
     from .auto_update import get_runtime_root
     from .chaos.exploration import ExplorationBot
     from .chaos.observer import RecruitmentObserver
-    from .image_matcher import read_image, matching_failure_guidance
+    from .image_matcher import ImageMatcher, read_image, matching_failure_guidance
     from .json_macro_engine import JsonMacroEngine
     from .penguin_bot import PenguinBot
     from .release_checker import get_available_update
@@ -78,6 +79,7 @@ else:
     from .app_identity import APP_WINDOW_TITLE, resolve_updater_executable, resolve_window_title
     from .version import APP_VERSION
     from .failure_report import save_failure_report
+    from . import i18n
 
 logger = logging.getLogger(__name__)
 LOG_SESSION = contextvars.ContextVar("log_session", default="App")
@@ -206,17 +208,20 @@ class SessionView:
         self.selected_device_info = None
         self.current_mode = None
         self.input_profile_label_text = "MuMu 앱플레이어 사용 (호환 드래그 사용)"
-        self.buy_count_default_label_text = "구매 완료 검증 횟수:"
+        self.buy_count_default_label_text = "구매 완료 확인 최대 횟수:"
         self.buy_count_default_unit_text = "회"
         # STOVE 모드는 단일 클라이언트 연결이므로 세션 1만 기본 활성화
         initial_backend = "stove" if ("--stove" in sys.argv and self.session_id == 1) else "adb"
         self.backend_type_var = tk.StringVar(value=initial_backend)
         self.scanned_stove_windows = []
         self._shop_input_syncing = False
+        self._conn_status_raw = "● 연결 안됨"
+        self._last_stats = None
 
         self.frame = LogSplitView(parent, get_runtime_root() / 'updates/ui-layout.json', self.session_id)
         self._create_widgets()
         self._apply_session_visual_style()
+        self.apply_ui_language()
         self.frame.options.bind_children()
         if "--stove" in sys.argv and self.session_id == 1:
             self.root.after(300, self._on_backend_type_changed)
@@ -226,44 +231,49 @@ class SessionView:
         self.connection_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Row 0: 실행 환경 선택 & 공통 제어 버튼
-        self.backend_label = ttk.Label(self.connection_frame, text="실행 환경:")
-        self.backend_label.grid(row=0, column=0, sticky=tk.W, padx=5)
+        self.connection_header_frame = ttk.Frame(self.connection_frame)
+        self.connection_header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+
+        self.backend_label = ttk.Label(self.connection_header_frame, text="실행 환경:")
+        self.backend_label.pack(side=tk.LEFT, padx=(5, 8))
 
         self.backend_adb_radio = ttk.Radiobutton(
-            self.connection_frame,
+            self.connection_header_frame,
             text="앱플레이어 (ADB)",
             variable=self.backend_type_var,
             value="adb",
             command=self._on_backend_type_changed,
         )
-        self.backend_adb_radio.grid(row=0, column=1, columnspan=2, sticky=tk.W, padx=5)
+        self.backend_adb_radio.pack(side=tk.LEFT, padx=(0, 16))
 
         self.backend_stove_radio = ttk.Radiobutton(
-            self.connection_frame,
+            self.connection_header_frame,
             text="STOVE PC 클라이언트",
             variable=self.backend_type_var,
             value="stove",
             command=self._on_backend_type_changed,
         )
-        self.backend_stove_radio.grid(row=0, column=3, columnspan=2, sticky=tk.W, padx=5)
-
-        self.connect_btn = ttk.Button(self.connection_frame, text="연결", command=self._connect_device)
-        self.connect_btn.grid(row=0, column=5, padx=5)
+        self.backend_stove_radio.pack(side=tk.LEFT, padx=(0, 16))
 
         self.disconnect_btn = ttk.Button(
-            self.connection_frame,
+            self.connection_header_frame,
             text="연결 해제",
             command=self._disconnect_device,
             state=tk.DISABLED,
         )
-        self.disconnect_btn.grid(row=0, column=6, padx=5)
+        self.disconnect_btn.pack(side=tk.RIGHT, padx=(4, 5))
 
-        self.connection_status = ttk.Label(self.connection_frame, text="● 연결 안됨", foreground="#E53935")
-        self.connection_status.grid(row=0, column=7, padx=10)
-        self.connection_frame.columnconfigure(8, weight=1)
+        self.connect_btn = ttk.Button(self.connection_header_frame, text="연결", command=self._connect_device)
+        self.connect_btn.pack(side=tk.RIGHT, padx=(4, 4))
+
+        self.connection_status = ttk.Label(self.connection_header_frame, text="● 연결 안됨", foreground="#E53935")
+        self.connection_status.pack(side=tk.RIGHT, padx=(10, 12))
+
+        self.connection_frame.columnconfigure(0, weight=1)
+        self.connection_frame.columnconfigure(1, weight=0)
 
         self.release_info_frame = ttk.Frame(self.connection_frame, style="CardInner.TFrame")
-        self.release_info_frame.grid(row=0, column=8, rowspan=3, sticky=tk.E, padx=(12, 4))
+        self.release_info_frame.grid(row=1, column=1, rowspan=2, sticky=tk.E, padx=(12, 5))
 
         self.version_badge = ttk.Label(
             self.release_info_frame,
@@ -290,7 +300,7 @@ class SessionView:
 
         # Row 1-A: ADB 연결 컨트롤 프레임
         self.adb_ctrl_frame = ttk.Frame(self.connection_frame)
-        self.adb_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+        self.adb_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
 
         self.ip_label = ttk.Label(self.adb_ctrl_frame, text="IP 주소:")
         self.ip_label.grid(row=0, column=0, sticky=tk.W, padx=5)
@@ -315,7 +325,7 @@ class SessionView:
 
         # Row 1-B: STOVE 연결 컨트롤 프레임
         self.stove_ctrl_frame = ttk.Frame(self.connection_frame)
-        self.stove_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+        self.stove_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
 
         self.stove_label = ttk.Label(self.stove_ctrl_frame, text="에픽세븐 창:")
         self.stove_label.grid(row=0, column=0, sticky=tk.W, padx=5)
@@ -342,7 +352,7 @@ class SessionView:
         # 초기 실행 환경에 맞춰 컨트롤 프레임 표시
         if self.backend_type_var.get() == "stove":
             self.adb_ctrl_frame.grid_remove()
-            self.stove_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+            self.stove_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
             self.mumu_checkbox.config(state=tk.DISABLED)
             self.connection_frame.config(text="연결 설정 (STOVE PC 클라이언트)")
         else:
@@ -350,7 +360,7 @@ class SessionView:
 
         # Row 2: 공통 옵션
         self.options_row_frame = ttk.Frame(self.connection_frame)
-        self.options_row_frame.grid(row=2, column=0, columnspan=8, sticky=tk.W, padx=0, pady=2)
+        self.options_row_frame.grid(row=2, column=0, sticky=tk.W, padx=0, pady=2)
 
         self.debug_mode_var = tk.BooleanVar(value=False)
         self.debug_checkbox = ttk.Checkbutton(
@@ -418,7 +428,7 @@ class SessionView:
         )
         self.natural_refresh_checkbox.grid(row=3, column=0, columnspan=6, sticky=tk.W, padx=5, pady=5)
 
-        self.buy_count_label = ttk.Label(self.settings_frame, text="구매 완료 검증 횟수:")
+        self.buy_count_label = ttk.Label(self.settings_frame, text="구매 완료 확인 최대 횟수:")
         self.buy_count_label.grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
         self.buy_count_entry = ttk.Entry(self.settings_frame, width=10)
         self.buy_count_entry.insert(0, "3")
@@ -559,9 +569,16 @@ class SessionView:
         self._create_event_widgets()
         self._create_chaos_widgets()
 
+        self._tab_tooltip_window = None
+        self._tab_tooltip_label = None
         self.mode_notebook.bind('<<NotebookTabChanged>>', self._resize_mode_tab, add='+')
+        self.mode_notebook.bind('<Motion>', self._on_mode_notebook_motion, add='+')
+        self.mode_notebook.bind('<Leave>', self._on_mode_notebook_leave, add='+')
+        self.mode_notebook.bind('<ButtonPress-1>', self._on_mode_notebook_leave, add='+')
+        self.mode_notebook.bind('<Destroy>', self._on_mode_notebook_leave, add='+')
         for tab in (self.shop_tab, self.penguin_tab, self.chaos_tab, self.event_tab):
             tab.bind('<Configure>', self._resize_mode_tab, add='+')
+        self._apply_language_feature_support()
         self.mode_notebook.after_idle(self._resize_mode_tab)
 
         self.log_frame = self.frame.log
@@ -581,10 +598,12 @@ class SessionView:
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
         self._sync_release_status()
+        if i18n.get_language() != i18n.LANG_KO:
+            self.apply_ui_language()
 
     def _toggle_log(self):
         self.frame.toggle_log()
-        self.expand_log_btn.configure(text='옵션 다시 보기' if self.frame.expanded else '로그 확대')
+        self.expand_log_btn.configure(text=i18n.tr('옵션 다시 보기' if self.frame.expanded else '로그 확대'))
 
     def _resize_mode_tab(self, _event=None):
         selected = self.mode_notebook.select()
@@ -604,6 +623,109 @@ class SessionView:
             area._resize()
             area.canvas.yview_moveto(0)
             area.canvas.xview_moveto(0)
+
+    def _apply_language_feature_support(self, lang=None):
+        if lang is None:
+            lang = i18n.get_language()
+        self._hide_disabled_tab_tooltip()
+        tabs_map = [
+            (self.shop_tab, "secret_shop"),
+            (self.penguin_tab, "penguin"),
+            (self.chaos_tab, "dimensional_exploration"),
+            (self.event_tab, "event"),
+        ]
+        first_enabled_tab = None
+        selected_tab_id = self.mode_notebook.select()
+        selected_still_enabled = True
+
+        for tab_widget, feature_key in tabs_map:
+            supported = i18n.is_feature_supported(feature_key, lang)
+            target_state = "normal" if supported else "disabled"
+            if supported and first_enabled_tab is None:
+                first_enabled_tab = tab_widget
+            if str(tab_widget) == str(selected_tab_id) and not supported:
+                selected_still_enabled = False
+            try:
+                self.mode_notebook.tab(tab_widget, state=target_state)
+            except Exception:
+                logger.exception("모드 탭 상태 변경 실패: %s", feature_key)
+
+        if not selected_still_enabled and first_enabled_tab is not None:
+            try:
+                self.mode_notebook.select(first_enabled_tab)
+            except Exception:
+                logger.exception("활성 모드 탭 전환 실패")
+
+    def _get_mode_tab_index_at(self, x: int, y: int):
+        try:
+            raw_index = self.mode_notebook.tk.call(self.mode_notebook._w, "index", f"@{x},{y}")
+            if raw_index == "" or raw_index is None:
+                return None
+            return int(raw_index)
+        except Exception:
+            return None
+
+    def _on_mode_notebook_motion(self, event):
+        tab_index = self._get_mode_tab_index_at(event.x, event.y)
+        if tab_index is not None:
+            feature_keys = ("secret_shop", "penguin", "dimensional_exploration", "event")
+            feature_key = feature_keys[tab_index] if 0 <= tab_index < len(feature_keys) else None
+            try:
+                state = str(self.mode_notebook.tab(tab_index, "state"))
+            except Exception:
+                state = "normal"
+            tooltip_text = i18n.get_mode_tab_tooltip(feature_key, is_disabled=(state == "disabled"))
+            if tooltip_text:
+                self._show_disabled_tab_tooltip(
+                    event.x_root,
+                    event.y_root,
+                    tooltip_text,
+                )
+                return
+        self._hide_disabled_tab_tooltip()
+
+    def _on_mode_notebook_leave(self, _event=None):
+        self._hide_disabled_tab_tooltip()
+
+    def _show_disabled_tab_tooltip(self, x_root: int, y_root: int, text: str):
+        tw = getattr(self, "_tab_tooltip_window", None)
+        lbl = getattr(self, "_tab_tooltip_label", None)
+        if tw is None or not tw.winfo_exists():
+            tw = tk.Toplevel(self.root)
+            tw.wm_overrideredirect(True)
+            try:
+                tw.wm_attributes("-topmost", True)
+            except Exception:
+                pass
+            lbl = tk.Label(
+                tw,
+                text=text,
+                background="#35302c",
+                foreground="#ffffff",
+                relief="solid",
+                borderwidth=1,
+                padx=10,
+                pady=5,
+                font=("맑은 고딕", 9),
+            )
+            lbl.pack()
+            self._tab_tooltip_window = tw
+            self._tab_tooltip_label = lbl
+        else:
+            if lbl is not None and lbl.cget("text") != text:
+                lbl.configure(text=text)
+        tw.wm_geometry(f"+{x_root + 12}+{y_root + 16}")
+
+    def _hide_disabled_tab_tooltip(self):
+        tw = getattr(self, "_tab_tooltip_window", None)
+        self._tab_tooltip_window = None
+        self._tab_tooltip_label = None
+        if tw is not None:
+            try:
+                if tw.winfo_exists():
+                    tw.destroy()
+            except Exception:
+                pass
 
     def _apply_session_visual_style(self):
         self.frame.configure(style="App.TFrame")
@@ -670,17 +792,150 @@ class SessionView:
     def _sync_release_status(self):
         release = getattr(self.app, "release_info", None)
         if not getattr(self.app, "release_check_complete", False):
-            self.release_status_label.configure(text="릴리즈 확인 중...")
+            self.release_status_label.configure(text=i18n.tr("릴리즈 확인 중..."))
             self.release_link_btn.pack_forget()
             return
 
         if not release:
-            self.release_status_label.configure(text=f"최신 버전  v{APP_VERSION}")
+            self.release_status_label.configure(text=i18n.tr("최신 버전  v{version}", version=APP_VERSION))
             self.release_link_btn.pack_forget()
             return
 
-        self.release_status_label.configure(text=f"새 버전 {release.version}")
+        self.release_status_label.configure(text=i18n.tr("새 버전 {version}", version=release.version))
+        self.release_link_btn.configure(text=i18n.tr("업데이트 후 재시작"))
         self.release_link_btn.pack(anchor="e", pady=(8, 0))
+
+    def _set_connection_status(self, raw_text: str, foreground: str = None):
+        self._conn_status_raw = raw_text
+        kwargs = {"text": i18n.tr(raw_text)}
+        if foreground is not None:
+            kwargs["foreground"] = foreground
+        self.connection_status.config(**kwargs)
+
+    def _refresh_stove_combo_labels(self):
+        if not hasattr(self, "stove_combo"):
+            return
+        if not self.scanned_stove_windows:
+            vals = self.stove_combo.cget("values")
+            if vals:
+                self.stove_combo.config(values=[i18n.tr("감지된 에픽세븐 창 없음 (게임을 먼저 실행하세요)")])
+                self.stove_combo.current(0)
+        else:
+            selected = self.stove_combo.current()
+            is_en = i18n.get_language() == i18n.LANG_EN
+            game_label = "Epic Seven" if is_en else "에픽세븐"
+            min_label = " [Minimized]" if is_en else " [최소화됨]"
+            options = [
+                f"{game_label}{min_label if w.is_minimized else ''} (HWND: 0x{w.hwnd:X}, {w.client_size[0]}x{w.client_size[1]})"
+                for w in self.scanned_stove_windows
+            ]
+            self.stove_combo.config(values=options)
+            if 0 <= selected < len(options):
+                self.stove_combo.current(selected)
+            elif options:
+                self.stove_combo.current(0)
+
+    def apply_ui_language(self, _lang=None):
+        is_stove = self.backend_type_var.get() == "stove"
+        self.connection_frame.config(
+            text=i18n.tr("연결 설정 (STOVE PC 클라이언트)" if is_stove else "연결 설정 (ADB)")
+        )
+        self.backend_label.config(text=i18n.tr("실행 환경:"))
+        self.backend_adb_radio.config(text=i18n.tr("앱플레이어 (ADB)"))
+        self.backend_stove_radio.config(text=i18n.tr("STOVE PC 클라이언트"))
+        self.connect_btn.config(text=i18n.tr("연결"))
+        self.disconnect_btn.config(text=i18n.tr("연결 해제"))
+        self.connection_status.config(text=i18n.tr(getattr(self, "_conn_status_raw", "● 연결 안됨")))
+        self._sync_release_status()
+
+        self.ip_label.config(text=i18n.tr("IP 주소:"))
+        self.port_label.config(text=i18n.tr("포트:"))
+        self.scan_btn.config(text=i18n.tr("장치 검색"))
+        self.device_label.config(text=i18n.tr("장치:"))
+
+        self.stove_label.config(text=i18n.tr("에픽세븐 창:"))
+        self.stove_scan_btn.config(text=i18n.tr("창 새로고침"))
+        self.stove_resize_btn.config(text=i18n.tr("1280×720으로 맞추기"))
+        if hasattr(self, "stove_admin_btn"):
+            self.stove_admin_btn.config(text=i18n.tr("⚠️ 관리자 권한으로 재실행"))
+        self._refresh_stove_combo_labels()
+
+        self.debug_checkbox.config(text=i18n.tr("디버그 모드 (상세 로그)"))
+        self.mumu_checkbox.config(text=i18n.tr(self.input_profile_label_text))
+
+        try:
+            self.mode_notebook.tab(self.shop_tab, text=i18n.tr("비밀상점"))
+            self.mode_notebook.tab(self.penguin_tab, text=i18n.tr("펭귄"))
+            self.mode_notebook.tab(self.chaos_tab, text=i18n.tr("자동 탐사"))
+            self.mode_notebook.tab(self.event_tab, text=i18n.tr("이벤트"))
+        except Exception:
+            pass
+
+        self.settings_frame.config(text=i18n.tr("매크로 설정"))
+        self.refresh_count_label.config(text=i18n.tr("리프레시 횟수:"))
+        self.refresh_count_unit_label.config(text=i18n.tr("회"))
+        self.sky_stone_budget_label.config(text=i18n.tr("사용 하늘석:"))
+        self.sky_stone_budget_unit_label.config(text=i18n.tr("개"))
+        self.natural_refresh_checkbox.config(
+            text=i18n.tr("자연 갱신만 구매 (하늘석 0개 / 15분 간격 / 중지까지)")
+        )
+        self.friendship_point_checkbox.config(text=i18n.tr("우정 포인트 구매"))
+        self.threshold_header_label.config(text=i18n.tr("=== 이미지 매칭 정확도 (70-99) ==="))
+        self.mystic_medal_threshold_label.config(text=i18n.tr("신비의 메달:"))
+        self.covenant_bookmark_threshold_label.config(text=i18n.tr("성약의 책갈피:"))
+        self.friendship_point_threshold_label.config(text=i18n.tr("우정 포인트:"))
+        self.purchase_button_threshold_label.config(text=i18n.tr("구입 버튼:"))
+        self.buy_button_threshold_label.config(text=i18n.tr("구매 버튼:"))
+        self.refresh_button_threshold_label.config(text=i18n.tr("갱신 버튼:"))
+
+        self.macro_select_label.config(text=i18n.tr("매크로:"))
+        self.refresh_macro_combo()
+        self._update_macro_dependent_controls()
+        self.start_btn.config(text=i18n.tr("▶ 시작"))
+        self.pause_btn.config(text=i18n.tr("⏸ 일시정지"))
+        self.resume_btn.config(text=i18n.tr("▶ 재개"))
+        self.stop_btn.config(text=i18n.tr("■ 중지"))
+        self.test_btn.config(text=i18n.tr("💡 이미지 테스트"))
+        if self.pause_label.cget("text"):
+            self.pause_label.config(text=i18n.tr("⏸️  일시정지 중"))
+
+        self.stats_frame.config(text=i18n.tr("통계"))
+        self.total_refresh_title_label.config(text=i18n.tr("진행 완료:"))
+        self.mystic_title_label.config(text=i18n.tr("신비의 메달:"))
+        self.bookmark_title_label.config(text=i18n.tr("성약의 책갈피:"))
+        self.friendship_title_label.config(text=i18n.tr("우정 포인트:"))
+        self.elapsed_time_title_label.config(text=i18n.tr("경과 시간:"))
+        self.sky_stone_title_label.config(text=i18n.tr("하늘석 사용량:"))
+        self.bookmark_efficiency_title_label.config(text=i18n.tr("성약 획득량/하늘석:"))
+        self.mystic_efficiency_title_label.config(text=i18n.tr("신비 획득량/하늘석:"))
+        if self._last_stats is not None:
+            self._update_stats(self._last_stats)
+
+        if hasattr(self, "penguin_settings_frame"):
+            self.penguin_settings_frame.config(text=i18n.tr("펭귄 구매 설정"))
+        if hasattr(self, "penguin_cycle_title_label"):
+            self.penguin_cycle_title_label.config(text=i18n.tr("구매 사이클 횟수:"))
+        if hasattr(self, "penguin_cycle_unit_label"):
+            self.penguin_cycle_unit_label.config(text=i18n.tr("회"))
+        if hasattr(self, "penguin_start_btn"):
+            self.penguin_start_btn.config(text=i18n.tr("펭귄런 시작"))
+        if hasattr(self, "penguin_stop_btn"):
+            self.penguin_stop_btn.config(text=i18n.tr("펭귄런 중지"))
+        if hasattr(self, "penguin_stats_frame"):
+            self.penguin_stats_frame.config(text=i18n.tr("펭귄 통계"))
+        if hasattr(self, "penguin_completed_title_label"):
+            self.penguin_completed_title_label.config(text=i18n.tr("완료 사이클:"))
+        if hasattr(self, "penguin_attempt_title_label"):
+            self.penguin_attempt_title_label.config(text=i18n.tr("구매 시도:"))
+        if hasattr(self, "penguin_purchase_title_label"):
+            self.penguin_purchase_title_label.config(text=i18n.tr("구매 완료:"))
+
+        if hasattr(self, "event_notice_label"):
+            self.event_notice_label.config(text=i18n.tr("현재 지원하는 이벤트가 없습니다"))
+
+        self.log_title_label.config(text=i18n.tr("로그"))
+        self.clear_log_btn.config(text=i18n.tr("로그 클리어"))
+        self.expand_log_btn.config(text=i18n.tr('옵션 다시 보기' if self.frame.expanded else '로그 확대'))
 
     def _open_release_page(self):
         self.app._request_app_update()
@@ -701,13 +956,15 @@ class SessionView:
         self.penguin_settings_frame = ttk.LabelFrame(self.penguin_tab, text="펭귄 구매 설정", padding=10)
         self.penguin_settings_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        ttk.Label(self.penguin_settings_frame, text="구매 사이클 횟수:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.penguin_cycle_title_label = ttk.Label(self.penguin_settings_frame, text="구매 사이클 횟수:")
+        self.penguin_cycle_title_label.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         penguin_cycle_frame = ttk.Frame(self.penguin_settings_frame, style="CardInner.TFrame")
         penguin_cycle_frame.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
         self.penguin_cycle_entry = ttk.Entry(penguin_cycle_frame, width=10)
         self.penguin_cycle_entry.insert(0, "10")
         self.penguin_cycle_entry.pack(side=tk.LEFT)
-        ttk.Label(penguin_cycle_frame, text="회").pack(side=tk.LEFT, padx=(4, 0))
+        self.penguin_cycle_unit_label = ttk.Label(penguin_cycle_frame, text="회")
+        self.penguin_cycle_unit_label.pack(side=tk.LEFT, padx=(4, 0))
 
         penguin_control_frame = ttk.Frame(self.penguin_tab, style="CardInner.TFrame", padding=10)
         penguin_control_frame.pack(fill=tk.X, padx=10, pady=5)
@@ -731,15 +988,18 @@ class SessionView:
         stats_grid = ttk.Frame(self.penguin_stats_frame, style="CardInner.TFrame")
         stats_grid.pack(fill=tk.X)
 
-        ttk.Label(stats_grid, text="완료 사이클:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        self.penguin_completed_title_label = ttk.Label(stats_grid, text="완료 사이클:")
+        self.penguin_completed_title_label.grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
         self.penguin_cycle_label = ttk.Label(stats_grid, text="0", foreground="#1E88E5", font=("맑은 고딕", 10, "bold"))
         self.penguin_cycle_label.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
 
-        ttk.Label(stats_grid, text="구매 시도:").grid(row=0, column=2, sticky=tk.W, padx=5, pady=2)
+        self.penguin_attempt_title_label = ttk.Label(stats_grid, text="구매 시도:")
+        self.penguin_attempt_title_label.grid(row=0, column=2, sticky=tk.W, padx=5, pady=2)
         self.penguin_attempt_label = ttk.Label(stats_grid, text="0", foreground="#1E88E5", font=("맑은 고딕", 10, "bold"))
         self.penguin_attempt_label.grid(row=0, column=3, sticky=tk.W, padx=5, pady=2)
 
-        ttk.Label(stats_grid, text="구매 완료:").grid(row=0, column=4, sticky=tk.W, padx=5, pady=2)
+        self.penguin_purchase_title_label = ttk.Label(stats_grid, text="구매 완료:")
+        self.penguin_purchase_title_label.grid(row=0, column=4, sticky=tk.W, padx=5, pady=2)
         self.penguin_purchase_label = ttk.Label(stats_grid, text="0", foreground="#1E88E5", font=("맑은 고딕", 10, "bold"))
         self.penguin_purchase_label.grid(row=0, column=5, sticky=tk.W, padx=5, pady=2)
 
@@ -944,7 +1204,7 @@ class SessionView:
 
 
     def refresh_macro_combo(self):
-        labels = [macro.get("name", macro.get("id", "macro")) for macro in self.app.macro_definitions]
+        labels = [i18n.tr(macro.get("name", macro.get("id", "macro"))) for macro in self.app.macro_definitions]
         self.macro_combo["values"] = labels
         selected_index = 0
         for index, macro in enumerate(self.app.macro_definitions):
@@ -1018,7 +1278,10 @@ class SessionView:
         }
         for key, widget in label_widgets.items():
             if key in labels:
-                widget.config(text=labels[key])
+                text = labels[key]
+                if key == "purchase_verification_count" and text == "구매 완료 검증 횟수:":
+                    text = "구매 완료 확인 최대 횟수:"
+                widget.config(text=text)
         if "debug_mode" in labels:
             self.debug_checkbox.config(text=labels["debug_mode"])
         if "buy_friendship_point" in labels:
@@ -1059,6 +1322,9 @@ class SessionView:
         for key, widget in stat_widgets.items():
             if key in stats:
                 widget.config(text=stats[key])
+
+        if i18n.get_language() != i18n.LANG_KO:
+            self.apply_ui_language()
 
     @classmethod
     def _refresh_count_to_sky_stones(cls, refresh_count):
@@ -1128,15 +1394,18 @@ class SessionView:
         runner = self._get_selected_runner()
         if getattr(self, "natural_refresh_var", None) is not None and self.natural_refresh_var.get():
             runner = "secret_shop"
+        base_label = i18n.tr(self.buy_count_default_label_text)
+        base_unit = i18n.tr(self.buy_count_default_unit_text)
         if runner == "steps":
-            self.buy_count_label.config(text=f"{self.buy_count_default_label_text} (steps 매크로 미사용)")
-            self.buy_count_unit_label.config(text=self.buy_count_steps_unit_text)
+            unused_suffix = i18n.tr("(steps 매크로 미사용)")
+            self.buy_count_label.config(text=f"{base_label} {unused_suffix}")
+            self.buy_count_unit_label.config(text=getattr(self, "buy_count_steps_unit_text", base_unit))
             if not self.is_running:
                 self.buy_count_entry.config(state=tk.DISABLED)
             return
 
-        self.buy_count_label.config(text=self.buy_count_default_label_text)
-        self.buy_count_unit_label.config(text=self.buy_count_default_unit_text)
+        self.buy_count_label.config(text=base_label)
+        self.buy_count_unit_label.config(text=base_unit)
         if not self.is_running:
             self.buy_count_entry.config(state=tk.NORMAL)
 
@@ -1185,17 +1454,17 @@ class SessionView:
         backend_type = self.backend_type_var.get()
         if backend_type == "stove":
             self.adb_ctrl_frame.grid_remove()
-            self.stove_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+            self.stove_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
             self.mumu_checkbox.config(state=tk.DISABLED)
-            self.connection_frame.config(text="연결 설정 (STOVE PC 클라이언트)")
+            self.connection_frame.config(text=i18n.tr("연결 설정 (STOVE PC 클라이언트)"))
             found = self._scan_stove_windows()
             if found:
                 self._connect_stove()
         else:
             self.stove_ctrl_frame.grid_remove()
-            self.adb_ctrl_frame.grid(row=1, column=0, columnspan=8, sticky=tk.W, padx=0, pady=4)
+            self.adb_ctrl_frame.grid(row=1, column=0, sticky=tk.W, padx=0, pady=4)
             self.mumu_checkbox.config(state=tk.NORMAL)
-            self.connection_frame.config(text="연결 설정 (ADB)")
+            self.connection_frame.config(text=i18n.tr("연결 설정 (ADB)"))
         if hasattr(self, 'frame') and hasattr(self.frame, 'options'):
             self.root.after_idle(self.frame.options._resize)
 
@@ -1238,19 +1507,13 @@ class SessionView:
                 logger.error("STOVE 창 검색 중 오류: %s", e)
                 self.scanned_stove_windows = []
 
+            self._refresh_stove_combo_labels()
             if not self.scanned_stove_windows:
-                self.stove_combo.config(values=["감지된 에픽세븐 창 없음 (게임을 먼저 실행하세요)"])
-                self.stove_combo.current(0)
                 logger.info("STOVE 에픽세븐 창을 찾을 수 없습니다. 게임이 실행 중인지 확인하세요.")
                 return False
             else:
-                options = [
-                    f"에픽세븐{' [최소화됨]' if w.is_minimized else ''} (HWND: 0x{w.hwnd:X}, {w.client_size[0]}x{w.client_size[1]})"
-                    for w in self.scanned_stove_windows
-                ]
-                self.stove_combo.config(values=options)
-                self.stove_combo.current(0)
-                logger.info("STOVE 창 감지 완료: %s", options[0])
+                options = self.stove_combo.cget("values")
+                logger.info("STOVE 창 감지 완료: %s", options[0] if options else "")
                 return True
 
     def _resize_stove_window(self):
@@ -1260,20 +1523,20 @@ class SessionView:
             if self.backend_type_var.get() != 'stove':
                 return
             if self.is_running or (self.bot_thread and self.bot_thread.is_alive()):
-                raise ValueError('봇을 중지한 뒤 크기를 조정하세요.')
+                raise ValueError(i18n.tr('봇을 중지한 뒤 크기를 조정하세요.'))
             index = self.stove_combo.current()
             if not 0 <= index < len(self.scanned_stove_windows):
-                raise ValueError('창 새로고침 후 에픽세븐 창을 선택하세요.')
+                raise ValueError(i18n.tr('창 새로고침 후 에픽세븐 창을 선택하세요.'))
             hwnd = self.scanned_stove_windows[index].hwnd
             info = WindowFinder.get_window_info(hwnd)
             if not info or info.class_name != 'GLFW30' or info.process_name.lower() not in ('epicseven.exe', 'epic7.exe'):
-                raise ValueError('선택한 게임 창을 확인할 수 없습니다. 창을 다시 검색하세요.')
+                raise ValueError(i18n.tr('선택한 게임 창을 확인할 수 없습니다. 창을 다시 검색하세요.'))
             for session in self.app.sessions:
                 device = session.adb_controller
                 backend = getattr(device, 'capture_backend', None)
                 if getattr(backend, 'hwnd', None) == hwnd:
                     if session.is_running or (session.bot_thread and session.bot_thread.is_alive()):
-                        raise ValueError('이 게임 창을 사용하는 봇을 중지한 뒤 크기를 조정하세요.')
+                        raise ValueError(i18n.tr('이 게임 창을 사용하는 봇을 중지한 뒤 크기를 조정하세요.'))
             resizer = WindowResizer()
             resizer.request(hwnd)
         except (OSError, ValueError) as exc:
@@ -1288,7 +1551,7 @@ class SessionView:
                 session._stove_resize_pending = True
                 self._stove_resize_sessions.append(session)
         self.stove_resize_btn.config(state=tk.DISABLED)
-        self.stove_resize_status.config(text='게임 화면 크기 확인 중…')
+        self.stove_resize_status.config(text=i18n.tr('게임 화면 크기 확인 중…'))
         self.root.after(250, lambda: self._verify_stove_size(resizer, hwnd, 0))
 
     def _verify_stove_size(self, resizer, hwnd, attempt):
@@ -1297,17 +1560,15 @@ class SessionView:
             if size != resizer.TARGET_SIZE and attempt < 7:
                 self.root.after(250, lambda: self._verify_stove_size(resizer, hwnd, attempt + 1))
                 return
-            text = '게임 화면 1280×720 확인' if size == resizer.TARGET_SIZE else f'현재 {size[0]}×{size[1]} — 크기 조정이 적용되지 않았습니다.'
             if size == resizer.TARGET_SIZE:
-                selected = self.stove_combo.current()
+                text = i18n.tr('게임 화면 1280×720 확인')
+            else:
+                text = i18n.tr('현재 {w}×{h} — 크기 조정이 적용되지 않았습니다.', w=size[0], h=size[1])
+            if size == resizer.TARGET_SIZE:
                 for window in self.scanned_stove_windows:
                     if window.hwnd == hwnd:
                         window.client_size = size
-                self.stove_combo.config(values=[
-                    f"에픽세븐{' [최소화됨]' if w.is_minimized else ''} (HWND: 0x{w.hwnd:X}, {w.client_size[0]}x{w.client_size[1]})"
-                    for w in self.scanned_stove_windows])
-                if selected >= 0:
-                    self.stove_combo.current(selected)
+                self._refresh_stove_combo_labels()
             self.stove_resize_status.config(text=text)
             logger.info('STOVE 창 크기 조정: %s', text)
         except (OSError, ValueError) as exc:
@@ -1349,7 +1610,7 @@ class SessionView:
 
             dev = BackendFactory.create_win32_device(hwnd=selected_hwnd)
             if not dev:
-                self.connection_status.config(text="● 창 없음", foreground="#E53935")
+                self._set_connection_status("● 창 없음", "#E53935")
                 logger.error("❌ 에픽세븐 클라이언트 창을 찾을 수 없습니다. 게임이 실행 중인지 확인하세요.")
                 return
 
@@ -1364,12 +1625,12 @@ class SessionView:
 
             connected, msg = dev.test_connection()
             if not connected:
-                self.connection_status.config(text="● 통신 실패", foreground="#E53935")
+                self._set_connection_status("● 통신 실패", "#E53935")
                 logger.error("❌ STOVE 연결 실패: %s", msg)
                 return
 
             self.adb_controller = dev
-            self.connection_status.config(text="● 연결됨 (STOVE)", foreground="#43A047")
+            self._set_connection_status("● 연결됨 (STOVE)", "#43A047")
             self.start_btn.config(state=tk.NORMAL)
             self.penguin_start_btn.config(state=tk.NORMAL)
             self.chaos_start_btn.config(state=tk.NORMAL)
@@ -1388,18 +1649,18 @@ class SessionView:
                 ip = self.ip_entry.get().strip()
                 port = self.port_entry.get().strip()
                 if not ip or not port:
-                    messagebox.showerror("오류", "IP 주소와 포트를 입력하세요.")
+                    messagebox.showerror(i18n.tr("오류"), i18n.tr("IP 주소와 포트를 입력하세요."))
                     return
                 try:
                     port = int(port)
                 except ValueError:
-                    messagebox.showerror("오류", "포트는 숫자여야 합니다.")
+                    messagebox.showerror(i18n.tr("오류"), i18n.tr("포트는 숫자여야 합니다."))
                     return
                 device_id = f"{ip}:{port}"
                 is_network_device = True
 
             if self.app.is_device_in_use(device_id, self):
-                self.connection_status.config(text="● 사용 중", foreground="#E53935")
+                self._set_connection_status("● 사용 중", "#E53935")
                 logger.error("❌ %s 장치는 다른 세션에서 이미 사용 중입니다.", device_id)
                 return
 
@@ -1415,7 +1676,7 @@ class SessionView:
                 logger.info("ADB 테스트 통신 확인 중...")
                 test_ok, test_message = self.adb_controller.test_connection()
                 if test_ok:
-                    self.connection_status.config(text="● 연결됨", foreground="#43A047")
+                    self._set_connection_status("● 연결됨", "#43A047")
                     self.start_btn.config(state=tk.NORMAL)
                     self.penguin_start_btn.config(state=tk.NORMAL)
                     self.chaos_start_btn.config(state=tk.NORMAL)
@@ -1424,13 +1685,13 @@ class SessionView:
                     self.disconnect_btn.config(state=tk.NORMAL)
                     logger.info("✅ ADB 연결 및 테스트 통신 성공: %s", device_id)
                 else:
-                    self.connection_status.config(text="● 통신 실패", foreground="#E53935")
+                    self._set_connection_status("● 통신 실패", "#E53935")
                     logger.error("❌ ADB 테스트 통신 실패: %s", test_message)
                     logger.error("앱플레이어의 ADB 브릿지/ADB 디버깅 옵션이 활성화되어 있는지 확인한 뒤 다시 연결하세요.")
                     self.adb_controller.disconnect()
                     self.adb_controller = None
             else:
-                self.connection_status.config(text="● 연결 실패", foreground="#E53935")
+                self._set_connection_status("● 연결 실패", "#E53935")
                 logger.error("❌ ADB 연결 실패: %s - 앱플레이어 실행 상태와 ADB 브릿지/ADB 디버깅 옵션을 확인하세요", device_id)
                 self.adb_controller = None
 
@@ -1454,7 +1715,7 @@ class SessionView:
             if self.is_running or getattr(self, '_stove_resize_pending', False):
                 return
             if not self.adb_controller:
-                messagebox.showerror("오류", "장치(ADB/STOVE)가 연결되지 않았습니다.")
+                messagebox.showerror(i18n.tr("오류"), i18n.tr("장치(ADB/STOVE)가 연결되지 않았습니다."))
                 return
 
             self.was_stopped_by_user = False
@@ -1490,8 +1751,11 @@ class SessionView:
                         raise ValueError(f"{key} 임계값은 70~99 사이여야 합니다.")
             except ValueError as e:
                 messagebox.showerror(
-                    "오류",
-                    f"설정값이 올바르지 않습니다.\n{str(e)}\n리프레시 횟수와 사용할 하늘석, 구매 횟수는 양수여야 하며,\n매칭 정확도는 70~99 사이여야 합니다.",
+                    i18n.tr("오류"),
+                    i18n.tr(
+                        "설정값이 올바르지 않습니다.\n{error}\n리프레시 횟수와 사용할 하늘석, 구매 횟수는 양수여야 하며,\n매칭 정확도는 70~99 사이여야 합니다.",
+                        error=str(e),
+                    ),
                 )
                 return
 
@@ -1747,7 +2011,7 @@ class SessionView:
                 self._update_stats(stats)
 
             if self.current_mode == "shop" and self.bot.paused:
-                self.pause_label.config(text="⏸️  일시정지 중")
+                self.pause_label.config(text=i18n.tr("⏸️  일시정지 중"))
                 self.pause_btn.config(state=tk.DISABLED)
                 self.resume_btn.config(state=tk.NORMAL)
             else:
@@ -1761,7 +2025,7 @@ class SessionView:
             if self.bot:
                 self.bot.set_user_action("pause")
                 self.log("⏸️ 일시정지 요청됨")
-                self.pause_label.config(text="⏸️  일시정지 중")
+                self.pause_label.config(text=i18n.tr("⏸️  일시정지 중"))
                 self.pause_btn.config(state=tk.DISABLED)
                 self.resume_btn.config(state=tk.NORMAL)
 
@@ -1842,7 +2106,7 @@ class SessionView:
     def _disconnect_stove(self):
         with log_session(self.name):
             if self.is_running:
-                messagebox.showwarning("경고", "봇이 실행 중일 때는 연결을 해제할 수 없습니다.")
+                messagebox.showwarning(i18n.tr("경고"), i18n.tr("봇이 실행 중일 때는 연결을 해제할 수 없습니다."))
                 return
             if self.adb_controller:
                 try:
@@ -1851,7 +2115,7 @@ class SessionView:
                     pass
                 self.adb_controller = None
             self.current_mode = None
-            self.connection_status.config(text="● 연결 안됨", foreground="#E53935")
+            self._set_connection_status("● 연결 안됨", "#E53935")
             self.start_btn.config(state=tk.DISABLED)
             self.penguin_start_btn.config(state=tk.DISABLED)
             self.penguin_stop_btn.config(state=tk.DISABLED)
@@ -1865,13 +2129,13 @@ class SessionView:
     def _disconnect_adb(self):
         with log_session(self.name):
             if self.is_running:
-                messagebox.showwarning("경고", "봇이 실행 중일 때는 연결을 해제할 수 없습니다.")
+                messagebox.showwarning(i18n.tr("경고"), i18n.tr("봇이 실행 중일 때는 연결을 해제할 수 없습니다."))
                 return
             if self.adb_controller:
                 self.adb_controller.disconnect()
                 self.adb_controller = None
             self.current_mode = None
-            self.connection_status.config(text="● 연결 안됨", foreground="#E53935")
+            self._set_connection_status("● 연결 안됨", "#E53935")
             self.start_btn.config(state=tk.DISABLED)
             self.penguin_start_btn.config(state=tk.DISABLED)
             self.penguin_stop_btn.config(state=tk.DISABLED)
@@ -1928,6 +2192,7 @@ class SessionView:
             self.current_mode = None
 
     def _update_stats(self, stats):
+        self._last_stats = stats
         completed_runs = stats.get("completed_runs", stats.get("total_refreshes", 0))
         sky_stone_usage = self._calculate_sky_stone_usage(stats)
         mystic_draws = self._calculate_draw_count(stats, "mystic_medal_bought")
@@ -2007,7 +2272,7 @@ class SessionView:
             return "-"
         sky_stone_per_draw = sky_stone_usage / draw_count
         formatted_value = f"{sky_stone_per_draw:.2f}".rstrip("0").rstrip(".")
-        return f"1뽑당 {formatted_value}개"
+        return i18n.tr("1뽑당 {value}개", value=formatted_value)
 
     def _format_elapsed_seconds(self, seconds):
         try:
@@ -2040,21 +2305,21 @@ class SessionView:
     def _test_image_matching(self):
         with log_session(self.name):
             if not self.adb_controller:
-                messagebox.showerror("오류", "장치(ADB/STOVE)가 연결되지 않았습니다.")
+                messagebox.showerror(i18n.tr("오류"), i18n.tr("장치(ADB/STOVE)가 연결되지 않았습니다."))
                 return
             if self.is_running:
-                messagebox.showwarning("경고", "봇이 실행 중일 때는 테스트할 수 없습니다.")
+                messagebox.showwarning(i18n.tr("경고"), i18n.tr("봇이 실행 중일 때는 테스트할 수 없습니다."))
                 return
 
             from tkinter import filedialog
 
             initial_dir = Path(__file__).parent.parent / "images"
             file_path = filedialog.askopenfilename(
-                title="테스트할 이미지 선택",
+                title=i18n.tr("테스트할 이미지 선택"),
                 initialdir=str(initial_dir),
                 filetypes=[
-                    ("이미지 파일", "*.png *.PNG *.jpg *.jpeg"),
-                    ("모든 파일", "*.*"),
+                    (i18n.tr("이미지 파일"), "*.png *.PNG *.jpg *.jpeg"),
+                    (i18n.tr("모든 파일"), "*.*"),
                 ],
             )
             if not file_path:
@@ -2091,10 +2356,15 @@ class SessionView:
 
                 template_path = diagnostic_dir / ("template" + Path(image_path).suffix)
                 shutil.copy2(image_path, template_path)
-                template = read_image(str(template_path))
+                matcher = ImageMatcher()
+                template = matcher.load_template(image_path)
                 if template is None:
                     logger.error("❌ 테스트 이미지를 로드할 수 없습니다: %s", image_path)
                     return
+
+                if template.shape[2] == 4:
+                    cv2.imencode('.png', template)[1].tofile(str(diagnostic_dir / 'masked_template.png'))
+                    logger.info("문자 제외 마스크를 적용합니다. masked_template.png에서 비교 영역을 확인하세요.")
 
                 logger.info("✅ 스크린샷 크기: %s", screenshot.shape)
                 logger.info("✅ 템플릿 크기: %s", template.shape)
@@ -2126,7 +2396,10 @@ class SessionView:
                     threshold_name = "갱신 버튼"
 
                 logger.info("📊 현재 임계값 (%s): %s%%", threshold_name, int(current_threshold * 100))
-                result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+                quantity_button = image_filename.startswith('purchase_button')
+                if quantity_button:
+                    logger.info("구입 버튼은 색상 대신 모양 점수를 표시합니다. 실제 구매 가능·완료 판정에는 수량과 같은 상품 확인을 함께 사용합니다.")
+                result = matcher.match_template(screenshot, template, shape_only=quantity_button)
                 _, max_val, _, max_loc = cv2.minMaxLoc(result)
                 logger.info("🔍 다양한 임계값 테스트 결과:")
                 for threshold in [0.99, 0.95, 0.92, 0.90, 0.85, 0.80, 0.75, 0.70]:
@@ -2179,15 +2452,26 @@ class SecretShopGUI:
         self.notebook = ttk.Notebook(self.root_container)
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
+        self.header_actions = ttk.Frame(self.root_container, style="Root.TFrame")
+        self.lang_button = ttk.Button(
+            self.header_actions,
+            text=i18n.get_language_button_text(),
+            command=self._on_toggle_language,
+            style="Language.TButton",
+            cursor="hand2",
+        )
+        self.lang_button.pack(side=tk.LEFT, padx=(0, 6))
+
         self.support_button = ttk.Button(
-            self.root_container,
-            text="제작자 후원 · Buy Me a Coffee",
+            self.header_actions,
+            text=i18n.tr("제작자 후원 · Buy Me a Coffee"),
             command=self._open_support_page,
             style="Support.TButton",
             cursor="hand2",
         )
-        self.support_button.place(relx=1.0, y=8, anchor="ne")
-        self.support_button.lift()
+        self.support_button.pack(side=tk.LEFT)
+        self.header_actions.place(relx=1.0, y=8, anchor="ne")
+        self.header_actions.lift()
         self.notebook.bind("<<NotebookTabChanged>>", self._on_main_tab_changed, add="+")
 
         self.sessions = [
@@ -2195,15 +2479,50 @@ class SecretShopGUI:
             SessionView(self, 2, self.notebook),
         ]
         for session in self.sessions:
-            self.notebook.add(session.frame, text=session.name)
+            self.notebook.add(session.frame, text=i18n.tr(session.name))
+
+        i18n.add_language_listener(self._on_language_changed)
+        self.root.bind("<Destroy>", self._on_root_destroy, add="+")
 
         self._setup_logging()
         self._restore_update_settings()
         self._start_settings_update()
         self._start_release_check()
 
+    def _on_root_destroy(self, event=None):
+        if event is None or getattr(event, "widget", None) is self.root:
+            i18n.remove_language_listener(self._on_language_changed)
+
+    def _on_language_changed(self, lang: str):
+        if hasattr(self, "lang_button"):
+            self.lang_button.config(text=i18n.get_language_button_text(lang))
+        if hasattr(self, "support_button"):
+            self.support_button.config(text=i18n.tr("제작자 후원 · Buy Me a Coffee"))
+        for session in getattr(self, "sessions", []):
+            if hasattr(self, "notebook"):
+                try:
+                    self.notebook.tab(session.frame, text=i18n.tr(session.name))
+                except Exception:
+                    pass
+            if hasattr(session, "_apply_language_feature_support"):
+                session._apply_language_feature_support(lang)
+            if hasattr(session, "apply_ui_language"):
+                session.apply_ui_language(lang)
+
+    def _on_toggle_language(self):
+        new_lang = i18n.toggle_language()
+        self._on_language_changed(new_lang)
+        logger.info("언어가 변경되었습니다: %s", new_lang)
+
     def _on_main_tab_changed(self, _event=None):
+        if hasattr(self, "header_actions"):
+            self.header_actions.lift()
         self.support_button.lift()
+        if hasattr(self, "lang_button"):
+            self.lang_button.lift()
+        for session in getattr(self, "sessions", []):
+            if hasattr(session, "_hide_disabled_tab_tooltip"):
+                session._hide_disabled_tab_tooltip()
         selected = self.notebook.select()
         if selected:
             tab_widget = self.notebook.nametowidget(selected)
@@ -2301,8 +2620,16 @@ class SecretShopGUI:
         )
         style.map(
             "TNotebook.Tab",
-            background=[("selected", colors["surface"]), ("active", colors["accent_soft"])],
-            foreground=[("selected", colors["accent"]), ("active", colors["ink"])],
+            background=[
+                ("disabled", colors["bg"]),
+                ("selected", colors["surface"]),
+                ("active", colors["accent_soft"]),
+            ],
+            foreground=[
+                ("disabled", "#b8aa9b"),
+                ("selected", colors["accent"]),
+                ("active", colors["ink"]),
+            ],
             padding=[("selected", (20, 10)), ("!selected", (14, 6))],
             font=[("selected", ("맑은 고딕", 10, "bold")), ("!selected", ("맑은 고딕", 9))],
         )
@@ -2343,6 +2670,28 @@ class SecretShopGUI:
             bordercolor=[("active", support_hover), ("disabled", colors["line"])],
             lightcolor=[("active", support_hover)],
             darkcolor=[("active", support_hover)],
+        )
+        lang_bg = "#35302c"
+        lang_hover = "#4a443e"
+        style.configure(
+            "Language.TButton",
+            background=lang_bg,
+            foreground="#ffffff",
+            bordercolor=lang_bg,
+            lightcolor=lang_bg,
+            darkcolor=lang_bg,
+            borderwidth=1,
+            focusthickness=0,
+            font=("맑은 고딕", 9, "bold"),
+            padding=(10, 4),
+        )
+        style.map(
+            "Language.TButton",
+            background=[("active", lang_hover), ("disabled", colors["surface_alt"])],
+            foreground=[("disabled", "#a79888"), ("active", "#ffffff")],
+            bordercolor=[("active", lang_hover), ("disabled", colors["line"])],
+            lightcolor=[("active", lang_hover)],
+            darkcolor=[("active", lang_hover)],
         )
         style.configure(
             "Accent.TButton",
@@ -2561,7 +2910,11 @@ class SecretShopGUI:
             except ValueError:
                 raise ValueError('자동 업데이트 프로그램이 없습니다. 이번 버전은 수동 설치해 주세요.')
         except ValueError as exc:
-            if messagebox.askyesno('자동 업데이트 안내', f'{exc}\n\n다운로드 페이지를 여시겠습니까?', parent=self.root):
+            if messagebox.askyesno(
+                i18n.tr('자동 업데이트 안내'),
+                i18n.tr('{error}\n\n다운로드 페이지를 여시겠습니까?', error=exc),
+                parent=self.root,
+            ):
                 self._open_release_page()
             return
         if not UpdateConfirmationDialog(self.root, self.release_info, APP_VERSION,
@@ -2569,11 +2922,11 @@ class SecretShopGUI:
             return
         self.update_in_progress = True
         self.update_window = tk.Toplevel(self.root)
-        self.update_window.title('앱 업데이트')
+        self.update_window.title(i18n.tr('앱 업데이트'))
         self.update_window.transient(self.root)
         self.update_window.protocol('WM_DELETE_WINDOW', lambda: None)
         self.update_window.grab_set()
-        self.update_status = ttk.Label(self.update_window, text='다운로드 준비 중...', padding=24)
+        self.update_status = ttk.Label(self.update_window, text=i18n.tr('다운로드 준비 중...'), padding=24)
         self.update_status.pack()
         self.update_progress = ttk.Progressbar(self.update_window, mode='indeterminate', length=320)
         self.update_progress.pack(padx=24, pady=(0,24))
@@ -2598,13 +2951,13 @@ class SecretShopGUI:
         self.update_progress.stop()
         self.update_window.grab_release()
         self.update_window.destroy()
-        messagebox.showerror('업데이트 실패',
+        messagebox.showerror(i18n.tr('업데이트 실패'),
             f'{error}\n\n현재 버전은 그대로 사용할 수 있습니다.\n진단 로그: {diagnostic_path(update_logger)}',
             parent=self.root)
 
     def _app_update_downloaded(self, plan):
         self.update_plan = plan
-        self.update_status.configure(text='봇 중지 및 업데이트 준비 중...')
+        self.update_status.configure(text=i18n.tr('봇 중지 및 업데이트 준비 중...'))
         for session in self.sessions:
             if session.is_running or (session.bot_thread and session.bot_thread.is_alive()):
                 session.request_stop_for_close()
@@ -2652,7 +3005,11 @@ class SecretShopGUI:
         path = Path(sys.executable).parent / 'updates/app-update-settings.json'
         path.parent.mkdir(exist_ok=True)
         values = [{key: var.get() for key, var in self._update_variables(s)} for s in self.sessions]
-        path.write_text(json.dumps(values, ensure_ascii=False), encoding='utf-8')
+        payload = {
+            'sessions': values,
+            'language': i18n.get_language(),
+        }
+        path.write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
 
     def _restore_update_settings(self):
         if not getattr(sys, 'frozen', False):
@@ -2661,7 +3018,16 @@ class SecretShopGUI:
         if not path.exists():
             return
         try:
-            values = json.loads(path.read_text(encoding='utf-8'))
+            raw = json.loads(path.read_text(encoding='utf-8'))
+            if isinstance(raw, dict) and 'sessions' in raw:
+                values = raw['sessions']
+                lang = raw.get('language')
+                if lang:
+                    i18n.set_language(lang)
+                    if hasattr(self, 'lang_button'):
+                        self.lang_button.config(text=i18n.get_language_button_text(lang))
+            else:
+                values = raw
             self._apply_update_settings(values)
             # Remote defaults arrive asynchronously; restore user choices after them too.
             self._updated_settings = values
@@ -2696,8 +3062,11 @@ class SecretShopGUI:
         except Exception as exc:
             logger.warning("후원 페이지를 열지 못했습니다: %s", exc)
         messagebox.showerror(
-            "후원 페이지 열기 실패",
-            f"기본 브라우저를 열지 못했습니다.\n아래 주소를 브라우저에 입력해 주세요.\n\n{SUPPORT_URL}",
+            i18n.tr("후원 페이지 열기 실패"),
+            i18n.tr(
+                "기본 브라우저를 열지 못했습니다.\n아래 주소를 브라우저에 입력해 주세요.\n\n{url}",
+                url=SUPPORT_URL,
+            ),
             parent=self.root,
         )
 
@@ -2725,8 +3094,11 @@ class SecretShopGUI:
 
         running_sessions = [session for session in self.sessions if session.is_running]
         if running_sessions:
-            names = ", ".join(session.name for session in running_sessions)
-            if not messagebox.askokcancel("종료", f"{names} 매크로가 실행 중입니다. 정말로 종료하시겠습니까?"):
+            names = ", ".join(i18n.tr(session.name) for session in running_sessions)
+            if not messagebox.askokcancel(
+                i18n.tr("종료"),
+                i18n.tr("{names} 매크로가 실행 중입니다. 정말로 종료하시겠습니까?", names=names),
+            ):
                 return
             for session in running_sessions:
                 session.request_stop_for_close()

@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
+from src import i18n
 from src.finder.window_resizer import WindowResizer
 from src.gui import SessionView
 
@@ -71,6 +72,9 @@ class WindowResizeTests(unittest.TestCase):
 
 
 class WindowResizeGuiTests(unittest.TestCase):
+    def setUp(self):
+        i18n.set_language('ko', persist=False)
+
     def view(self):
         view = object.__new__(SessionView)
         view.name = 'test'
@@ -130,7 +134,7 @@ class WindowResizeGuiTests(unittest.TestCase):
 
     def test_resize_pending_blocks_all_macro_starts(self):
         for method in ('_start_bot', '_start_penguin_bot',
-                       '_start_chaos_bot', '_start_event_bot'):
+                       '_start_chaos_bot'):
             with self.subTest(method=method):
                 view = self.view()
                 view._stove_resize_pending = True

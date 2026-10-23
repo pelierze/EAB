@@ -55,6 +55,7 @@ def used_images(root):
         if directory in ('images/buttons', 'images/items'):
             names |= remote_names
         used.update(p.relative_to(root).as_posix() for p in (root/directory).glob('*.png') if p.name in names)
+    used.add('images/buttons/template_masks.json')
     missing = sorted(name for name in used if not (root/name).is_file())
     if missing:
         raise FileNotFoundError('Missing release images: '+', '.join(missing))

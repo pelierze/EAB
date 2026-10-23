@@ -2,11 +2,14 @@ import tkinter as tk
 import unittest
 from unittest.mock import Mock
 
+from src import i18n
 from src.release_checker import ReleaseInfo
 from src.update_dialog import UpdateConfirmationDialog
 
 
 class UpdateDialogTests(unittest.TestCase):
+    def setUp(self):
+        i18n.set_language('ko', persist=False)
     def show(self, body, install=False):
         root = tk.Tk()
         self.addCleanup(root.destroy)

@@ -17,7 +17,7 @@
       "macro": "매크로:",
       "refresh_count": "리프레시 횟수:",
       "refresh_count_unit": "회",
-      "purchase_verification_count": "구매 완료 검증 횟수:",
+      "purchase_verification_count": "구매 완료 확인 최대 횟수:",
       "purchase_verification_count_unit": "회",
       "threshold_header": "=== 이미지 매칭 정확도 (70-99) ===",
       "mystic_medal": "신비의 메달:",

@@ -137,3 +137,55 @@ class ScrollDiagnosticsTests(unittest.TestCase):
         self.assertEqual(self.bot.scroll_diagnostics, [])
         self.assertIsNone(self.bot._pending_scroll_diagnostic)
         self.assertIsNone(self.bot._last_capture_info)
+
+    def test_is_screen_scrolled_detects_difference(self):
+        img1 = np.full((720, 1280, 3), 10, dtype=np.uint8)
+        img2 = np.full((720, 1280, 3), 10, dtype=np.uint8)
+        img3 = np.full((720, 1280, 3), 50, dtype=np.uint8)
+        self.assertFalse(SecretShopBot._is_screen_scrolled(img1, img2))
+        self.assertTrue(SecretShopBot._is_screen_scrolled(img1, img3))
+        self.assertTrue(SecretShopBot._is_screen_scrolled(None, img3))
+
+    def test_page2_scan_retries_scroll_when_screen_unmoved(self):
+        self.bot.enabled_items = []
+        self.capture('상점 스캔 1페이지', 10)
+        self.bot._scroll_down()
+        self.assertEqual(self.adb.swipe.call_count, 1)
+
+        # When scanning page 2, first capture is identical to page 1 (pixel=10, unmoved).
+        # On retry swipe, pixel becomes 60 (moved).
+        def on_swipe(*args, **kwargs):
+            self.pixel = 60
+            return True
+
+        self.adb.swipe.side_effect = on_swipe
+        self.pixel = 10
+        self.bot._scan_shop_page(page_num=2)
+
+        # Verified that swipe was retried because screen had not moved, then succeeded
+        self.assertEqual(self.adb.swipe.call_count, 2)
+
+    def test_page2_scan_retries_down_then_up_when_unmoved(self):
+        self.bot.enabled_items = []
+        self.capture('상점 스캔 1페이지', 10)
+        self.bot._scroll_down()
+        self.assertEqual(self.adb.swipe.call_count, 1)
+
+        swipes = []
+        def on_swipe(sx, sy, ex, ey, *args, **kwargs):
+            swipes.append((sy, ey))
+            # On the 3rd retry (total 4th swipe, which is scroll up), screen finally moves
+            if len(swipes) >= 3:
+                self.pixel = 60
+            return True
+
+        self.adb.swipe.side_effect = on_swipe
+        self.pixel = 10
+        self.bot._scan_shop_page(page_num=2)
+
+        # 1st retry: down (540 -> 180)
+        # 2nd retry: down (540 -> 180)
+        # 3rd retry: up (180 -> 540)
+        self.assertEqual(swipes[0], (540, 180)) # retry 1 (down)
+        self.assertEqual(swipes[1], (540, 180)) # retry 2 (down)
+        self.assertEqual(swipes[2], (180, 540)) # retry 3 (up)
