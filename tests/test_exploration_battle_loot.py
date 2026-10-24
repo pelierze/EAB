@@ -19,10 +19,36 @@ class BattleLootTests(unittest.TestCase):
         with np.load(ROOT / 'tests/fixtures/exploration/english_battle_loot_20261024.npz') as data:
             cls.screen = data['screen']
             cls.warning = data['warning']
+        with np.load(ROOT / 'tests/fixtures/exploration/english_battle_background_20261025.npz') as data:
+            cls.changed_background = data['screen']
 
     def test_real_english_loot_button(self):
         self.assertEqual(self.observer.classify(self.screen), 'victory')
         self.assertEqual(self.observer.find(self.screen, 'loot_reward'), (668, 506, 212, 55))
+
+    def test_reported_background_change_recognizes_loot(self):
+        self.assertEqual(self.observer.classify(self.changed_background), 'victory')
+        self.assertEqual(self.observer.find(self.changed_background, 'loot_reward'), (668, 506, 212, 55))
+        self.assertIsNone(self.observer.find(self.changed_background, 'battle_unresolved_reward'))
+
+    def test_card_mask_excludes_translucent_edges_and_contents(self):
+        screen = self.changed_background.copy()
+        mask = self.observer.templates['battle_reward_card'][:, :, 3] > 0
+        region = screen[164:590, 648:900]
+        saved = region.copy()
+        # Change every ignored card pixel, preserving the separately required
+        # loot icon and active button so only card geometry is under test.
+        region[~mask] = np.random.default_rng(25).integers(0, 256, region[~mask].shape, dtype=np.uint8)
+        region[51:131, 87:167] = saved[51:131, 87:167]
+        region[342:397, 20:232] = saved[342:397, 20:232]
+        self.assertIsNotNone(self.observer.find(screen, 'loot_reward'))
+
+    def test_both_lower_notches_are_required(self):
+        for x in (648, 884):
+            screen = self.changed_background.copy()
+            screen[439:474, x:x+16] = 0
+            with self.subTest(x=x):
+                self.assertIsNone(self.observer.find(screen, 'loot_reward'))
 
     def test_translated_captions_are_excluded(self):
         screen = self.screen.copy()

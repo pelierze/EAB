@@ -70,3 +70,8 @@ are sent. See `docs/i18n/exploration-recruit-ticket.md` for recognition and limi
 `logs/report/20261024_223840_086656_세션_1_ebee785c/screen.png`.
 These are real English captures. Caption removal and missing-component cases
 are synthetic. See `docs/i18n/exploration-battle-loot.md` for scope and limits.
+
+`english_battle_background_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_080018_895193_세션_1_4b8c8d58/screen.png`.
+It reproduces a translucent-card border mismatch against a different battle
+background. Background replacement and missing-notch cases are synthetic.

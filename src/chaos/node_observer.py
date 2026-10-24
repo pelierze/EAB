@@ -305,8 +305,9 @@ class NodeObserver:
             x, y, w, h = button
             center = x + w / 2
             card_region = (int(center-135), 150, 270, 455)
+            # Only the paired lower side notches belong to this mask. Long
+            # translucent edges and card contents vary with the scene behind it.
             if not (self.all(screen, 'battle_reward_card', card_region)
-                    or self.all(screen, 'recruit_card_frame', card_region)
                     or self.all(screen, 'battle_reward_card_legacy', card_region)):
                 continue
             icon_region = (int(center-55), 205, 110, 95)
