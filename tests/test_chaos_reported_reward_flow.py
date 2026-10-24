@@ -64,7 +64,7 @@ class ReportedRewardFlowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             bot = NodeProgressionBot(Mock(), ROOT, tmp, self.observer)
             frames = [self.frame('supply_menu_live.png'), self.frame('loot_cards_live.png'),
-                      self.frame('event_loot_popup_live.png'), self.frame('supply_menu_live.png'),
+                      self.frame('event_loot_popup_live.png'), self.frame('supply_done_live.png'),
                       self.frame('map_after_rest_live.png')]
             current = [0]
             taps = []

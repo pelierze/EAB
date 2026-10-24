@@ -165,12 +165,17 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
-            if name in ('rest_option_2', 'rest_option_3', 'rest_option_4'):
-                return self._rest_option_bounds(screen, name)
+            if name in ('rest_option_2', 'rest_option_3', 'rest_option_4', 'supply_menu_first'):
+                return self._menu_option_bounds(screen, name)
+            if name in ('supply_loot', 'supply_done'):
+                return (self.supply_controls(screen) or {}).get(name)
             if name in ('detail_rest', 'rest_done'):
                 return (self.rest_controls(screen) or {}).get(name)
             if name == 'leave':
                 controls = self.rest_controls(screen)
+                if controls:
+                    return controls['leave']
+                controls = self.supply_controls(screen)
                 if controls:
                     return controls['leave']
             if name == 'rank_title':
@@ -223,7 +228,7 @@ class NodeObserver:
         active = self.all(screen, 'detail_rest')
         if not active and not self.all(screen, 'rest_option_disabled'):
             return None
-        if not all(self._rest_option_bounds(screen, 'rest_option_' + str(i)) for i in (2, 3, 4)):
+        if not all(self._menu_option_bounds(screen, 'rest_option_' + str(i)) for i in (2, 3, 4)):
             return None
         leave = self.all(screen, 'action_frame')
         if len(leave) != 1:
@@ -232,17 +237,36 @@ class NodeObserver:
         return dict(leave=leave[0], detail_rest=active[0] if len(active) == 1 and not done else None,
                     rest_done=done[0] if len(done) == 1 else None)
 
-    def _rest_option_bounds(self, screen, name):
-        # Healing/revival choices can be active or disabled independently.
+    def _menu_option_bounds(self, screen, name):
+        # Unselected choices can be active or disabled independently.
         # Only their text-free geometry contributes to scene identification.
         definition = self.config['markers'][name]
         x, y, w, h = definition['region']
         sample = screen[y:y+h, x:x+w]
-        for template in (self.templates[name], self.templates['detail_rest']):
+        templates = [self.templates[name], self.templates['detail_rest']]
+        if name == 'supply_menu_first':
+            templates.append(self.templates['supply_first_disabled'])
+        for template in templates:
             score = ImageMatcher.match_template(sample, template, shape_only=True)
             if float(score[0, 0]) >= definition['threshold']:
                 return (x, y, w, h)
         return None
+
+    def supply_controls(self, screen):
+        # The lower chest body remains visible with the lid open or closed.
+        if not any(self.all(screen, 'supply_chest_' + state) for state in ('closed', 'open')):
+            return None
+        if not self._menu_option_bounds(screen, 'supply_menu_first'):
+            return None
+        active = self.all(screen, 'supply_loot')
+        if not active and not self.all(screen, 'supply_option_disabled'):
+            return None
+        leave = self.all(screen, 'action_frame')
+        if len(leave) != 1:
+            return None
+        done = self.all(screen, 'supply_done')
+        return dict(leave=leave[0], supply_loot=active[0] if len(active) == 1 and not done else None,
+                    supply_done=done[0] if len(done) == 1 else None)
 
     def is_rank_menu(self, screen):
         # Geometry + exploration footer + distinct party class icons; no OCR.
@@ -488,7 +512,7 @@ class NodeObserver:
             return 'victory'
         if self.find(screen,'shop_frame') and self.find(screen,'shop_exit'): return 'shop'
         if self.rest_controls(screen): return 'rest'
-        if self.find(screen,'leave') and (self.find(screen,'supply_loot') or self.find(screen,'supply_done')): return 'supply'
+        if self.supply_controls(screen): return 'supply'
         if self.find(screen, 'rank_title'): return 'rank_menu'
         if self.find(screen, 'skip'): return 'story'
         if self.event_result_marker(screen) and self.find(screen, 'event_advance') and not self.event_cards(screen): return 'event_result'
@@ -498,7 +522,6 @@ class NodeObserver:
             if self.find(screen, 'event_advance') and not self.event_cards(screen):
                 return 'unknown_event_result'
             return 'event'
-        if self.find(screen, 'leave'): return 'rest'
         if self.find(screen, 'battle_start'): return 'battle_setup'
         if self.find(screen, 'enter_node'):
             return self.detail_state(screen) or 'node_detail'

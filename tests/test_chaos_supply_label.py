@@ -27,10 +27,10 @@ class SupplyLabelTests(unittest.TestCase):
         self.assertIsNotNone(self.observer.find(screen, 'supply_done'))
         self.assertEqual(self.observer.classify(screen), 'supply')
 
-    def test_other_words_do_not_replace_missing_loot_label(self):
+    def test_loot_caption_is_not_required_with_chest_and_menu_frames(self):
         screen = read_image(str(RAW / 'supply_menu_local_live.png'))
         screen[402:430, 930:985] = 0
-        self.assertIsNone(self.observer.find(screen, 'supply_loot'))
+        self.assertIsNotNone(self.observer.find(screen, 'supply_loot'))
 
     def test_other_screens_do_not_match_label(self):
         for filename in ('rest_menu_live.png', 'supply_detail_live.png', 'map_after_rest_live.png'):
@@ -38,7 +38,7 @@ class SupplyLabelTests(unittest.TestCase):
                 self.assertIsNone(self.observer.find(read_image(str(RAW / filename)), 'supply_loot'))
 
     def test_label_source_is_packaged(self):
-        self.assertEqual(self.observer.templates['supply_loot'].shape[:2], (28, 55))
+        self.assertEqual(self.observer.templates['supply_loot'].shape, (94, 330, 4))
         self.assertIn('images/chaos/node_progression/raw/supply_menu_local_live.png', used_images(ROOT))
 
 

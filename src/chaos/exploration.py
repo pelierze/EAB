@@ -136,7 +136,9 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'supply_detail', 'elite_detail', 'boss_detail', 'event_detail',
                        'rest_static_left', 'rest_static_roof', 'detail_rest', 'rest_done',
                        'rest_option_disabled', 'rest_option_2', 'rest_option_3', 'rest_option_4',
-                       'leave', 'rank_title', 'rank_button')
+                       'leave', 'rank_title', 'rank_button', 'supply_chest_closed',
+                       'supply_chest_open', 'supply_menu_first', 'supply_option_disabled',
+                       'supply_first_disabled')
             metadata = {'phase': phase, 'reason': self.stats.get('reason'), 'markers': {}}
             try:
                 metadata['state'] = self.observer.classify(self.last_screen)
@@ -571,7 +573,8 @@ class NodeProgressionBot(KnightRecruitmentBot):
                     if state != 'supply':
                         return state
 
-        leave_btn = self._wait('보급 떠나기 확인', lambda s: self.observer.find(s, 'leave') if self._classify(s) == 'supply' or self.observer.find(s, 'leave') else None)
+        leave_btn = self._wait('보급 완료 체크 및 떠나기 확인', lambda s: self.observer.find(s, 'leave')
+                               if self._classify(s) == 'supply' and self.observer.find(s, 'supply_done') else None)
         self._tap(leave_btn)
 
         def after_leave(s):

@@ -1559,6 +1559,157 @@
     },
     {
       "group": "node",
+      "marker": "supply_first_disabled",
+      "source": "images/chaos/node_progression/raw/supply_done_live.png",
+      "crop": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ],
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "supply_chest_closed",
+      "source": "images/chaos/node_progression/raw/supply_menu_local_live.png",
+      "crop": [
+        590,
+        515,
+        120,
+        35
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        575,
+        505,
+        155,
+        60
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "supply_chest_open",
+      "source": "images/chaos/node_progression/raw/supply_done_live.png",
+      "crop": [
+        590,
+        515,
+        120,
+        35
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        575,
+        505,
+        155,
+        60
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "supply_menu_first",
+      "source": "images/chaos/node_progression/raw/supply_menu_local_live.png",
+      "crop": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ],
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "supply_option_disabled",
+      "source": "images/chaos/node_progression/raw/supply_done_live.png",
+      "crop": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ],
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
       "marker": "rest_static_left",
       "source": "images/chaos/node_progression/raw/rest_menu_local_live.png",
       "crop": [
@@ -3310,24 +3461,31 @@
       "marker": "supply_loot",
       "source": "images/chaos/node_progression/raw/supply_menu_local_live.png",
       "crop": [
-        930,
-        402,
-        55,
-        28
+        905,
+        368,
+        330,
+        94
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
-      "region": [
-        920,
-        380,
-        270,
-        75
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
       ],
-      "threshold": 0.85,
-      "max_color_error": 0.1,
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },

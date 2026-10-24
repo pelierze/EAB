@@ -46,3 +46,11 @@ See `docs/i18n/exploration-detail-icons.md` for icon crops and validation scope.
 The rest-menu tests mutate fire, flag, characters and captions; rank-menu text
 is removed from Korean captures, and the English completion is synthetic.
 See `docs/i18n/exploration-rest-menu.md` for scope and animation exclusions.
+
+## Reported English supply menu
+
+`english_supply_menu_20261024.npz` contains the unmodified BGR `screen` from
+`logs/report/20261024_220455_435636_세션_1_c8e7491d/screen.png`.
+Tests replace chest lid/effects, party and captions, retain the lower chest
+body, and replay menu selection with loot handling stubbed. Completion uses
+the Korean source with captions erased. See `docs/i18n/exploration-supply-menu.md`.
