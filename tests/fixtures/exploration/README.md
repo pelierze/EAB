@@ -86,3 +86,8 @@ different background appearance. Caption/sparkle changes and dimming are synthet
 It is a real English victory with loot and an All-Class recruitment ticket.
 Claim acknowledgement and missing-component cases are synthetic; loot selection
 and hero confirmation are covered separately, with no live game input.
+
+`english_rest_active_recovery_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_082618_801870_세션_1_56731009/screen.png`.
+It has an active fourth recovery option. Caption/sparkle changes and the completed
+rank-up state are synthetic; the reported screen itself is a real English capture.

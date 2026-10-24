@@ -138,7 +138,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'enter_node', 'action_frame', 'detail_battle', 'rest_detail',
                        'supply_detail', 'elite_detail', 'boss_detail', 'event_detail',
                        'rest_static_left', 'rest_static_roof', 'detail_rest', 'rest_done',
-                       'rest_option_disabled', 'rest_option_2', 'rest_option_3', 'rest_option_4',
+                       'rest_option_disabled', 'rest_option_2', 'rest_option_3', 'rest_option_4', 'rest_option_4_active',
                        'leave', 'rank_title', 'rank_button', 'supply_chest_closed',
                        'supply_chest_open', 'supply_menu_first', 'supply_option_disabled',
                        'supply_menu_first_variant', 'supply_loot_variant',

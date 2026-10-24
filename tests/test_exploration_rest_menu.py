@@ -19,6 +19,8 @@ class RestMenuTests(unittest.TestCase):
         cls.observer = NodeObserver(ROOT)
         with np.load(ROOT / 'tests/fixtures/exploration/english_rest_menu_20261024.npz') as data:
             cls.english = data['screen']
+        with np.load(ROOT / 'tests/fixtures/exploration/english_rest_active_recovery_20261025.npz') as data:
+            cls.latest = data['screen']
 
     def frame(self, name):
         return read_image(str(RAW / name))
@@ -27,6 +29,30 @@ class RestMenuTests(unittest.TestCase):
         self.assertEqual(self.observer.classify(self.english), 'rest')
         self.assertEqual(self.observer.find(self.english, 'detail_rest'), (905, 148, 330, 94))
         self.assertEqual(self.observer.find(self.english, 'leave'), (938, 628, 300, 64))
+
+    def test_latest_rest_with_active_fourth_option(self):
+        self.assertEqual(self.observer.classify(self.latest), 'rest')
+        self.assertEqual(self.observer.find(self.latest, 'detail_rest'), (905, 148, 330, 94))
+        self.assertEqual(self.observer.find(self.latest, 'rest_option_4'), (905, 478, 330, 94))
+
+    def test_latest_wrapped_captions_and_sparkles_are_excluded(self):
+        screen = self.latest.copy()
+        rng = np.random.default_rng(25)
+        for y in (148, 258, 368, 478):
+            for x0, y0, w, h in self.observer.config['markers']['detail_rest']['exclude']:
+                screen[y+y0:y+y0+h, 905+x0:905+x0+w] = rng.integers(0, 256, (h, w, 3), dtype=np.uint8)
+        self.assertEqual(self.observer.rest_controls(screen), self.observer.rest_controls(self.latest))
+
+    def test_latest_fourth_option_cannot_replace_missing_scene_or_top_activation(self):
+        for x, y, w, h in ((250, 235, 90, 65), (905, 478, 330, 94)):
+            screen = self.latest.copy()
+            screen[y:y+h, x:x+w] = 0
+            with self.subTest(bounds=(x, y, w, h)):
+                self.assertIsNone(self.observer.find(screen, 'detail_rest'))
+        screen = self.latest.copy()
+        screen[148:242, 905:1235] //= 2
+        self.assertIsNone(self.observer.find(screen, 'detail_rest'))
+        self.assertIsNone(self.observer.find(screen, 'rest_done'))
 
     def test_fire_flag_and_character_animation_are_outside_observation_regions(self):
         screen = self.english.copy()
@@ -114,12 +140,18 @@ class RestMenuTests(unittest.TestCase):
         self.assertFalse(self.observer.is_rank_menu(screen))
 
     def test_rest_replay_selects_top_then_target_then_rank_then_leave(self):
+        self.assert_rest_replay(self.english)
+
+    def test_latest_rest_replay_selects_only_top_and_leaves_after_rankup(self):
+        self.assert_rest_replay(self.latest)
+
+    def assert_rest_replay(self, start):
         observer = NodeObserver(ROOT)
         observer.config.update(timeout_seconds=8, stable_frames=2, poll_seconds=0)
-        complete = self.english.copy()
+        complete = start.copy()
         complete[148:242, 905:1235] = self.frame('rest_completed_live.png')[148:242, 905:1235]
         complete[168:226, 925:1165] = 0  # synthetic translated completion, preserve check icon
-        screens = [self.english, self.no_rank_captions(self.frame('rest_rank_menu_live.png')),
+        screens = [start, self.no_rank_captions(self.frame('rest_rank_menu_live.png')),
                    self.no_rank_captions(self.frame('rest_wukong_selected_live.png')),
                    self.frame('rest_wukong_rankup_live.png'), complete, self.frame('map_after_rest_live.png')]
         with tempfile.TemporaryDirectory() as tmp, patch.object(observer, 'forbidden', return_value=[]):

@@ -260,6 +260,8 @@ class NodeObserver:
         if name == 'supply_menu_first':
             templates.append(self.templates['supply_first_disabled'])
             templates.append(self.templates['supply_menu_first_variant'])
+        if name == 'rest_option_4':
+            templates.append(self.templates['rest_option_4_active'])
         for template in templates:
             score = ImageMatcher.match_template(sample, template, shape_only=True)
             if float(score[0, 0]) >= definition['threshold']:

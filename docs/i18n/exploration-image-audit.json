@@ -2111,10 +2111,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -2144,10 +2150,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -2177,10 +2189,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -2210,10 +2228,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -2668,10 +2692,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -7947,6 +7977,45 @@
         1,
         1.05
       ]
+    },
+    {
+      "group": "node",
+      "marker": "rest_option_4_active",
+      "source": "images/chaos/node_progression/templates/rest/recovery_active.png",
+      "crop": [
+        0,
+        0,
+        330,
+        94
+      ],
+      "source_size": [
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "region": [
+        905,
+        478,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
     },
     {
       "group": "theme",
