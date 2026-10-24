@@ -38,3 +38,11 @@ level-up and victory. The offline replay skips combat and sends no game inputs.
 `logs/report/20261024_173442_158401_세션_1_30b8995c/screen.png`.
 It reproduces the timeout after choosing Rest with the detail pane still open.
 See `docs/i18n/exploration-detail-icons.md` for icon crops and validation scope.
+
+## Reported English rest menu
+
+`english_rest_menu_20261024.npz` contains the unmodified BGR `screen` from
+`logs/report/20261024_213111_679066_세션_1_d0ef9bca/screen.png`.
+The rest-menu tests mutate fire, flag, characters and captions; rank-menu text
+is removed from Korean captures, and the English completion is synthetic.
+See `docs/i18n/exploration-rest-menu.md` for scope and animation exclusions.

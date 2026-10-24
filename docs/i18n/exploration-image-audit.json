@@ -1559,6 +1559,190 @@
     },
     {
       "group": "node",
+      "marker": "rest_static_left",
+      "source": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        250,
+        235,
+        90,
+        65
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        250,
+        235,
+        90,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "rest_static_roof",
+      "source": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        700,
+        230,
+        80,
+        50
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        700,
+        230,
+        80,
+        50
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "rest_option_disabled",
+      "source": "images/chaos/node_progression/raw/rest_completed_live.png",
+      "crop": [
+        905,
+        148,
+        330,
+        94
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ],
+      "region": [
+        905,
+        148,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "rest_option_2",
+      "source": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ],
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "rest_option_3",
+      "source": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ],
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "rest_option_4",
+      "source": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        478,
+        330,
+        94
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ],
+      "region": [
+        905,
+        478,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
       "marker": "entry_action",
       "source": "images/chaos/hero_selection/templates/controls/entry_action.png",
       "crop": [
@@ -1987,21 +2171,28 @@
       "marker": "detail_rest",
       "source": "images/chaos/node_progression/raw/rest_menu_local_live.png",
       "crop": [
-        987,
-        184,
-        37,
-        26
+        905,
+        148,
+        330,
+        94
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ],
       "region": [
-        920,
-        170,
-        290,
-        45
+        905,
+        148,
+        330,
+        94
       ],
       "threshold": 0.9,
       "max_color_error": 0.055,
@@ -2039,24 +2230,31 @@
       "marker": "rank_title",
       "source": "images/chaos/node_progression/raw/rest_rank_menu_live.png",
       "crop": [
-        66,
-        17,
-        150,
-        34
+        0,
+        65,
+        322,
+        540
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
+      "exclude": [
+        [
+          12,
+          12,
+          298,
+          516
+        ]
+      ],
       "region": [
-        50,
-        5,
-        240,
-        60
+        0,
+        65,
+        322,
+        540
       ],
       "threshold": 0.9,
-      "max_color_error": 0.055,
+      "max_color_error": 0.09,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },
@@ -2349,18 +2547,25 @@
     {
       "group": "node",
       "marker": "rank_button",
-      "source": "images/chaos/node_progression/raw/rest_wukong_selected_live.png",
+      "source": "images/chaos/hero_selection/templates/controls/exploration_action.png",
       "crop": [
-        1036,
-        646,
-        109,
-        29
+        0,
+        0,
+        300,
+        64
       ],
       "source_size": [
-        1280,
-        720
+        300,
+        64
       ],
-      "exclude": [],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
+      ],
       "region": [
         930,
         620,

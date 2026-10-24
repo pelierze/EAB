@@ -133,7 +133,10 @@ class NodeProgressionBot(KnightRecruitmentBot):
             markers = ('levelup', 'level_close', 'victory', 'continue', 'supply_loot',
                        'supply_done', 'loot_button', 'loot_button_dim', 'event_loot_close',
                        'enter_node', 'action_frame', 'detail_battle', 'rest_detail',
-                       'supply_detail', 'elite_detail', 'boss_detail', 'event_detail')
+                       'supply_detail', 'elite_detail', 'boss_detail', 'event_detail',
+                       'rest_static_left', 'rest_static_roof', 'detail_rest', 'rest_done',
+                       'rest_option_disabled', 'rest_option_2', 'rest_option_3', 'rest_option_4',
+                       'leave', 'rank_title', 'rank_button')
             metadata = {'phase': phase, 'reason': self.stats.get('reason'), 'markers': {}}
             try:
                 metadata['state'] = self.observer.classify(self.last_screen)
@@ -432,11 +435,11 @@ class NodeProgressionBot(KnightRecruitmentBot):
             raise RuntimeError('랭크업 대상이 변경됐습니다.')
         hero, old_rank, *bounds = target
         self._tap(bounds)
-        # Selected hero name in the left detail panel must match the target name.
+        # Verify the target party class and its gold selection border.
         def selected(screen):
             if self.observer.classify(screen) != 'rank_menu': return None
             if self.observer.forbidden(screen): raise RuntimeError('금지 항목 발견')
-            return self.observer.find(screen, 'rank_button') if (self.observer.find(screen, hero+'_selected') or self.observer.find(screen, hero)) else None
+            return self.observer.find(screen, 'rank_button') if self.observer.rank_hero_selected(screen, hero) else None
         button = self._wait('선택 영웅과 랭크업 버튼 확인', selected)
         if selected(self._capture()) != button: raise RuntimeError('랭크업 선택 상태 변경')
         self._tap(button)
@@ -462,7 +465,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
             def rankup_disabled(s):
                 if self.observer.classify(s) != 'rest':
                     return None
-                if self.observer.find(s, 'rest_done') or not self.observer.find(s, 'detail_rest'):
+                if self.observer.find(s, 'rest_done'):
                     return self.observer.find(s, 'leave')
                 return None
             leave_btn = self._wait('휴식 랭크업 비활성화(완료표시) 및 떠나기 확인', rankup_disabled)

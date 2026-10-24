@@ -116,7 +116,7 @@ class NodeObserver:
         d = self.config['markers'][name]
         return self.matches(screen, self.templates[name], region or d.get('region', [0,0,1280,720]), d['threshold'], d['max_color_error'])
 
-    def scan_rank_menu_heroes(self, screen):
+    def _rank_menu_rows(self, screen):
         results = {}
         if not self.class_templates:
             return results
@@ -136,25 +136,50 @@ class NodeObserver:
 
             if best_class and best_score >= 0.80:
                 cx, cy = best_loc
-                y_digit_start = cy + 35
-                y_digit_end = cy + 61
-                x_digit_start = max(0, cx + 13)
-                x_digit_end = cx + 30
+                if best_class in results:
+                    return {}
+                results[best_class] = dict(row=row_idx, origin=(cx, cy), score=best_score)
+        return results
 
-                digit = self.read_rank_digit(screen[y_digit_start:y_digit_end, x_digit_start:x_digit_end])
-                if digit is None:
-                    digit = self.read_rank_digit(screen[y_digit_start:y_digit_end, max(0, cx - 1):cx + 35], allow_max=True)
+    def scan_rank_menu_heroes(self, screen):
+        results = {}
+        for best_class, info in self._rank_menu_rows(screen).items():
+            cx, cy = info['origin']
+            y_digit_start = cy + 35
+            y_digit_end = cy + 61
+            x_digit_start = max(0, cx + 13)
+            x_digit_end = cx + 30
 
-                results[best_class] = {
-                    'row': row_idx,
-                    'class': best_class,
-                    'score': best_score,
-                    'rank': digit,
-                    'bounds': (397, cy, 140, 27)
-                }
+            digit = self.read_rank_digit(screen[y_digit_start:y_digit_end, x_digit_start:x_digit_end])
+            if digit is None:
+                digit = self.read_rank_digit(screen[y_digit_start:y_digit_end, max(0, cx - 1):cx + 35], allow_max=True)
+
+            results[best_class] = {
+                'row': info['row'],
+                'class': best_class,
+                'score': info['score'],
+                'rank': digit,
+                'bounds': (397, cy, 140, 27)
+            }
         return results
 
     def find(self, screen, name, region=None):
+        if region is None:
+            if name in ('rest_option_2', 'rest_option_3', 'rest_option_4'):
+                return self._rest_option_bounds(screen, name)
+            if name in ('detail_rest', 'rest_done'):
+                return (self.rest_controls(screen) or {}).get(name)
+            if name == 'leave':
+                controls = self.rest_controls(screen)
+                if controls:
+                    return controls['leave']
+            if name == 'rank_title':
+                return tuple(self.config['markers'][name]['crop']) if self.is_rank_menu(screen) else None
+            if name == 'rank_button':
+                if self.is_rank_menu(screen) and sum(self._rank_row_selected(screen, i) for i in range(4)) == 1:
+                    matches = self.all(screen, name)
+                    return matches[0] if len(matches) == 1 else None
+                return None
         if name == 'battle_rank_complete':
             # A completed battle reward has its class icon at the card's lower
             # right. Require the victory heading and the active continue control.
@@ -183,13 +208,64 @@ class NodeObserver:
                     return self.find(screen, 'action_frame')
                 if name == 'continue' and self.find(screen, 'victory'):
                     return self.find(screen, 'continue_frame')
-        if 'rank_title' in self.config['markers'] and bool(self.all(screen, 'rank_title')):
-            target_class = self.hero_to_class.get(name, name)
-            if target_class in self.class_templates:
-                scan = self.scan_rank_menu_heroes(screen)
-                if target_class in scan:
-                    return scan[target_class]['bounds']
+        target_class = self.hero_to_class.get(name, name)
+        if target_class in self.class_templates and self.is_rank_menu(screen):
+            scan = self.scan_rank_menu_heroes(screen)
+            if target_class in scan:
+                return scan[target_class]['bounds']
         return None
+
+    def rest_controls(self, screen):
+        # Both patches avoid the flag, fire, characters, and menu captions.
+        for name in ('rest_static_left', 'rest_static_roof'):
+            if not self.all(screen, name):
+                return None
+        active = self.all(screen, 'detail_rest')
+        if not active and not self.all(screen, 'rest_option_disabled'):
+            return None
+        if not all(self._rest_option_bounds(screen, 'rest_option_' + str(i)) for i in (2, 3, 4)):
+            return None
+        leave = self.all(screen, 'action_frame')
+        if len(leave) != 1:
+            return None
+        done = self.all(screen, 'rest_done')
+        return dict(leave=leave[0], detail_rest=active[0] if len(active) == 1 and not done else None,
+                    rest_done=done[0] if len(done) == 1 else None)
+
+    def _rest_option_bounds(self, screen, name):
+        # Healing/revival choices can be active or disabled independently.
+        # Only their text-free geometry contributes to scene identification.
+        definition = self.config['markers'][name]
+        x, y, w, h = definition['region']
+        sample = screen[y:y+h, x:x+w]
+        for template in (self.templates[name], self.templates['detail_rest']):
+            score = ImageMatcher.match_template(sample, template, shape_only=True)
+            if float(score[0, 0]) >= definition['threshold']:
+                return (x, y, w, h)
+        return None
+
+    def is_rank_menu(self, screen):
+        # Geometry + exploration footer + distinct party class icons; no OCR.
+        # Departures can leave fewer than four heroes in the party.
+        return bool(self.all(screen, 'rank_title') and self.all(screen, 'map_footer')
+                    and self._rank_menu_rows(screen))
+
+    @staticmethod
+    def _rank_row_selected(screen, row):
+        y = 80 + 105 * row
+        regions = ((365, y-2, 630, y+12), (365, y+78, 630, y+94),
+                   (337, y+15, 359, y+75))
+        for i, (x1, y1, x2, y2) in enumerate(regions):
+            hsv = cv2.cvtColor(screen[y1:y2, x1:x2], cv2.COLOR_BGR2HSV)
+            gold = cv2.inRange(hsv, np.array([10, 25, 150]), np.array([40, 255, 255]))
+            if (gold > 0).any(axis=0 if i < 2 else 1).mean() < .75:
+                return False
+        return True
+
+    def rank_hero_selected(self, screen, hero):
+        role = self.hero_to_class.get(hero, hero)
+        info = self._rank_menu_rows(screen).get(role)
+        return bool(info and self._rank_row_selected(screen, info['row']))
 
     def detail_state(self, screen):
         """Require exactly one kind of icon in the right-hand detail header."""
@@ -411,6 +487,7 @@ class NodeObserver:
             if self.find(screen, 'battle_rank_complete'): return 'battle_rank_complete'
             return 'victory'
         if self.find(screen,'shop_frame') and self.find(screen,'shop_exit'): return 'shop'
+        if self.rest_controls(screen): return 'rest'
         if self.find(screen,'leave') and (self.find(screen,'supply_loot') or self.find(screen,'supply_done')): return 'supply'
         if self.find(screen, 'rank_title'): return 'rank_menu'
         if self.find(screen, 'skip'): return 'story'
@@ -583,7 +660,7 @@ class NodeObserver:
         return available
 
     def rank(self, screen, name):
-        if 'rank_title' in self.config['markers'] and bool(self.all(screen, 'rank_title')):
+        if self.is_rank_menu(screen):
             target_class = self.hero_to_class.get(name, name)
             if target_class in self.class_templates:
                 scan = self.scan_rank_menu_heroes(screen)

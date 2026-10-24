@@ -28,6 +28,140 @@
     "event"
   ],
   "markers": {
+    "rest_static_left": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        250,
+        235,
+        90,
+        65
+      ],
+      "region": [
+        250,
+        235,
+        90,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "rest_static_roof": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        700,
+        230,
+        80,
+        50
+      ],
+      "region": [
+        700,
+        230,
+        80,
+        50
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "rest_option_disabled": {
+      "file": "images/chaos/node_progression/raw/rest_completed_live.png",
+      "crop": [
+        905,
+        148,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        148,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ]
+    },
+    "rest_option_2": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ]
+    },
+    "rest_option_3": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ]
+    },
+    "rest_option_4": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        478,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        478,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
+      ]
+    },
     "entry_action": {
       "file": "images/chaos/hero_selection/templates/controls/entry_action.png",
       "threshold": 0.9,
@@ -259,19 +393,27 @@
     },
     "detail_rest": {
       "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
-      "threshold": 0.9,
-      "max_color_error": 0.055,
       "crop": [
-        987,
-        184,
-        37,
-        26
+        905,
+        148,
+        330,
+        94
       ],
       "region": [
-        920,
-        170,
-        290,
-        45
+        905,
+        148,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "exclude": [
+        [
+          20,
+          20,
+          290,
+          58
+        ]
       ]
     },
     "rest_done": {
@@ -293,19 +435,27 @@
     },
     "rank_title": {
       "file": "images/chaos/node_progression/raw/rest_rank_menu_live.png",
-      "threshold": 0.9,
-      "max_color_error": 0.055,
       "crop": [
-        66,
-        17,
-        150,
-        34
+        0,
+        65,
+        322,
+        540
       ],
       "region": [
-        50,
-        5,
-        240,
-        60
+        0,
+        65,
+        322,
+        540
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          12,
+          12,
+          298,
+          516
+        ]
       ]
     },
     "wukong": {
@@ -496,20 +646,22 @@
       ]
     },
     "rank_button": {
-      "file": "images/chaos/node_progression/raw/rest_wukong_selected_live.png",
+      "file": "images/chaos/hero_selection/templates/controls/exploration_action.png",
       "threshold": 0.9,
       "max_color_error": 0.055,
-      "crop": [
-        1036,
-        646,
-        109,
-        29
-      ],
       "region": [
         930,
         620,
         320,
         80
+      ],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
       ]
     },
     "levelup": {

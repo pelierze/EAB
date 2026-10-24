@@ -100,6 +100,8 @@ class RankResultTests(unittest.TestCase):
             with patch.object(self.observer, 'classify', side_effect=lambda s: 'rank_menu' if s is menu else original_classify(s)), \
                  patch.object(self.observer, 'find', side_effect=lambda s,n: (10,20,30,40) if s is menu else original_find(s,n)), \
                  patch.object(self.observer, 'forbidden', return_value=[]), \
+                   patch.object(self.observer, 'rank_hero_selected', return_value=True), \
+                   patch.dict(self.observer.config, timeout_seconds=3, recognition_attempts=1), \
                  patch.object(self.observer, 'read_rank_digit') as digit:
                 bot._rankup()
                 digit.assert_not_called()
