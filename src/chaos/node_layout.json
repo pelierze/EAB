@@ -3883,6 +3883,97 @@
       ],
       "threshold": 0.92,
       "max_color_error": 0.055
+    },
+    "battle_loot_icon": {
+      "file": "images/chaos/node_progression/templates/battle/loot_icon.png",
+      "region": [
+        240,
+        205,
+        800,
+        95
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "battle_reward_button": {
+      "file": "images/chaos/node_progression/templates/battle/reward_button.png",
+      "region": [
+        220,
+        495,
+        850,
+        80
+      ],
+      "exclude": [
+        [
+          18,
+          8,
+          176,
+          38
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "battle_rank_icon": {
+      "file": "images/chaos/node_progression/raw/battle/victory_rank_reward_live.png",
+      "crop": [
+        600,
+        215,
+        80,
+        80
+      ],
+      "region": [
+        240,
+        205,
+        800,
+        95
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "battle_reward_card": {
+      "file": "images/chaos/node_progression/templates/battle/reward_card.png",
+      "region": [
+        240,
+        150,
+        800,
+        455
+      ],
+      "exclude": [
+        [
+          14,
+          14,
+          224,
+          398
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "battle_reward_card_legacy": {
+      "file": "images/chaos/node_progression/raw/boss_victory_rewards_live.png",
+      "region": [
+        240,
+        150,
+        800,
+        455
+      ],
+      "exclude": [
+        [
+          14,
+          14,
+          224,
+          398
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "crop": [
+        515,
+        164,
+        252,
+        426
+      ]
     }
   },
   "loot_cards": [

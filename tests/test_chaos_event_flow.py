@@ -119,7 +119,8 @@ class EventTraversalTest(unittest.TestCase):
                 bot._state = Mock(return_value=reward)
                 self.assertEqual(bot._victory(), reward)
                 bot._guarded_tap.assert_called_once_with(
-                    '계속 탐사하기', 'victory', 'continue', exiting=True)
+                    '계속 탐사하기', 'victory', 'continue', exiting=True,
+                    defer_markers=('loot_reward', 'battle_rank_reward', 'battle_unresolved_reward'))
                 bot._state.assert_called_once()
                 self.assertEqual(bot.stats['nodes'], 0)
 
@@ -197,7 +198,8 @@ class EventRewardImagesTest(unittest.TestCase):
             self.assertEqual(bot._dispatch_event_screen('battle_rank_complete'), 'unknown_event_result')
             bot._rankup.assert_not_called()
             bot._guarded_tap.assert_called_once_with(
-                '전투 랭크업 완료 후 계속 탐사', 'battle_rank_complete', 'continue', exiting=True)
+                '전투 랭크업 완료 후 계속 탐사', 'battle_rank_complete', 'continue', exiting=True,
+                defer_markers=('loot_reward', 'battle_unresolved_reward'))
 
     def test_consume_prefers_blocked_thumbnail_else_first_item(self):
         frame = read_image(str(RAW/'event_loot_consume_live.png'))

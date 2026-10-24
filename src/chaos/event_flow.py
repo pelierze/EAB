@@ -8,7 +8,7 @@ from .bot import RecognitionTimeout
 logger = logging.getLogger(__name__)
 TERMINALS = {'defeat', 'expedition_summary', 'exploration_entry'}
 EVENT_STATES = {'hero_departure', 'event_intro', 'event', 'unknown_event', 'event_result', 'unknown_event_result',
-                'event_loot_consume', 'event_warning', 'unclaimed_reward',
+                'event_loot_consume', 'event_warning', 'unclaimed_reward', 'battle_unclaimed_reward',
                 'rank_reward', 'rank_menu', 'rank_result', 'event_loot_popup',
                 'loot', 'recruit_reward', 'levelup', 'victory', 'story',
                 'story_confirm', 'battle_setup', 'battle', 'battle_rank_complete'}

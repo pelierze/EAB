@@ -7617,6 +7617,157 @@
       "language_review": "pending_visual_and_paired_screen_review"
     },
     {
+      "group": "node",
+      "marker": "battle_loot_icon",
+      "source": "images/chaos/node_progression/templates/battle/loot_icon.png",
+      "crop": [
+        0,
+        0,
+        80,
+        80
+      ],
+      "source_size": [
+        80,
+        80
+      ],
+      "exclude": [],
+      "region": [
+        240,
+        205,
+        800,
+        95
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "battle_reward_button",
+      "source": "images/chaos/node_progression/templates/battle/reward_button.png",
+      "crop": [
+        0,
+        0,
+        212,
+        55
+      ],
+      "source_size": [
+        212,
+        55
+      ],
+      "exclude": [
+        [
+          18,
+          8,
+          176,
+          38
+        ]
+      ],
+      "region": [
+        220,
+        495,
+        850,
+        80
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "battle_rank_icon",
+      "source": "images/chaos/node_progression/raw/battle/victory_rank_reward_live.png",
+      "crop": [
+        600,
+        215,
+        80,
+        80
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        240,
+        205,
+        800,
+        95
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "battle_reward_card",
+      "source": "images/chaos/node_progression/templates/battle/reward_card.png",
+      "crop": [
+        0,
+        0,
+        252,
+        426
+      ],
+      "source_size": [
+        252,
+        426
+      ],
+      "exclude": [
+        [
+          14,
+          14,
+          224,
+          398
+        ]
+      ],
+      "region": [
+        240,
+        150,
+        800,
+        455
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "battle_reward_card_legacy",
+      "source": "images/chaos/node_progression/raw/boss_victory_rewards_live.png",
+      "crop": [
+        515,
+        164,
+        252,
+        426
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          14,
+          14,
+          224,
+          398
+        ]
+      ],
+      "region": [
+        240,
+        150,
+        800,
+        455
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
       "group": "theme",
       "marker": "select_supply_1",
       "source": "images/chaos/hero_selection/templates/themes/select_supply_1.png",

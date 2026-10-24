@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 EVENT_FOLLOWUPS = {'hero_departure', 'event_intro', 'map', 'battle_setup', 'battle', 'story', 'story_confirm',
     'rank_menu', 'rank_result', 'rank_reward', 'event', 'unknown_event', 'event_result',
     'unknown_event_result', 'loot', 'event_loot_popup', 'event_loot_consume',
-    'recruit_reward', 'unclaimed_reward', 'event_warning', 'levelup', 'victory', 'battle_rank_complete'} | TERMINALS
+    'recruit_reward', 'unclaimed_reward', 'battle_unclaimed_reward', 'event_warning', 'levelup', 'victory', 'battle_rank_complete'} | TERMINALS
 REWARD_POPUPS = {'rank_result': 'rank_close', 'event_loot_popup': 'event_loot_close', 'levelup': 'level_close'}
 POPUP_FOLLOWUPS = EVENT_FOLLOWUPS | {'rest', 'supply', 'shop'}
 
@@ -132,6 +132,9 @@ class NodeProgressionBot(KnightRecruitmentBot):
             encoded.tofile(str(path.with_suffix('.png')))
             markers = ('levelup', 'level_close', 'victory', 'continue', 'supply_loot',
                        'supply_done', 'loot_button', 'loot_button_dim', 'event_loot_close',
+                       'loot_reward', 'reward_hero', 'battle_rank_reward', 'battle_reward_button',
+                       'battle_loot_icon', 'battle_rank_icon', 'battle_reward_card',
+                       'battle_reward_card_legacy', 'battle_warning_cancel', 'battle_unresolved_reward',
                        'enter_node', 'action_frame', 'detail_battle', 'rest_detail',
                        'supply_detail', 'elite_detail', 'boss_detail', 'event_detail',
                        'rest_static_left', 'rest_static_roof', 'detail_rest', 'rest_done',
@@ -235,7 +238,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
         # must never replay a previous screen's coordinates.
         return self._wait(phase, lambda s: (kind,) if (kind := self._classify(s)) in allowed else None)[0]
 
-    def _guarded_tap(self, phase, state, marker, *, exiting=False, followups=None):
+    def _guarded_tap(self, phase, state, marker, *, exiting=False, followups=None, defer_markers=()):
         def ready(screen):
             kind = (self._classify(screen) if (getattr(self, '_shop_exit_confirmation_pending', False)
                     or getattr(self, '_story_skip_confirmation_pending', False))
@@ -244,6 +247,8 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 return ('followup', kind)
             if kind != state:
                 return None
+            if any(self.observer.find(screen, name) for name in defer_markers):
+                return ('followup', kind)
             if self.observer.forbidden(screen) and not exiting:
                 raise RuntimeError('금지 항목이 발견되어 입력을 중지했습니다.')
             return self.observer.find(screen, marker)
@@ -251,7 +256,10 @@ class NodeProgressionBot(KnightRecruitmentBot):
             bounds = self._wait(phase, ready)
             if ready(self._capture()) == bounds:
                 if bounds[0] == 'followup':
-                    logger.info('%s: 닫기 전 화면 전환 확인 (%s → %s), 새 화면 처리', phase, state, bounds[1])
+                    if bounds[1] == state:
+                        logger.info('%s: 남은 보상 확인 — 계속 탐사 입력 보류, 보상 재검사', phase)
+                    else:
+                        logger.info('%s: 닫기 전 화면 전환 확인 (%s → %s), 새 화면 처리', phase, state, bounds[1])
                     return bounds[1]
                 self._tap(bounds)
                 return
@@ -789,13 +797,20 @@ class NodeProgressionBot(KnightRecruitmentBot):
             return self._battle()
         if state == 'victory':
             return self._victory()
+        if state == 'battle_unclaimed_reward':
+            self._guarded_tap('미수령 전투 보상 경고 취소', state, 'battle_warning_cancel', exiting=True)
+            return self._state('남은 전투 보상 재확인', {'victory', 'battle_rank_complete'})
         if state == 'battle_rank_complete':
             screen = self._capture()
+            if self.observer.find(screen, 'battle_unresolved_reward'):
+                raise RecognitionTimeout('종류를 확인하지 못한 전투 보상이 있어 계속 탐사를 중지했습니다.')
             if self.observer.find(screen, 'loot_reward'):
                 self._guarded_tap('랭크업 후 남은 전리품 보상 열기', state, 'loot_reward')
                 return self._state('추가 전투 보상 확인', EVENT_FOLLOWUPS - {state})
             skip_hero = bool(self.observer.find(screen, 'reward_hero'))
-            self._guarded_tap('전투 랭크업 완료 후 계속 탐사', state, 'continue', exiting=True)
+            if self._guarded_tap('전투 랭크업 완료 후 계속 탐사', state, 'continue', exiting=True,
+                                 defer_markers=('loot_reward', 'battle_unresolved_reward')) == state:
+                return state
             allowed = EVENT_FOLLOWUPS - {state}
             if skip_hero:
                 return self._wait_skipped_hero(allowed)
@@ -1034,9 +1049,12 @@ class NodeProgressionBot(KnightRecruitmentBot):
     def _victory(self):
         self.stats['outcome'] = 'victory'
         # Battle reward cards have a different layout from event reward cards.
-        # Consume a verified rank reward before considering the continue button,
-        # then re-observe: another reward, dialogue or map may follow.
-        if self.observer.find(self._capture(), 'battle_rank_reward'):
+        # Collect loot first, then re-observe rank and other remaining rewards.
+        screen = self._capture()
+        if self.observer.find(screen, 'battle_unresolved_reward'):
+            raise RecognitionTimeout('종류를 확인하지 못한 전투 보상이 있어 계속 탐사를 중지했습니다.')
+        if (self.observer.find(screen, 'battle_rank_reward')
+                and not self.observer.find(screen, 'loot_reward')):
             self._guarded_tap('전투 보상 영웅 랭크업 열기', 'victory', 'battle_rank_reward')
             state = self._state('전투 랭크업 보상 다음 화면', EVENT_FOLLOWUPS - {'victory'})
             if state == 'rank_menu':
@@ -1049,7 +1067,9 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 self._guarded_tap('이벤트 전투 전리품 보상 열기', 'victory', 'loot_reward')
                 return self._state('전투 보상 종류 재확인', EVENT_FOLLOWUPS - {'victory'})
             skip_hero = bool(self.observer.find(screen, 'reward_hero'))
-            self._guarded_tap('이벤트 전투 후 계속 탐사', 'victory', 'continue', exiting=True)
+            if self._guarded_tap('이벤트 전투 후 계속 탐사', 'victory', 'continue', exiting=True,
+                                 defer_markers=('loot_reward', 'battle_rank_reward', 'battle_unresolved_reward')) == 'victory':
+                return 'victory'
             allowed = EVENT_FOLLOWUPS - {'victory'}
             if skip_hero:
                 return self._wait_skipped_hero(allowed)
@@ -1061,9 +1081,12 @@ class NodeProgressionBot(KnightRecruitmentBot):
             if state != 'victory':
                 if state == 'map': self.stats['nodes'] += 1
                 return state
+            return 'victory'
         # A hero reward is not part of the configured party; do not recruit it.
         skip_hero = bool(self.observer.find(self._capture(), 'reward_hero'))
-        self._guarded_tap('계속 탐사하기', 'victory', 'continue', exiting=True)
+        if self._guarded_tap('계속 탐사하기', 'victory', 'continue', exiting=True,
+                             defer_markers=('loot_reward', 'battle_rank_reward', 'battle_unresolved_reward')) == 'victory':
+            return 'victory'
         allowed = (EVENT_FOLLOWUPS | {'expedition_summary','exploration_entry'}) - {'victory'}
         state = (self._wait_skipped_hero(allowed) if skip_hero
                  else self._state('승리 후 다음 화면 확인', allowed))
@@ -1171,7 +1194,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 self.stats['phase'] = state
                 if state in EVENT_STATES and (self.event_context or state in (
                         'event','unknown_event','event_result','unknown_event_result',
-                        'event_loot_consume','event_warning','rank_reward','recruit_reward','battle_rank_complete','hero_departure')):
+                        'event_loot_consume','event_warning','battle_unclaimed_reward','rank_reward','recruit_reward','battle_rank_complete','hero_departure')):
                     run_event_flow(self)
                     continue
                 if state == 'defeat':

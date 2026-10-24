@@ -62,3 +62,11 @@ the Korean source with captions erased. See `docs/i18n/exploration-supply-menu.m
 It is a real Soul Weaver ticket. Other class cases use composited references;
 the confirmation replay removes text from the Korean dialog. No game inputs
 are sent. See `docs/i18n/exploration-recruit-ticket.md` for recognition and limits.
+
+## English battle loot and unclaimed warning
+
+`english_battle_loot_20261024.npz` contains unmodified BGR `screen` from
+`images/raws/epicseven 2026-10-24 22-35-24-17.png` and `warning` from
+`logs/report/20261024_223840_086656_세션_1_ebee785c/screen.png`.
+These are real English captures. Caption removal and missing-component cases
+are synthetic. See `docs/i18n/exploration-battle-loot.md` for scope and limits.

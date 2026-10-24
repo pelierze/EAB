@@ -103,6 +103,8 @@ class ReportedRewardFlowTests(unittest.TestCase):
             from unittest.mock import patch
             with patch.object(self.observer, 'find', side_effect=lambda s, n, **kw:
                     (300, 500, 100, 30) if current[0] == 0 and n == 'loot_reward' else original_find(s, n, **kw)):
+                self.assertEqual(bot._victory(), 'victory')
+                self.assertEqual(current[0], 3)
                 bot._victory()
             self.assertEqual(taps[-1], original_find(victory, 'continue'))
             self.assertEqual(len(taps), 3)

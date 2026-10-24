@@ -165,6 +165,15 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
+            if name in ('loot_reward', 'reward_hero', 'battle_rank_reward'):
+                return self.battle_reward_controls(screen).get(name)
+            if name == 'battle_unresolved_reward':
+                if not self.all(screen, 'victory'):
+                    return None
+                known = self.battle_reward_controls(screen).values()
+                return next((b for b in self.all(screen, 'battle_reward_button') if b not in known), None)
+            if name == 'battle_warning_cancel':
+                return self.battle_unclaimed_cancel(screen)
             if name.startswith('ticket_class_') and name in self.templates:
                 return self._ticket_icon(screen, name)
             if name in ('recruit_reward_title', 'recruit_continue'):
@@ -272,9 +281,9 @@ class NodeObserver:
         return dict(leave=leave[0], supply_loot=active[0] if len(active) == 1 and not done else None,
                     supply_done=done[0] if len(done) == 1 else None)
 
-    def _ticket_icon(self, screen, name):
+    def _ticket_icon(self, screen, name, region=None):
         definition = self.config['markers'][name]
-        x, y, w, h = definition['region']
+        x, y, w, h = region or definition['region']
         sample = screen[y:y+h, x:x+w]
         best = None
         for scale in definition['match_scales']:
@@ -286,6 +295,42 @@ class NodeObserver:
             if score >= definition['threshold'] and (best is None or score > best[0]):
                 best = score, (x+mx, y+my, tw, th)
         return best[1] if best else None
+
+    def battle_reward_controls(self, screen):
+        """Pair a reward symbol with its own card and active, textless button."""
+        if not self.all(screen, 'victory'):
+            return {}
+        controls = {}
+        for button in self.all(screen, 'battle_reward_button'):
+            x, y, w, h = button
+            center = x + w / 2
+            card_region = (int(center-135), 150, 270, 455)
+            if not (self.all(screen, 'battle_reward_card', card_region)
+                    or self.all(screen, 'recruit_card_frame', card_region)
+                    or self.all(screen, 'battle_reward_card_legacy', card_region)):
+                continue
+            icon_region = (int(center-55), 205, 110, 95)
+            if self.all(screen, 'battle_loot_icon', icon_region):
+                controls['loot_reward'] = button
+            elif self.all(screen, 'battle_rank_icon', icon_region):
+                controls['battle_rank_reward'] = button
+            elif any(self._ticket_icon(screen, 'ticket_class_'+role, icon_region)
+                     for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage')):
+                controls['reward_hero'] = button
+        return controls
+
+    def battle_unclaimed_cancel(self, screen):
+        buttons = self.recruit_skip_buttons(screen)
+        if not buttons:
+            return None
+        # The dimmed VICTORY heading establishes battle context. Never approve
+        # a generic warning: cancel it and re-scan the remaining reward cards.
+        x, y, w, h = self.config['markers']['victory']['region']
+        scores = ImageMatcher.match_template(screen[y:y+h, x:x+w],
+                                            self.templates['victory'], shape_only=True)
+        if cv2.minMaxLoc(scores)[1] >= .9:
+            return buttons['cancel']
+        return None
 
     def recruit_reward_controls(self, screen):
         controls = {}
@@ -304,7 +349,7 @@ class NodeObserver:
         return controls
 
     def recruit_skip_buttons(self, screen):
-        # Only the post-Continue skip handler may interpret these generic buttons.
+        # Frames alone never authorize Confirm; callers must establish context.
         confirm = self.all(screen, 'recruit_skip_confirm_frame')
         cancel = self.all(screen, 'recruit_skip_cancel_frame')
         if len(confirm) == len(cancel) == 1:
@@ -534,6 +579,7 @@ class NodeObserver:
                                  for text, score in rows))
 
     def classify(self, screen):
+        if self.battle_unclaimed_cancel(screen): return 'battle_unclaimed_reward'
         if self.find(screen, 'shop_purchase_dialog'): return 'shop_purchase_confirm'
         if self.find(screen, 'defeat'): return 'defeat'
         if self.find(screen, 'hero_departure_title') and self.find(screen, 'hero_departure_button'): return 'hero_departure'
