@@ -165,6 +165,21 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
+            if name == 'loot_button':
+                # A shared purple frame alone never authorizes claiming loot.
+                # Require the three-card scene and a single selected card too.
+                if len(self.all(screen, 'loot_reroll')) != 3 or self.selected_loot(screen) is None:
+                    return None
+                matches = self.all(screen, name)
+                if len(matches) != 1:
+                    return None
+                x, y, w, h = matches[0]
+                sample = screen[y:y+h, x:x+w]
+                active_score = float(ImageMatcher.match_template(sample, self.templates[name])[0, 0])
+                dim_score = float(ImageMatcher.match_template(sample, self.templates['loot_button_dim'])[0, 0])
+                # Compare both states at the same location. Similar shared
+                # borders do not establish that the claim action is enabled.
+                return matches[0] if active_score - dim_score >= .02 else None
             if name in ('loot_reward', 'reward_hero', 'battle_rank_reward'):
                 return self.battle_reward_controls(screen).get(name)
             if name == 'battle_unresolved_reward':

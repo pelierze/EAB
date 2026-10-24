@@ -91,3 +91,9 @@ and hero confirmation are covered separately, with no live game input.
 `logs/report/20261025_082618_801870_세션_1_56731009/screen.png`.
 It has an active fourth recovery option. Caption/sparkle changes and the completed
 rank-up state are synthetic; the reported screen itself is a real English capture.
+
+`english_loot_selection_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_083543_712824_세션_1_a4af2fba/screen.png`.
+It is a real English unselected loot screen. Selected-edge and active-button
+states use Korean reference fragments composited into this capture; the claim
+replay uses a Korean victory return. No live game input is sent.

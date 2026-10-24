@@ -3917,21 +3917,28 @@
       "marker": "loot_button",
       "source": "images/chaos/node_progression/raw/loot_selected_live.png",
       "crop": [
-        592,
-        646,
-        102,
-        29
+        473,
+        626,
+        334,
+        70
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
+      "exclude": [
+        [
+          28,
+          8,
+          278,
+          54
+        ]
+      ],
       "region": [
-        480,
-        620,
-        330,
-        80
+        460,
+        615,
+        360,
+        90
       ],
       "threshold": 0.88,
       "max_color_error": 0.08,
@@ -3943,21 +3950,28 @@
       "marker": "loot_button_dim",
       "source": "images/chaos/node_progression/raw/loot_cards_live.png",
       "crop": [
-        592,
-        646,
-        102,
-        29
+        473,
+        626,
+        334,
+        70
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
+      "exclude": [
+        [
+          28,
+          8,
+          278,
+          54
+        ]
+      ],
       "region": [
-        480,
-        620,
-        330,
-        80
+        460,
+        615,
+        360,
+        90
       ],
       "threshold": 0.9,
       "max_color_error": 0.06,
