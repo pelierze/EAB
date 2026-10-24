@@ -11,9 +11,13 @@ from src import i18n
 class ChaosSessionLifecycleTest(unittest.TestCase):
     def setUp(self):
         i18n.set_language("ko", persist=False)
+        messageboxes = patch("src.gui.messagebox.showerror")
+        self.messageboxes = messageboxes.start()
+        self.addCleanup(messageboxes.stop)
 
     def test_stop_keeps_session_busy_until_worker_finishes(self):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.current_mode = "chaos"
         view.is_running = True
@@ -43,6 +47,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
 
     def test_chaos_start_rejects_a_worker_that_has_not_exited(self):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = Mock()
@@ -54,6 +59,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
     @patch("src.gui.ExplorationBot")
     def test_chaos_start_passes_configured_rank_priority(self, mock_exploration_bot):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = None
@@ -95,6 +101,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
     @patch("src.gui.ExplorationBot")
     def test_chaos_start_passes_configured_target_clears(self, mock_exploration_bot):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = None
@@ -118,6 +125,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
     @patch("src.gui.ExplorationBot")
     def test_chaos_start_passes_cost_fallback_option(self, mock_exploration_bot):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = None
@@ -203,6 +211,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
     @patch("src.gui.ExplorationBot")
     def test_chaos_start_rejects_invalid_target_clears(self, mock_exploration_bot, mock_showerror):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = None

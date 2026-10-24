@@ -24,3 +24,10 @@ No selected individual hero card, initial exploration screen, node detail,
 battle, or completion summary was supplied in this set.
 Tests simulate phase changes and change button lettering to test exclusions;
 they do not connect to the game or prove a complete English exploration run.
+
+## Second batch: entry and battle
+
+`english_battle_20261024.npz` contains seven unmodified BGR frames. Source names
+and limitations are documented in `docs/i18n/exploration-english-battle.md`.
+It adds actual selected hero/attribute, initial entry, battle detail/setup,
+level-up and victory. The offline replay skips combat and sends no game inputs.

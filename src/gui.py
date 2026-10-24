@@ -1909,6 +1909,7 @@ class SessionView:
                     return
                 auto_fb = self.chaos_cost_fallback.get() if hasattr(self, "chaos_cost_fallback") else True
                 self.bot = ExplorationBot(self.adb_controller, get_resource_root(), self.runtime_dir, hero_ids=hero_ids,
+                                          debug_mode=self.debug_mode_var.get(),
                                           rank_priority=rank_priority, target_clears=target_clears,
                                           event_mode="random",save_unknown_events=self.chaos_save_unknown.get(),
                                           auto_fallback=auto_fb,

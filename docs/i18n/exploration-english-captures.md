@@ -1,5 +1,7 @@
 # 차원 탐사 영어 캡처 적용: 2차 작업
 
+> Current follow-up: [Entry, battle and opt-in diagnostics](exploration-english-battle.md). English exploration is now enabled for iterative testing; full English completion is not yet verified. Earlier stage statements below describe their original scope.
+
 - 날짜: 2026-10-24
 - 브랜치: `codex/i18n-dimensional-exploration`
 - 범위: 고용 서약서 선택, 영입권·영입 완료 화면, 필터 버튼·열린 패널, 탐사 입장 버튼, 노드 지도.

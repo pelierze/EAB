@@ -1,5 +1,7 @@
 # 영어 지원(i18n) 계획
 
+> Current follow-up: [Entry, battle and opt-in diagnostics](exploration-english-battle.md). English exploration is now enabled for iterative testing; full English completion is not yet verified. Earlier stage statements below describe their original scope.
+
 - 작성일: 2026-10-23
 - 현재 작업 브랜치: `codex/i18n-dimensional-exploration` (이전 단계: `codex/i18n-penguin`, 초기 계획: `feat/i18n-english`)
 - 상태: 진행 중 / 비밀상점 공통 인식·영어 UI 구현, 펭귄 앵커 기반 인식과 영어 캡처 재현 검사 완료. 전체 자산 감사·실기 검증은 남아 있음.

@@ -35,6 +35,7 @@ class RecruitmentObserver:
         self.portrait_markers = {hero["portrait"] for hero in self.config["heroes"].values()}
         sources = {}
         needed = {"start", "unlock", "confirm_theme", "recruit_card", "filter", "filter_panel", "recruit_active", "completed"}
+        needed.update(('start_frame', 'entry_symbol'))
         for element in ("dark", "fire", "ice", "forest", "light"):
             needed.add(element + "_2")
             if element + '_1' in self.config['markers']:
@@ -81,6 +82,13 @@ class RecruitmentObserver:
             raise RuntimeError("자동 탐사는 1280×720 화면에서 실행해 주세요.")
 
     def find(self, screen, name, region=None):
+        if name == 'start':
+            legacy = self._find_template(screen, name, region)
+            if legacy:
+                return legacy
+            if self._find_template(screen, 'entry_symbol'):
+                return self._find_template(screen, 'start_frame')
+            return None
         bounds = self._find_template(screen, name, region)
         if name != 'filter_panel' or bounds is None:
             return bounds

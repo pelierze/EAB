@@ -375,15 +375,15 @@
     {
       "group": "recruitment",
       "marker": "rose",
-      "source": "images/chaos/hero_selection/templates/heroes/knight_Shadow_Rose.png",
+      "source": "images/chaos/hero_selection/templates/controls/rose_portrait.png",
       "crop": [
         0,
         0,
-        141,
+        111,
         44
       ],
       "source_size": [
-        141,
+        111,
         44
       ],
       "exclude": [],
@@ -393,6 +393,27 @@
         950,
         535
       ],
+      "threshold": null,
+      "max_color_error": null,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "portrait_variant",
+      "marker": "rose/1",
+      "source": "images/chaos/hero_selection/templates/controls/rose_english.png",
+      "crop": [
+        0,
+        0,
+        111,
+        44
+      ],
+      "source_size": [
+        111,
+        44
+      ],
+      "exclude": [],
+      "region": null,
       "threshold": null,
       "max_color_error": null,
       "packaged": true,
@@ -1474,6 +1495,275 @@
       ],
       "threshold": 0.9,
       "max_color_error": null,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "recruitment",
+      "marker": "start_frame",
+      "source": "images/chaos/hero_selection/templates/controls/entry_action.png",
+      "crop": [
+        0,
+        0,
+        336,
+        72
+      ],
+      "source_size": [
+        336,
+        72
+      ],
+      "exclude": [
+        [
+          30,
+          8,
+          276,
+          56
+        ]
+      ],
+      "region": [
+        900,
+        600,
+        380,
+        120
+      ],
+      "threshold": null,
+      "max_color_error": null,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "recruitment",
+      "marker": "entry_symbol",
+      "source": "images/chaos/hero_selection/templates/controls/entry_symbol.png",
+      "crop": [
+        0,
+        0,
+        65,
+        52
+      ],
+      "source_size": [
+        65,
+        52
+      ],
+      "exclude": [],
+      "region": [
+        950,
+        480,
+        90,
+        80
+      ],
+      "threshold": null,
+      "max_color_error": null,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "entry_action",
+      "source": "images/chaos/hero_selection/templates/controls/entry_action.png",
+      "crop": [
+        0,
+        0,
+        336,
+        72
+      ],
+      "source_size": [
+        336,
+        72
+      ],
+      "exclude": [
+        [
+          30,
+          8,
+          276,
+          56
+        ]
+      ],
+      "region": [
+        900,
+        600,
+        380,
+        120
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "entry_symbol",
+      "source": "images/chaos/hero_selection/templates/controls/entry_symbol.png",
+      "crop": [
+        0,
+        0,
+        65,
+        52
+      ],
+      "source_size": [
+        65,
+        52
+      ],
+      "exclude": [],
+      "region": [
+        950,
+        480,
+        90,
+        80
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "setup_symbol",
+      "source": "images/chaos/hero_selection/templates/controls/setup_symbol.png",
+      "crop": [
+        0,
+        0,
+        58,
+        52
+      ],
+      "source_size": [
+        58,
+        52
+      ],
+      "exclude": [],
+      "region": [
+        130,
+        630,
+        85,
+        75
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "detail_symbol",
+      "source": "images/chaos/hero_selection/templates/controls/detail_symbol.png",
+      "crop": [
+        0,
+        0,
+        45,
+        40
+      ],
+      "source_size": [
+        45,
+        40
+      ],
+      "exclude": [],
+      "region": [
+        1200,
+        85,
+        70,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "continue_frame",
+      "source": "images/chaos/hero_selection/templates/controls/continue_frame.png",
+      "crop": [
+        0,
+        0,
+        334,
+        70
+      ],
+      "source_size": [
+        334,
+        70
+      ],
+      "exclude": [
+        [
+          30,
+          8,
+          274,
+          52
+        ]
+      ],
+      "region": [
+        460,
+        615,
+        360,
+        90
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "level_frame",
+      "source": "images/chaos/hero_selection/templates/controls/level_frame.png",
+      "crop": [
+        0,
+        0,
+        518,
+        263
+      ],
+      "source_size": [
+        518,
+        263
+      ],
+      "exclude": [
+        [
+          140,
+          45,
+          240,
+          140
+        ]
+      ],
+      "region": [
+        382,
+        168,
+        518,
+        263
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "action_frame",
+      "source": "images/chaos/hero_selection/templates/controls/exploration_action.png",
+      "crop": [
+        0,
+        0,
+        300,
+        64
+      ],
+      "source_size": [
+        300,
+        64
+      ],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
+      ],
+      "region": [
+        930,
+        620,
+        320,
+        80
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },

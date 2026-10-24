@@ -34,7 +34,7 @@ FEATURE_SUPPORT: dict[str, dict[str, bool]] = {
     },
     LANG_EN: {
         "secret_shop": True,
-        "dimensional_exploration": False,
+        "dimensional_exploration": True,
         "penguin": True,
         "event": False,
     },

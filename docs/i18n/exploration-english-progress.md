@@ -1,5 +1,7 @@
 # 차원 탐사 영어 지원: 1차 작업
 
+> Current follow-up: [Entry, battle and opt-in diagnostics](exploration-english-battle.md). English exploration is now enabled for iterative testing; full English completion is not yet verified. Earlier stage statements below describe their original scope.
+
 - 날짜: 2026-10-24
 - 브랜치: `codex/i18n-dimensional-exploration`
 - 상태: UI·설정 값 분리와 필터 아이콘 인식 구현. 영어 게임 전체 실행 지원 전.

@@ -157,12 +157,15 @@
       "max_color_error": 0.06
     },
     "rose": {
-      "file": "templates/heroes/knight_Shadow_Rose.png",
+      "file": "templates/controls/rose_portrait.png",
       "region": [
         330,
         70,
         950,
         535
+      ],
+      "alternate_files": [
+        "templates/controls/rose_english.png"
       ]
     },
     "rose_selected": {
@@ -699,6 +702,32 @@
         52
       ],
       "threshold": 0.9
+    },
+    "start_frame": {
+      "file": "templates/controls/entry_action.png",
+      "region": [
+        900,
+        600,
+        380,
+        120
+      ],
+      "exclude": [
+        [
+          30,
+          8,
+          276,
+          56
+        ]
+      ]
+    },
+    "entry_symbol": {
+      "file": "templates/controls/entry_symbol.png",
+      "region": [
+        950,
+        480,
+        90,
+        80
+      ]
     }
   },
   "button_offset": [

@@ -118,6 +118,9 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 'reason': self.stats.get('reason'), 'registered_event': self.pending_event_id})
 
     def _save_failure_diagnostic(self, label, phase=None):
+        trace = getattr(self, 'debug_recorder', None)
+        if trace:
+            trace.failure(self, label)
         # Capture only bounded failure evidence, even when continuous capture is off.
         if not isinstance(self.last_screen, np.ndarray):
             return
@@ -179,6 +182,14 @@ class NodeProgressionBot(KnightRecruitmentBot):
         return self._wait(phase, confirmed)[0]
 
     def _classify(self, screen):
+        state = self._classify_observed(screen)
+        trace = getattr(self, 'debug_recorder', None)
+        if trace:
+            trace.event('state', phase=self.stats.get('phase'), state=state,
+                        node=self.current_node_kind, event_id=self.pending_event_id)
+        return state
+
+    def _classify_observed(self, screen):
         if screen is None: return None
         state = self.observer.classify(screen)
         if (getattr(self, '_story_skip_confirmation_pending', False)
@@ -1232,7 +1243,7 @@ class ExplorationBot:
     """GUI facade: one stop event and live stats across both stages."""
     def __init__(self, adb, root, runtime_dir, hero_ids=None, rank_priority=None, max_nodes=None, repeat_on_failure=True,
                  target_clears=1, event_mode='random', save_unknown_events=False, diagnostic_capture=False, auto_fallback=True,
-                 buy_future_investment=False):
+                 buy_future_investment=False, debug_mode=False):
         self._args = (adb, root, runtime_dir, hero_ids, rank_priority, max_nodes)
         self.node_options = dict(event_mode=event_mode, save_unknown_events=save_unknown_events,
                                  diagnostic_capture=diagnostic_capture, rank_priority=rank_priority,
@@ -1247,6 +1258,14 @@ class ExplorationBot:
         self.nodes = NodeProgressionBot(adb, root, runtime_dir, max_nodes=max_nodes, **self.node_options)
         self.nodes.stop_event = self.recruitment.stop_event
         self.active = self.recruitment
+        self.debug_recorder = None
+        if debug_mode:
+            from .debug import ExplorationDebugRecorder
+            try:
+                self.debug_recorder = ExplorationDebugRecorder(self.recruitment.runtime_dir / 'debug')
+                logger.info('탐사 디버그 기록: %s', self.debug_recorder.directory)
+            except OSError:
+                logger.warning('탐사 디버그 기록 초기화 실패', exc_info=True)
 
     def set_user_action(self, action):
         self.active.set_user_action(action)
@@ -1265,6 +1284,16 @@ class ExplorationBot:
                     attempt=self.attempt)
 
     def run(self):
+        try:
+            result = self._run()
+            if self.debug_recorder:
+                self.debug_recorder.event('finished', result=result)
+            return result
+        finally:
+            if self.debug_recorder:
+                self.debug_recorder.close()
+
+    def _run(self):
         try:
             logger.info('자동 탐사 반복 설정: 목표 완주 %d회, 패배 재도전=%s', self.target_clears, self.repeat_on_failure)
             while True:
@@ -1342,6 +1371,9 @@ class ExplorationBot:
             return dict(self.get_stats(), status='failed', reason=str(exc))
 
     def _run_stages(self):
+        if self.debug_recorder:
+            self.recruitment.debug_recorder = self.debug_recorder
+            self.nodes.debug_recorder = self.debug_recorder
         screen = self.nodes._capture()
         state = self.nodes.observer.classify(screen)
         if state == 'exploration_entry': state = None

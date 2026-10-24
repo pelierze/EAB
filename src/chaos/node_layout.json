@@ -28,6 +28,115 @@
     "event"
   ],
   "markers": {
+    "entry_action": {
+      "file": "images/chaos/hero_selection/templates/controls/entry_action.png",
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "region": [
+        900,
+        600,
+        380,
+        120
+      ],
+      "exclude": [
+        [
+          30,
+          8,
+          276,
+          56
+        ]
+      ]
+    },
+    "entry_symbol": {
+      "file": "images/chaos/hero_selection/templates/controls/entry_symbol.png",
+      "region": [
+        950,
+        480,
+        90,
+        80
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "setup_symbol": {
+      "file": "images/chaos/hero_selection/templates/controls/setup_symbol.png",
+      "region": [
+        130,
+        630,
+        85,
+        75
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "detail_symbol": {
+      "file": "images/chaos/hero_selection/templates/controls/detail_symbol.png",
+      "region": [
+        1200,
+        85,
+        70,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "continue_frame": {
+      "file": "images/chaos/hero_selection/templates/controls/continue_frame.png",
+      "region": [
+        460,
+        615,
+        360,
+        90
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          30,
+          8,
+          274,
+          52
+        ]
+      ]
+    },
+    "level_frame": {
+      "file": "images/chaos/hero_selection/templates/controls/level_frame.png",
+      "region": [
+        382,
+        168,
+        518,
+        263
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          140,
+          45,
+          240,
+          140
+        ]
+      ]
+    },
+    "action_frame": {
+      "file": "images/chaos/hero_selection/templates/controls/exploration_action.png",
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "region": [
+        930,
+        620,
+        320,
+        80
+      ],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
+      ]
+    },
     "enter": {
       "file": "images/chaos/hero_selection/templates/controls/exploration_action.png",
       "threshold": 0.9,

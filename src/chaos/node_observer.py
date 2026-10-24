@@ -10,7 +10,7 @@ import numpy as np
 
 from src.image_matcher import ImageMatcher, read_image
 from .errors import RecognitionPending
-from .template_masks import apply_exclusions, color_error
+from .template_masks import apply_exclusions, color_error, matches_fixed_mask
 
 
 class NodeObserver:
@@ -88,6 +88,8 @@ class NodeObserver:
         if x < 0 or y < 0 or x+w > screen.shape[1] or y+h > screen.shape[0] or w < tw or h < th:
             return []
         sample = screen[y:y+h, x:x+w]
+        if template.shape[2] == 4 and (h, w) == (th, tw):
+            return [(x, y, tw, th)] if matches_fixed_mask(sample, template, threshold, max_error) else []
         scores = ImageMatcher.match_template(sample, template)
         found = []
         for _ in range(100):
@@ -145,7 +147,7 @@ class NodeObserver:
     def find(self, screen, name, region=None):
         if name == 'battle_rank_complete':
             # A completed battle reward has its class icon at the card's lower
-            # right. Require the victory heading and the active continue label.
+            # right. Require the victory heading and the active continue control.
             if not self.find(screen, 'victory') or not self.find(screen, 'continue'):
                 return None
             for role in ('knight', 'warrior', 'soul_weaver', 'thief'):
@@ -162,6 +164,17 @@ class NodeObserver:
             matches = self.all(screen, name, region)
             if len(matches) == 1:
                 return matches[0]
+            if not matches and region is None:
+                if name == 'exploration_entry' and self.find(screen, 'entry_symbol'):
+                    return self.find(screen, 'entry_action')
+                if name == 'battle_start' and self.find(screen, 'setup_symbol'):
+                    return self.find(screen, 'action_frame')
+                if name == 'enter_node' and self.find(screen, 'detail_symbol'):
+                    return self.find(screen, 'action_frame')
+                if name == 'detail_battle':
+                    return self.find(screen, 'detail_symbol')
+                if name == 'continue' and self.find(screen, 'victory'):
+                    return self.find(screen, 'continue_frame')
         if 'rank_title' in self.config['markers'] and bool(self.all(screen, 'rank_title')):
             target_class = self.hero_to_class.get(name, name)
             if target_class in self.class_templates:
@@ -172,6 +185,11 @@ class NodeObserver:
 
     def levelup_controls(self, screen):
         """Pair the title with a moving down arrow; return a stable tap area."""
+        frame = self.find(screen, 'level_frame')
+        arrows = self.all(screen, 'level_close') if frame else []
+        if frame and len(arrows) == 1:
+            return {'levelup': frame, 'level_close_arrow': arrows[0],
+                    'level_close': tuple(self.config['levelup_close_bounds'])}
         names = ('levelup', 'level_close')
         for scale in (1., .95, 1.05, .9, 1.1):
             controls = {}

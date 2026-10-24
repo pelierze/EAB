@@ -181,14 +181,20 @@ class BattleRankCompletionTests(unittest.TestCase):
         self.assertEqual(self.observer.classify(screen), 'battle_rank_complete')
         self.assertEqual(self.observer.find(screen, 'continue'), (625, 645, 75, 27))
 
-    def test_class_icon_victory_and_explore_label_are_all_required(self):
-        for bounds in ((704, 532, 48, 48), (480, 15, 350, 75), (625, 645, 75, 27)):
+    def test_class_icon_victory_and_continue_control_are_all_required(self):
+        for bounds in ((704, 532, 48, 48), (480, 15, 350, 75), (473, 626, 334, 70)):
             screen = self.frame()
             x, y, w, h = bounds
             screen[y:y+h, x:x+w] = 0
             with self.subTest(bounds=bounds):
                 self.assertIsNone(self.observer.find(screen, 'battle_rank_complete'))
                 self.assertNotEqual(self.observer.classify(screen), 'battle_rank_complete')
+
+    def test_continue_lettering_is_not_required_when_the_frame_is_verified(self):
+        screen = self.frame()
+        screen[645:672, 625:700] = 0
+        self.assertIsNotNone(self.observer.find(screen, 'battle_rank_complete'))
+        self.assertEqual(self.observer.classify(screen), 'battle_rank_complete')
 
     def test_other_rewards_do_not_complete_rankup(self):
         for name in ('battle/victory_live.png', 'battle/victory_rank_reward_live.png',

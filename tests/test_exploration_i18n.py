@@ -28,6 +28,10 @@ class ExplorationI18nTests(unittest.TestCase):
         self.view = object.__new__(SessionView)
         self.view.root = self.root
         self.view.session_id = 'session_1'
+        self.view.debug_mode_var = tk.BooleanVar(self.root, value=False)
+        messageboxes = patch('src.gui.messagebox')
+        self.messageboxes = messageboxes.start()
+        self.addCleanup(messageboxes.stop)
         self.view.chaos_tab = ttk.Frame(self.root)
         self.view._create_chaos_widgets()
 
@@ -128,6 +132,8 @@ class ExplorationI18nTests(unittest.TestCase):
         with patch('src.gui.ExplorationBot') as runner, patch('src.gui.threading.Thread'):
             view._start_chaos_bot()
         self.assertTrue(view.is_running)
+        self.messageboxes.showerror.assert_not_called()
+        self.assertFalse(runner.call_args.kwargs['debug_mode'])
         self.assertEqual(runner.call_args.kwargs['rank_priority'], ['jenua', 'wukong', 'ras'])
         self.assertEqual(view.chaos_status_label.cget('text'), 'Checking the starting screen')
 
