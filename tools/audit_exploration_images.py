@@ -37,6 +37,7 @@ def collect(root=ROOT):
         entries.append(({
             'group': group, 'marker': marker, 'source': key, 'crop': crop,
             'source_size': [width, height],
+            'exclude': definition.get('exclude', []),
             'region': definition.get('region'), 'threshold': definition.get('threshold'),
             'max_color_error': definition.get('max_color_error'),
             'packaged': key in packaged,
@@ -74,17 +75,23 @@ def main():
         'entries': [entry for entry, _ in entries],
     }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     cards = []
-    for entry, pixels in entries:
+    for index, (entry, pixels) in enumerate(entries):
         name = entry['group'] + '/' + entry['marker']
         x, y, w, h = entry['crop']
         width, height = entry['source_size']
         source = html.escape('../../' + entry['source'], quote=True)
+        exclusions = ''.join(f'<rect x="{x+ex}" y="{y+ey}" width="{ew}" height="{eh}" fill="black"/>'
+                             for ex, ey, ew, eh in entry['exclude'])
+        mask = (f'<defs><mask id="mask-{index}" maskUnits="userSpaceOnUse" '
+                f'x="{x}" y="{y}" width="{w}" height="{h}">'
+                f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="white"/>'
+                f'{exclusions}</mask></defs>')
         cards.append(f'<article id="{html.escape(name)}"><h2>{html.escape(name)}</h2>'
                      f'<p>{html.escape(entry["source"])}</p>'
-                     f'<p>crop={entry["crop"]} · region={entry["region"]} · packaged={entry["packaged"]}</p>'
+                     f'<p>crop={entry["crop"]} · exclude={entry["exclude"]} · region={entry["region"]} · packaged={entry["packaged"]}</p>'
                      f'<svg viewBox="{x} {y} {w} {h}" width="{w}" height="{h}" role="img">'
-                     f'<title>{html.escape(name)}</title><image href="{source}" width="{width}" '
-                     f'height="{height}"></image></svg></article>')
+                     f'<title>{html.escape(name)}</title>{mask}<image href="{source}" width="{width}" '
+                     f'height="{height}" mask="url(#mask-{index})"></image></svg></article>')
     (output / 'exploration-image-audit.html').write_text('''<!doctype html><html lang="en"><meta charset="utf-8">
 <title>Exploration effective image crops</title>
 <style>body{background:#20252d;color:#eef2f7;font:14px system-ui;margin:24px}

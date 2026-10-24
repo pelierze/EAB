@@ -32,7 +32,7 @@ class FilterPanelTests(unittest.TestCase):
             with self.subTest(filename=filename):
                 frame = self.frame(filename)
                 bot = self.bot(hero_name)
-                self.assertEqual(self.observer.find(frame, 'filter_panel'), (433, 87, 30, 18))
+                self.assertEqual(self.observer.find(frame, 'filter_panel'), (65, 65, 870, 335))
                 self.assertIsNone(bot._filter_button(frame))
                 self.assertEqual(bot._element_state(frame),
                                  ('unselected', *self.observer.find(frame, element)))
@@ -52,7 +52,7 @@ class FilterPanelTests(unittest.TestCase):
             with self.subTest(filename=filename):
                 self.assertIsNone(self.observer.find(self.frame(filename), 'filter_panel'))
 
-    def test_element_icon_without_either_menu_label_does_not_authorize_input(self):
+    def test_element_icon_without_the_panel_border_does_not_authorize_input(self):
         frame = self.frame('knight_local_filter_open_live.png')
         frame[75:125, 415:505] = 0
         frame[65:130, 65:340] = 0
@@ -78,9 +78,10 @@ class FilterPanelTests(unittest.TestCase):
         self.assertEqual(bot._element_state(frame),
                          ('unselected', *self.observer.find(frame, 'dark_1')))
 
-    def test_label_is_packaged_but_failure_captures_are_not(self):
+    def test_panel_border_is_packaged_but_text_label_and_failure_captures_are_not(self):
         assets = set(used_images(ROOT))
-        self.assertIn('images/chaos/hero_selection/raw/filter_element_label.png', assets)
+        self.assertIn('images/chaos/hero_selection/templates/controls/filter_panel_frame.png', assets)
+        self.assertNotIn('images/chaos/hero_selection/raw/filter_element_label.png', assets)
         for filename in ('knight_issue15_filter_open.png', 'knight_local_filter_open_live.png'):
             self.assertNotIn('images/chaos/hero_selection/raw/' + filename, assets)
 

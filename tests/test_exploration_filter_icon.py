@@ -26,7 +26,7 @@ class ExplorationFilterIconTests(unittest.TestCase):
                 if path.name == 'full_party.png':
                     self.assertIsNone(bounds)
                 else:
-                    self.assertEqual(bounds, (696, 19, 28, 29))
+                    self.assertEqual(bounds, (700, 24, 21, 18))
                     x, y, w, h = bounds
                     self.assertTrue(686 <= x+w//2 < 828 and 7 <= y+h//2 < 60)
 
@@ -34,8 +34,8 @@ class ExplorationFilterIconTests(unittest.TestCase):
         screen = read_image(RAW / 'knight_full.png')
         rng = np.random.default_rng(24)
         screen[10:58, 728:823] = rng.integers(0, 256, (48, 95, 3), dtype=np.uint8)
-        self.assertEqual(self.observer.find(screen, 'filter'), (696, 19, 28, 29))
-        screen[19:48, 696:724] = 0
+        self.assertEqual(self.observer.find(screen, 'filter'), (700, 24, 21, 18))
+        screen[24:42, 700:721] = 0
         self.assertIsNone(self.observer.find(screen, 'filter'))
 
 

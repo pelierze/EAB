@@ -8,8 +8,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from src.image_matcher import read_image
+from src.image_matcher import ImageMatcher, read_image
 from .errors import RecognitionPending
+from .template_masks import apply_exclusions, color_error
 
 
 class NodeObserver:
@@ -26,7 +27,7 @@ class NodeObserver:
                 source = source[y:y+h, x:x+w]
                 if source.shape[:2] != (h, w):
                     raise ValueError(f'노드 이미지 영역 오류: {name}')
-            self.templates[name] = source.copy()
+            self.templates[name] = apply_exclusions(source, definition.get('exclude'), name)
         self.blocked = []
         for path in sorted((root / 'images/chaos/node_progression/templates/blocked_choices').glob('*.png')):
             source = read_image(str(path))
@@ -87,13 +88,13 @@ class NodeObserver:
         if x < 0 or y < 0 or x+w > screen.shape[1] or y+h > screen.shape[0] or w < tw or h < th:
             return []
         sample = screen[y:y+h, x:x+w]
-        scores = cv2.matchTemplate(sample, template, cv2.TM_CCOEFF_NORMED)
+        scores = ImageMatcher.match_template(sample, template)
         found = []
         for _ in range(100):
             _, score, _, (mx, my) = cv2.minMaxLoc(scores)
             if score < threshold:
                 break
-            error = np.abs(sample[my:my+th, mx:mx+tw].astype(float)-template).mean()/255
+            error = color_error(sample[my:my+th, mx:mx+tw], template)
             if error <= max_error:
                 found.append((x+mx, y+my, tw, th))
             scores[max(0,my-th//2):my+th//2+1, max(0,mx-tw//2):mx+tw//2+1] = -1

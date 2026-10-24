@@ -119,7 +119,12 @@ class KnightRecruitmentBot:
         if self.observer.completed(screen):
             return ("done",)
         button = self.observer.find(screen, "start")
-        return ("start", *button) if button else None
+        if button:
+            return ("start", *button)
+        theme = self.observer.theme.observe(screen)
+        if theme.state in ('unselected', 'selected') and theme.bounds:
+            return ("theme",)
+        return None
 
     def _theme_ready(self, screen):
         if self.observer.find(screen, "unlock"):
@@ -290,8 +295,9 @@ class KnightRecruitmentBot:
         try:
             entry = self._wait("탐사 시작 화면 확인", self._entry)
             if entry[0] != "done":
-                if entry[0] == "start":
-                    self._tap(entry[1:])
+                if entry[0] in ("start", "theme"):
+                    if entry[0] == "start":
+                        self._tap(entry[1:])
                     theme = self._wait("고용 서약서 화면 대기", self._theme_ready)
                     if theme[0] == "popup":
                         self._point("popup_dismiss_point")

@@ -193,7 +193,7 @@ class PartyObserverTest(unittest.TestCase):
         height, width = template.shape[:2]
         screen = np.zeros((720, 1280, 3), dtype=np.uint8)
         for x in (400, 800):
-            screen[200:200 + height, x:x + width] = template
+            screen[200:200 + height, x:x + width] = template[:, :, :3]
         self.assertIsNone(obs.find(screen, "recruit_card", (330, 70, 950, 535)))
 
     def test_portrait_candidates_still_require_matching_colors(self):
