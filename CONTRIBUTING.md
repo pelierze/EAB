@@ -36,7 +36,7 @@ ADB 연결이나 배포 빌드에 필요한 도구는 다음 명령으로 설치
 .\.venv\Scripts\python.exe main.py
 ```
 
-실행 시 관리자 권한 요청이 표시될 수 있습니다. 게임 연결과 해상도 설정은 [README](README.md#게임-연결)를 따르세요.
+실행 시 관리자 권한 요청이 표시될 수 있습니다. 게임 연결과 해상도 설정은 [README](README.md#connect-the-game)를 따르세요.
 
 ## 코드와 이미지 수정
 

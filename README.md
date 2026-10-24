@@ -1,97 +1,146 @@
 # Epic7 Assist Bot (EAB)
 
-에픽세븐의 반복 작업을 도와주는 Windows용 비활성 매크로입니다. STOVE PC 클라이언트와 ADB로 연결한 앱플레이어에서 사용할 수 있습니다.
+EAB is a Windows desktop tool that automates repetitive tasks in **Epic Seven**. It supports the STOVE PC client and Android emulators connected through ADB.
 
-비밀상점 갱신과 구매, 펭귄 구매, 자동 탐사를 지원합니다.
+Features include Secret Shop refreshes and purchases, Penguin purchases, and Dimensional Exploration.
 
-## 다운로드와 실행
+[Download the latest release](https://github.com/pelierze/EAB/releases/latest) · [Report an issue](https://github.com/pelierze/EAB/issues)
 
-1. [최신 릴리즈](https://github.com/pelierze/EAB/releases/latest)에서 `EAB-v버전.zip`을 다운로드합니다.
-2. 압축을 풀고 폴더 안의 `EAB.exe`를 실행합니다. 실행 파일만 따로 옮기지 말고, 압축을 푼 폴더 그대로 사용하세요.
+## Language support
 
-EAB는 기존 SecretShopBot-E7의 새 이름입니다. 기존 바로가기를 누르면 EAB가 실행되고 같은 위치에 새 바로가기를 만든 뒤 사용한 기존 바로가기를 제거합니다. 기존 이름의 EXE를 직접 실행하면 바탕화면에 새 바로가기를 만듭니다. `EAB.exe`를 직접 실행하거나 자동 업데이트할 때는 바로가기를 만들지 않습니다. v1.5.14 이하에서는 새 EAB ZIP을 내려받아 수동으로 설치해 주세요.
+Open the **Language** menu at the top of the app and select **English** or **한국어** (Korean). Your choice is saved across restarts and updates. This changes the app's interface; it does not change the game's language.
 
-## 게임 연결
+| Feature | English interface | Korean interface |
+| --- | --- | --- |
+| Secret Shop | Available | Available |
+| Penguin purchases | Available | Available |
+| Dimensional Exploration | Not yet available | Available |
+| Event tab | Disabled | No events currently supported |
 
-### STOVE PC 클라이언트
+Secret Shop and Penguin purchases use the same recognition logic for Korean and English game screens. Dimensional Exploration does not currently support English game screens. Some runtime logs and diagnostic messages remain in Korean even when the app uses English.
 
-1. STOVE에서 에픽세븐을 실행합니다.
-2. 앱의 실행 환경에서 `STOVE PC 클라이언트`를 선택합니다.
-3. `창 새로고침`을 누르고 에픽세븐 창을 선택한 뒤 `연결`을 누릅니다.
+## Download and run
 
-창 크기를 맞추려면 봇을 중지하고 `1280×720으로 맞추기`를 누르세요. 게임이 일반 창 모드일 때 사용할 수 있습니다.
+1. Open the [latest release](https://github.com/pelierze/EAB/releases/latest).
+2. Under **Assets**, download `EAB-v<version>.zip`, such as `EAB-v1.6.0.zip`. Use the release ZIP rather than GitHub's **Source code** downloads.
+3. Extract the entire archive to a folder.
+4. Run **EAB.exe** inside that folder. Keep the other files and the `_internal` folder alongside it; do not move the executable on its own.
 
-입력이 동작하지 않으면 앱의 `관리자 권한으로 재실행` 버튼을 사용하세요. 게임 창은 최소화하지 않고 열어 두세요.
+The packaged release does not require a separate Python installation. Windows may request administrator permission when the app starts.
 
-STOVE 화면은 내부적으로 1280×720 기준으로 보정합니다. 다른 해상도에서도 사용할 수 있도록 되어 있지만, 화면 비율이나 UI 배치에 따라 인식 차이가 생길 수 있습니다.
+EAB was previously named **SecretShopBot-E7**. The included compatibility launcher keeps existing shortcuts working. When opened through an old shortcut, it creates an EAB shortcut in the same location and removes the old one only after the replacement succeeds. Running the old executable directly creates an EAB shortcut on the desktop. Running `EAB.exe` directly or using automatic updates does not create shortcuts.
 
-### 앱플레이어 (ADB)
+## Connect the game
 
-1. 앱플레이어 해상도를 `1280×720`, DPI를 `240`으로 설정합니다.
-2. 앱플레이어 설정에서 ADB 디버깅을 켜고 에픽세븐을 실행합니다.
-3. 앱의 실행 환경에서 `앱플레이어 (ADB)`를 선택합니다.
-4. `장치 검색`을 누르고 사용할 장치를 선택한 뒤 `연결`을 누릅니다.
+### STOVE PC client
 
-장치가 검색되지 않으면 앱플레이어의 ADB 설정과 연결 포트를 확인하세요.
+1. Launch Epic Seven through STOVE and leave the game window open.
+2. In EAB, set **Environment** to **STOVE PC Client**.
+3. Click **Refresh Windows**, choose the game under **Epic Seven Window**, and click **Connect**.
+4. Stop any running bot, then click **Resize to 1280×720** to match the expected game size. Use the game's normal windowed mode for this option.
 
-## 기능별 사용법
+Keep the game window open and **not minimized** while the bot runs. If input does not work, use **Restart as Admin** when that button is available.
 
-게임에서 해당 기능의 시작 화면을 직접 열어 둔 뒤 실행하세요. 처음에는 횟수를 작게 설정해 동작을 확인하는 편이 좋습니다. 진행 상황과 중지 이유는 하단 로그에서 볼 수 있습니다.
+STOVE captures are normalized to a 1280×720 reference size. Other window sizes may work, but differences in aspect ratio or UI layout can affect recognition.
 
-### 비밀상점
+### Android emulator (ADB)
 
-1. 게임에서 비밀상점을 엽니다.
-2. `비밀상점` 탭에서 리프레시 횟수 또는 사용 하늘석을 입력합니다. 우정 포인트도 구매하려면 해당 옵션을 체크합니다.
-3. `시작`을 누릅니다. 멈추려면 `중지`를 누릅니다.
+1. Set the emulator's resolution to **1280×720** and DPI to **240**.
+2. Enable **ADB debugging** in the emulator's settings and launch Epic Seven.
+3. In EAB, set **Environment** to **Emulator (ADB)**.
+4. Click **Scan Devices**, select the emulator under **Device**, and click **Connect**.
 
-신비의 메달과 성약의 책갈피를 찾아 구매하고 상점을 갱신합니다. 하늘석을 쓰지 않으려면 `자연 갱신만 구매`를 체크하세요. 이 모드는 상점 화면을 유지한 상태에서 15분마다 상품을 확인하며, 직접 중지할 때까지 실행합니다.
+If the device does not appear, check that ADB debugging is enabled and that the connection port matches the emulator's settings. You can enter the **IP Address** and **Port** manually when needed.
 
-### 펭귄 구매
+For multiple emulators, connect a different device to each session.
 
-1. 게임에서 펭귄 구매 화면을 엽니다.
-2. `펭귄` 탭에서 구매 사이클 횟수를 입력합니다.
-3. `펭귄런 시작`을 누릅니다. 멈추려면 `펭귄런 중지`를 누릅니다.
+## Using the features
 
-### 자동 탐사
+Open the appropriate starting screen in the game before starting a bot. Begin with a small run count to check the setup. The **Logs** panel shows progress and reasons for stopping.
 
-1. 게임에서 원하는 난이도를 설정하고 `탐사 시작` 버튼이 보이는 화면을 엽니다. 이미 탐사 중이면 노드 지도에서 시작할 수 있습니다.
-2. `자동 탐사` 탭에서 직업별 영웅과 랭크업 우선순위를 선택합니다.
-3. 목표 완주 횟수를 입력하고, 상점 구매와 미확인 이벤트 저장 옵션을 확인합니다.
-4. `자동 탐사 시작`을 누릅니다. 멈추려면 `중지`를 누릅니다.
+### Secret Shop
 
-영웅 영입부터 노드 이동과 전투, 정산까지 진행하며 목표 완주 횟수에 따라 반복합니다. 게임에 설정된 난이도를 사용합니다.
+1. Open the Secret Shop in the game.
+2. Select the **Secret Shop** tab in EAB.
+3. Set **Refresh Count** or **Skystones to Use**. Enable **Buy Friendship Points** if you also want to purchase that item.
+4. Click **Start**. Use **Pause**, **Resume**, or **Stop** as needed.
 
-직업별 영웅, 랭크업 우선순위와 코스트 초과 시 대체 영웅 옵션은 변경할 때 자동 저장됩니다. 같은 Windows 사용자로 다시 실행하면 세션별 마지막 구성을 불러오며, 자동 업데이트하거나 새 폴더에 수동 업데이트해도 유지됩니다.
+The bot looks for **Mystic Medals** and **Covenant Bookmarks**, purchases them, and refreshes the shop.
 
-모든 이벤트는 버튼 형태로 선택지를 찾고, 금지·비활성 선택지와 취소된 선택지를 제외한 후보 중 무작위로 선택합니다. 선택지 문구는 판독하지 않으며 불리한 결과가 있는 선택지도 선택될 수 있습니다. 화면을 인식하지 못하거나 진행을 확인하지 못하면 중지할 수 있으니, 로그와 게임 화면을 확인하세요.
+To avoid spending Skystones on refreshes, enable **Free Refresh Only**. Leave the game on the shop screen. This mode checks the shop at 15-minute intervals and continues until you stop it. Item purchases still consume the required in-game currency.
 
-### 이벤트
+### Penguin purchases
 
-현재 지원하는 이벤트가 없습니다. 이벤트 탭에서는 이 안내만 표시됩니다.
+1. Open **Forest of Souls → Growth Altar** in the game and leave the Penguin purchase list visible.
+2. Select the **Penguins** tab in EAB.
+3. Enter the number of **Purchase Cycles**.
+4. Click **Start Penguin Run**. Use **Stop Penguin Run** to stop.
 
-## 업데이트
+The bot selects the Stigma purchase control for the Penguin Nest, chooses the maximum quantity when needed, and confirms **50/50** before purchasing. Each cycle uses Stigma; the cycle count is the number of purchase repetitions.
 
-새 버전 안내에서 릴리즈 노트를 확인한 뒤 `업데이트 후 재시작`을 누릅니다. 나중에 설치하려면 `나중에`를 선택하세요. 수동으로 업데이트하려면 최신 ZIP을 내려받아 새 폴더에 압축을 풀고 실행하세요.
+### Dimensional Exploration
 
-## 사용 중 문제가 생기면
+This feature is currently available through the **Korean interface** and targets Korean game screens. Switching the interface to English disables its tab.
 
-- 연결 상태와 게임의 현재 화면을 확인하세요. 앱플레이어는 해상도와 DPI도 확인하세요.
-- 비밀상점 인식은 `이미지 테스트`로 확인할 수 있습니다.
-- 문제를 제보할 때는 앱 버전, STOVE·앱플레이어 구분, 문제가 발생한 화면과 `logs` 폴더의 관련 로그를 함께 알려주세요.
-- 자동화가 오류로 중지되면 `logs/report`에 최근 로그, 마지막 화면과 종료 사유를 저장하고 로그에 저장 위치를 안내합니다. 문제를 제보할 때 해당 보고서 폴더의 파일을 함께 첨부해 주세요. 화면을 확보하지 못하면 로그와 사유만 저장합니다. 정상 완료와 사용자 중지에는 보고서를 만들지 않습니다.
-- 비밀상점 오류 보고서에는 최근 드래그 2회의 전후 화면도 `scrolls` 폴더에 저장합니다. 일반 스크롤과 상단 복귀 스크롤을 구분하며, 확보된 기존 스캔 화면만 사용합니다. 다음 캡처 전에 종료되거나 캡처가 실패하면 일부 화면은 없을 수 있습니다. `scrolls`를 포함한 보고서 폴더 전체를 ZIP으로 첨부해 주세요.
-- 자동 업데이트나 실행 오류의 진단 로그는 `%LOCALAPPDATA%\SecretShopBot-E7\logs`에 남습니다. 탐색기 주소창에 이 경로를 입력하고 `updater.log`, `startup.log`를 확인하세요. Windows가 실행 파일 자체를 차단한 경우에는 새 실행 로그가 생기지 않을 수 있으므로 오류 화면과 백신 보호 기록도 함께 알려주세요.
+1. In the game, select the desired difficulty and open the exploration starting screen. You can also start from the node map if a run is already in progress.
+2. In EAB's exploration tab, select a hero for each class and set the rank-up priorities.
+3. Enter the target number of completed runs and review the shop and unrecognized-event options.
+4. Start exploration, or use its stop control to end the run.
 
-여러 앱플레이어를 사용한다면 세션마다 다른 장치를 연결하세요.
+The bot handles recruitment, node movement, battles, and results, then repeats until it reaches the target run count. It uses the difficulty already selected in the game.
 
-게임 이용 약관을 확인한 뒤 사용하세요. 자동화 도구 사용에 따른 계정 제재나 재화 손실은 사용자 책임입니다.
+Hero choices, rank-up priorities, and the fallback-hero option are saved automatically for each session. The last configuration is restored for the same Windows user, including after automatic updates or a manual update to a new folder.
 
-## 기여
+Event choices are selected randomly from detected buttons after excluding forbidden, disabled, and previously canceled choices. The bot does not read the choice text, so it may select choices with unfavorable outcomes. If it cannot recognize a screen or confirm progress, it may stop; check the logs and the game screen.
 
-오류 제보, 기능 제안과 코드 수정 방법은 [기여 안내](CONTRIBUTING.md)를 확인해 주세요.
+### Events
 
-## 라이선스
+No events are currently supported. In the Korean interface, this tab displays a notice only; it is disabled in the English interface.
 
-이 프로젝트의 소스 코드는 [GNU General Public License v3.0 (GPL-3.0-only)](LICENSE)에 따라 배포됩니다. 사용, 수정 및 재배포할 수 있으며, 수정본이나 실행 파일을 배포할 때는 GPLv3의 조건에 따라 해당 소스 코드도 제공해야 합니다. 이 프로그램은 어떠한 보증도 없이 제공됩니다.
+## Updating
 
-포함된 외부 라이브러리와 제3자 자산에는 각각의 라이선스와 권리 조건이 적용됩니다.
+When an update is offered, review the release notes and choose **Update & Restart**. Select **Later** to postpone it. Running bots do not resume automatically after updating.
+
+- **v1.5.15 and later:** automatic updates support the EAB package format.
+- **v1.5.14 and earlier:** download the latest EAB ZIP and install it manually.
+
+For a manual update, close the app, extract the latest ZIP to a **new folder**, and run `EAB.exe`. Keep the entire extracted folder together.
+
+## Troubleshooting and issue reports
+
+Check the connection and the current game screen first. For emulators, also check the resolution and DPI. Use **Image Test** to investigate Secret Shop recognition, and enable **Debug Mode (Detailed Logs)** when collecting additional Secret Shop diagnostics.
+
+If a problem persists, [open an issue](https://github.com/pelierze/EAB/issues) with:
+
+- The EAB version, interface language, and game language.
+- Whether you use STOVE or an emulator; include the emulator name when applicable.
+- The feature, steps to reproduce the issue, and expected versus actual behavior.
+- A screenshot and the relevant logs or error-report folder.
+
+### Automation error reports
+
+When automation stops because of an error, EAB saves the available recent logs, last screenshot, and stop reason under **`logs/report`**. The log panel shows the report location. Normal completion and a manual stop do not create an error report. If a screenshot cannot be captured, the report contains the available logs and reason instead.
+
+Secret Shop reports may also include before-and-after images for the last two scroll gestures in a **`scrolls`** subfolder. Some images may be missing if a capture failed or the bot stopped before the next capture. Attach the **entire report folder as a ZIP**, including `scrolls` when present.
+
+### Startup and update errors
+
+Paste this path into the Windows File Explorer address bar:
+
+```text
+%LOCALAPPDATA%\SecretShopBot-E7\logs
+```
+
+Check **`startup.log`** and **`updater.log`**. The folder retains the old application name for compatibility.
+
+If Windows blocks the executable before it starts, no new startup log may be created. Include the error screen and relevant antivirus protection history in your report. Review screenshots and logs for personal information before attaching them.
+
+## Contributing
+
+Bug reports, feature requests, documentation improvements, and code contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development and contribution instructions, currently written in Korean. You can submit [issues](https://github.com/pelierze/EAB/issues) in English.
+
+## License and responsible use
+
+The source code is licensed under the [GNU General Public License v3.0 (GPL-3.0-only)](LICENSE). When distributing modified versions or binaries, provide the corresponding source code as required by GPLv3. The software is provided without warranty. Third-party libraries and assets remain subject to their respective licenses and rights.
+
+Check the game's terms of service before use. You are responsible for account penalties or loss of in-game currency resulting from automation.
