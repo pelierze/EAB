@@ -1559,6 +1559,323 @@
     },
     {
       "group": "node",
+      "marker": "recruit_title_legacy",
+      "source": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
+      "crop": [
+        595,
+        458,
+        95,
+        40
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        575,
+        445,
+        135,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "recruit_card_frame",
+      "source": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
+      "crop": [
+        514,
+        114,
+        252,
+        426
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          14,
+          14,
+          224,
+          398
+        ]
+      ],
+      "region": [
+        514,
+        114,
+        252,
+        426
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "ticket_class_knight",
+      "source": "images/chaos/hero_selection/raw/Screenshot_2026.09.24_10.44.15.754.png",
+      "crop": [
+        180,
+        180,
+        80,
+        80
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review",
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    {
+      "group": "node",
+      "marker": "ticket_class_warrior",
+      "source": "images/chaos/hero_selection/raw/Screenshot_2026.09.24_10.44.15.754.png",
+      "crop": [
+        460,
+        180,
+        80,
+        80
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review",
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    {
+      "group": "node",
+      "marker": "ticket_class_thief",
+      "source": "images/chaos/hero_selection/raw/Screenshot_2026.09.24_10.44.15.754.png",
+      "crop": [
+        1020,
+        180,
+        80,
+        80
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review",
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    {
+      "group": "node",
+      "marker": "ticket_class_soul_weaver",
+      "source": "images/chaos/hero_selection/raw/Screenshot_2026.09.24_10.44.15.754.png",
+      "crop": [
+        740,
+        180,
+        80,
+        80
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review",
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    {
+      "group": "node",
+      "marker": "ticket_class_ranger",
+      "source": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
+      "crop": [
+        600,
+        160,
+        80,
+        80
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review",
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    {
+      "group": "node",
+      "marker": "ticket_class_mage",
+      "source": "images/chaos/node_progression/templates/recruitment/mage_filter_symbol.png",
+      "crop": [
+        0,
+        0,
+        30,
+        30
+      ],
+      "source_size": [
+        30,
+        30
+      ],
+      "exclude": [],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review",
+      "match_scales": [
+        2.25,
+        2.375,
+        2.5,
+        2.625
+      ]
+    },
+    {
+      "group": "node",
+      "marker": "recruit_skip_confirm_frame",
+      "source": "images/chaos/node_progression/raw/recruit_skip_confirm_local_live.png",
+      "crop": [
+        649,
+        430,
+        198,
+        60
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          15,
+          10,
+          168,
+          40
+        ]
+      ],
+      "region": [
+        635,
+        415,
+        225,
+        90
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "recruit_skip_cancel_frame",
+      "source": "images/chaos/node_progression/raw/recruit_skip_confirm_local_live.png",
+      "crop": [
+        434,
+        430,
+        198,
+        60
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          15,
+          10,
+          168,
+          40
+        ]
+      ],
+      "region": [
+        420,
+        415,
+        225,
+        90
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
       "marker": "supply_first_disabled",
       "source": "images/chaos/node_progression/raw/supply_done_live.png",
       "crop": [
@@ -4846,21 +5163,28 @@
       "marker": "recruit_reward_title",
       "source": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
       "crop": [
-        595,
-        458,
-        95,
-        40
+        535,
+        454,
+        212,
+        55
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
+      "exclude": [
+        [
+          18,
+          8,
+          176,
+          38
+        ]
+      ],
       "region": [
-        575,
+        525,
         445,
-        135,
-        65
+        232,
+        75
       ],
       "threshold": 0.9,
       "max_color_error": 0.055,
@@ -4872,21 +5196,28 @@
       "marker": "recruit_continue",
       "source": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
       "crop": [
-        580,
-        632,
-        124,
-        34
+        473,
+        615,
+        334,
+        75
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
+      "exclude": [
+        [
+          28,
+          8,
+          278,
+          58
+        ]
+      ],
       "region": [
-        550,
-        620,
-        184,
-        60
+        460,
+        605,
+        360,
+        95
       ],
       "threshold": 0.9,
       "max_color_error": 0.055,

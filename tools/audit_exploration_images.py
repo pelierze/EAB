@@ -43,6 +43,8 @@ def collect(root=ROOT):
             'packaged': key in packaged,
             'language_review': 'pending_visual_and_paired_screen_review',
         }, effective))
+        if 'match_scales' in definition:
+            entries[-1][0]['match_scales'] = definition['match_scales']
 
     rec = json.loads((root / 'src/chaos/recruitment_layout.json').read_text(encoding='utf-8'))
     node = json.loads((root / 'src/chaos/node_layout.json').read_text(encoding='utf-8'))
@@ -80,6 +82,7 @@ def main():
         x, y, w, h = entry['crop']
         width, height = entry['source_size']
         source = html.escape('../../' + entry['source'], quote=True)
+        scales = f' · scales={entry["match_scales"]}' if 'match_scales' in entry else ''
         exclusions = ''.join(f'<rect x="{x+ex}" y="{y+ey}" width="{ew}" height="{eh}" fill="black"/>'
                              for ex, ey, ew, eh in entry['exclude'])
         mask = (f'<defs><mask id="mask-{index}" maskUnits="userSpaceOnUse" '
@@ -88,7 +91,7 @@ def main():
                 f'{exclusions}</mask></defs>')
         cards.append(f'<article id="{html.escape(name)}"><h2>{html.escape(name)}</h2>'
                      f'<p>{html.escape(entry["source"])}</p>'
-                     f'<p>crop={entry["crop"]} · exclude={entry["exclude"]} · region={entry["region"]} · packaged={entry["packaged"]}</p>'
+                     f'<p>crop={entry["crop"]} · exclude={entry["exclude"]} · region={entry["region"]} · packaged={entry["packaged"]}{scales}</p>'
                      f'<svg viewBox="{x} {y} {w} {h}" width="{w}" height="{h}" role="img">'
                      f'<title>{html.escape(name)}</title>{mask}<image href="{source}" width="{width}" '
                      f'height="{height}" mask="url(#mask-{index})"></image></svg></article>')

@@ -138,7 +138,10 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'rest_option_disabled', 'rest_option_2', 'rest_option_3', 'rest_option_4',
                        'leave', 'rank_title', 'rank_button', 'supply_chest_closed',
                        'supply_chest_open', 'supply_menu_first', 'supply_option_disabled',
-                       'supply_first_disabled')
+                       'supply_first_disabled', 'recruit_card_frame', 'recruit_reward_title',
+                       'recruit_continue', 'recruit_skip_confirm_frame', 'recruit_skip_cancel_frame',
+                       'ticket_class_knight', 'ticket_class_warrior', 'ticket_class_thief',
+                       'ticket_class_soul_weaver', 'ticket_class_ranger', 'ticket_class_mage')
             metadata = {'phase': phase, 'reason': self.stats.get('reason'), 'markers': {}}
             try:
                 metadata['state'] = self.observer.classify(self.last_screen)
@@ -1091,6 +1094,10 @@ class NodeProgressionBot(KnightRecruitmentBot):
                     return None
                 confirm = self.observer.find(screen, 'story_confirm')
                 cancel = self.observer.find(screen, 'story_cancel')
+                if not (confirm and cancel):
+                    buttons = self.observer.recruit_skip_buttons(screen)
+                    if isinstance(buttons, dict):
+                        confirm, cancel = buttons['confirm'], buttons['cancel']
                 if confirm and cancel:
                     return ('confirm', *confirm, *cancel)
                 state = self._classify(screen)

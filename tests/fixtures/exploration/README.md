@@ -54,3 +54,11 @@ See `docs/i18n/exploration-rest-menu.md` for scope and animation exclusions.
 Tests replace chest lid/effects, party and captions, retain the lower chest
 body, and replay menu selection with loot handling stubbed. Completion uses
 the Korean source with captions erased. See `docs/i18n/exploration-supply-menu.md`.
+
+## Reported English recruitment ticket
+
+`english_recruit_ticket_20261024.npz` contains the unmodified BGR `screen` from
+`logs/report/20261024_221929_282738_세션_1_347b9fad/screen.png`.
+It is a real Soul Weaver ticket. Other class cases use composited references;
+the confirmation replay removes text from the Korean dialog. No game inputs
+are sent. See `docs/i18n/exploration-recruit-ticket.md` for recognition and limits.

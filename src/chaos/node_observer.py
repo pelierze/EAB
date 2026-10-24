@@ -165,6 +165,10 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
+            if name.startswith('ticket_class_') and name in self.templates:
+                return self._ticket_icon(screen, name)
+            if name in ('recruit_reward_title', 'recruit_continue'):
+                return (self.recruit_reward_controls(screen) or {}).get(name)
             if name in ('rest_option_2', 'rest_option_3', 'rest_option_4', 'supply_menu_first'):
                 return self._menu_option_bounds(screen, name)
             if name in ('supply_loot', 'supply_done'):
@@ -267,6 +271,48 @@ class NodeObserver:
         done = self.all(screen, 'supply_done')
         return dict(leave=leave[0], supply_loot=active[0] if len(active) == 1 and not done else None,
                     supply_done=done[0] if len(done) == 1 else None)
+
+    def _ticket_icon(self, screen, name):
+        definition = self.config['markers'][name]
+        x, y, w, h = definition['region']
+        sample = screen[y:y+h, x:x+w]
+        best = None
+        for scale in definition['match_scales']:
+            template = cv2.resize(self.templates[name], None, fx=scale, fy=scale)
+            th, tw = template.shape[:2]
+            if th > h or tw > w:
+                continue
+            _, score, _, (mx, my) = cv2.minMaxLoc(ImageMatcher.match_template(sample, template, shape_only=True))
+            if score >= definition['threshold'] and (best is None or score > best[0]):
+                best = score, (x+mx, y+my, tw, th)
+        return best[1] if best else None
+
+    def recruit_reward_controls(self, screen):
+        controls = {}
+        for name in ('recruit_card_frame', 'recruit_reward_title', 'recruit_continue'):
+            matches = self.all(screen, name)
+            if len(matches) != 1:
+                return None
+            controls[name] = matches[0]
+        roles = [role for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage')
+                 if self._ticket_icon(screen, 'ticket_class_' + role)]
+        if len(roles) > 1:
+            return None
+        if not roles and not self.all(screen, 'recruit_title_legacy'):
+            return None
+        controls['role'] = roles[0] if roles else 'legacy'
+        return controls
+
+    def recruit_skip_buttons(self, screen):
+        # Only the post-Continue skip handler may interpret these generic buttons.
+        confirm = self.all(screen, 'recruit_skip_confirm_frame')
+        cancel = self.all(screen, 'recruit_skip_cancel_frame')
+        if len(confirm) == len(cancel) == 1:
+            cx, cy, cw, ch = confirm[0]
+            bx, by, bw, bh = cancel[0]
+            if abs((cx+cw/2) - (bx+bw/2) - 215) <= 4 and abs(cy-by) <= 3:
+                return dict(confirm=confirm[0], cancel=cancel[0])
+        return None
 
     def is_rank_menu(self, screen):
         # Geometry + exploration footer + distinct party class icons; no OCR.
@@ -496,7 +542,7 @@ class NodeObserver:
         if self.find(screen, 'shop_exit_dialog') and self.find(screen, 'story_confirm'): return 'shop_exit_confirm'
         if self.find(screen, 'unclaimed_dialog'): return 'unclaimed_reward'
         if self.find(screen, 'event_rank_reward_icon') and self.find(screen, 'event_reward_continue'): return 'rank_reward'
-        if self.find(screen, 'recruit_reward_title') and self.find(screen, 'recruit_continue'): return 'recruit_reward'
+        if self.recruit_reward_controls(screen): return 'recruit_reward'
         if self.find(screen, 'story_dialog'): return 'story_confirm'
         if self.find(screen, 'story_confirm'): return 'event_warning'
         if self.levelup_controls(screen): return 'levelup'
