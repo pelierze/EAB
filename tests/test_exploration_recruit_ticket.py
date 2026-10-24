@@ -30,6 +30,14 @@ class RecruitTicketTests(unittest.TestCase):
         self.assertEqual(self.observer.recruit_reward_controls(self.english)['role'], 'soul_weaver')
         self.assertEqual(self.observer.find(self.english, 'recruit_continue'), (473, 615, 334, 75))
 
+    def test_all_ticket_icon_in_standalone_slot_is_recognized(self):
+        # Synthetic placement: the supplied All capture is a battle reward.
+        screen = self.english.copy()
+        screen[145:255, 585:700] = 0
+        screen[168:232, 608:672] = self.observer.templates['ticket_class_all']
+        self.assertEqual(self.observer.recruit_reward_controls(screen)['role'], 'all')
+        self.assertEqual(self.observer.classify(screen), 'recruit_reward')
+
     def test_all_six_icon_patterns_in_ticket_slot(self):
         for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage'):
             screen = self.english.copy()

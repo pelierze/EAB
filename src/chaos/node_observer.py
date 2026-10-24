@@ -317,7 +317,7 @@ class NodeObserver:
             elif self.all(screen, 'battle_rank_icon', icon_region):
                 controls['battle_rank_reward'] = button
             elif any(self._ticket_icon(screen, 'ticket_class_'+role, icon_region)
-                     for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage')):
+                     for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage', 'all')):
                 controls['reward_hero'] = button
         return controls
 
@@ -341,7 +341,7 @@ class NodeObserver:
             if len(matches) != 1:
                 return None
             controls[name] = matches[0]
-        roles = [role for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage')
+        roles = [role for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage', 'all')
                  if self._ticket_icon(screen, 'ticket_class_' + role)]
         if len(roles) > 1:
             return None

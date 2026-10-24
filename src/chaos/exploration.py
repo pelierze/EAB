@@ -145,7 +145,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'supply_first_disabled', 'recruit_card_frame', 'recruit_reward_title',
                        'recruit_continue', 'recruit_skip_confirm_frame', 'recruit_skip_cancel_frame',
                        'ticket_class_knight', 'ticket_class_warrior', 'ticket_class_thief',
-                       'ticket_class_soul_weaver', 'ticket_class_ranger', 'ticket_class_mage')
+                       'ticket_class_soul_weaver', 'ticket_class_ranger', 'ticket_class_mage', 'ticket_class_all')
             metadata = {'phase': phase, 'reason': self.stats.get('reason'), 'markers': {}}
             try:
                 metadata['state'] = self.observer.classify(self.last_screen)

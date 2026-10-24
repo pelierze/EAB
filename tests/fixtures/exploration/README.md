@@ -80,3 +80,9 @@ background. Background replacement and missing-notch cases are synthetic.
 `logs/report/20261025_080552_812310_세션_1_318b38dd/screen.png`.
 It covers a supply menu with a wrapped English recruitment caption and a
 different background appearance. Caption/sparkle changes and dimming are synthetic.
+
+`english_battle_all_ticket_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_081743_242797_세션_1_bc15cb18/screen.png`.
+It is a real English victory with loot and an All-Class recruitment ticket.
+Claim acknowledgement and missing-component cases are synthetic; loot selection
+and hero confirmation are covered separately, with no live game input.

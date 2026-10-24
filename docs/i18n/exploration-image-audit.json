@@ -7918,6 +7918,37 @@
       "language_review": "pending_visual_and_paired_screen_review"
     },
     {
+      "group": "node",
+      "marker": "ticket_class_all",
+      "source": "images/chaos/node_progression/templates/recruitment/all_ticket_symbol.png",
+      "crop": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "source_size": [
+        64,
+        64
+      ],
+      "exclude": [],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review",
+      "match_scales": [
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    {
       "group": "theme",
       "marker": "select_supply_1",
       "source": "images/chaos/hero_selection/templates/themes/select_supply_1.png",

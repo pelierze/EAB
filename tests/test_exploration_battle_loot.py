@@ -21,6 +21,8 @@ class BattleLootTests(unittest.TestCase):
             cls.warning = data['warning']
         with np.load(ROOT / 'tests/fixtures/exploration/english_battle_background_20261025.npz') as data:
             cls.changed_background = data['screen']
+        with np.load(ROOT / 'tests/fixtures/exploration/english_battle_all_ticket_20261025.npz') as data:
+            cls.all_ticket = data['screen']
 
     def test_real_english_loot_button(self):
         self.assertEqual(self.observer.classify(self.screen), 'victory')
@@ -71,6 +73,29 @@ class BattleLootTests(unittest.TestCase):
 
     def test_loot_and_hero_together_claims_loot_before_skipping_hero(self):
         rewards = read_image(str(ROOT / 'images/chaos/node_progression/raw/boss_victory_rewards_live.png'))
+        self.assert_loot_before_hero(rewards)
+
+    def test_reported_loot_and_all_class_ticket_sequence(self):
+        self.assertEqual(self.observer.battle_reward_controls(self.all_ticket),
+                         {'loot_reward': (535, 506, 212, 55), 'reward_hero': (801, 506, 212, 55)})
+        self.assertIsNone(self.observer.find(self.all_ticket, 'battle_unresolved_reward'))
+        self.assert_loot_before_hero(self.all_ticket)
+
+    def test_all_ticket_requires_icon_card_and_active_button(self):
+        for x, y, w, h in ((875, 218, 64, 64), (781, 439, 16, 35), (801, 506, 212, 55)):
+            screen = self.all_ticket.copy()
+            screen[y:y+h, x:x+w] = 0
+            with self.subTest(bounds=(x, y, w, h)):
+                self.assertIsNone(self.observer.find(screen, 'reward_hero'))
+                self.assertIsNotNone(self.observer.find(screen, 'loot_reward'))
+
+    def test_all_ticket_caption_is_not_an_input(self):
+        screen = self.all_ticket.copy()
+        screen[305:430, 801:1013] = 0
+        screen[514:552, 819:995] = 0
+        self.assertIsNotNone(self.observer.find(screen, 'reward_hero'))
+
+    def assert_loot_before_hero(self, rewards):
         claimed = rewards.copy()
         claimed[495:570, 535:747] = 0  # Simulate the acknowledged loot button disappearing.
         bot = object.__new__(NodeProgressionBot)
