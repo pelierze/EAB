@@ -43,6 +43,35 @@ class BattleLootTests(unittest.TestCase):
         self.assertEqual(controls['loot_reward'], (535, 506, 212, 55))
         self.assertEqual(controls['reward_hero'], (801, 506, 212, 55))
 
+    def test_loot_and_hero_together_claims_loot_before_skipping_hero(self):
+        rewards = read_image(str(ROOT / 'images/chaos/node_progression/raw/boss_victory_rewards_live.png'))
+        claimed = rewards.copy()
+        claimed[495:570, 535:747] = 0  # Simulate the acknowledged loot button disappearing.
+        bot = object.__new__(NodeProgressionBot)
+        bot.stats = {'nodes': 0}
+        bot.event_context = False
+        bot.observer = self.observer
+        bot._capture = Mock(return_value=rewards)
+        bot._guarded_tap = Mock()
+        bot._state = Mock(return_value='loot')
+        def claim():
+            bot._capture.return_value = claimed
+            return 'victory'
+        bot._loot = Mock(side_effect=claim)
+        bot._settle_reward_popups = lambda state, allowed: state
+        bot._wait_skipped_hero = Mock(return_value='map')
+
+        self.assertEqual(bot._victory(), 'victory')
+        self.assertEqual(bot._guarded_tap.call_args.args[2], 'loot_reward')
+        bot._wait_skipped_hero.assert_not_called()
+        self.assertEqual(bot.stats['nodes'], 0)
+        self.assertIsNotNone(self.observer.find(claimed, 'reward_hero'))
+        bot._victory()
+        self.assertEqual([call.args[2] for call in bot._guarded_tap.call_args_list],
+                         ['loot_reward', 'continue'])
+        bot._wait_skipped_hero.assert_called_once()
+        self.assertEqual(bot.stats['nodes'], 1)
+
     def test_received_loot_is_not_actionable(self):
         screen = read_image(str(ROOT / 'images/chaos/node_progression/raw/elite_victory_claimed_live.png'))
         self.assertIsNone(self.observer.find(screen, 'loot_reward'))
