@@ -1,5 +1,7 @@
 # Epic7 Assist Bot (EAB)
 
+[English](README.md) | [한국어](README.ko.md)
+
 EAB is a Windows desktop tool that automates repetitive tasks in **Epic Seven**. It supports the STOVE PC client and Android emulators connected through ADB.
 
 Features include Secret Shop refreshes and purchases, Penguin purchases, and Dimensional Exploration.
