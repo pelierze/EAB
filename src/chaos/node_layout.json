@@ -268,10 +268,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "threshold": 0.9,
@@ -327,10 +333,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "threshold": 0.9,
@@ -352,10 +364,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "threshold": 0.9,
@@ -1425,10 +1443,16 @@
       "max_color_error": 0.055,
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ]
     },
@@ -4022,6 +4046,56 @@
         252,
         426
       ]
+    },
+    "supply_menu_first_variant": {
+      "file": "images/chaos/node_progression/templates/supply/menu_first.png",
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055
+    },
+    "supply_loot_variant": {
+      "file": "images/chaos/node_progression/templates/supply/loot_active.png",
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055
     }
   },
   "loot_cards": [

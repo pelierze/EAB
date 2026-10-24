@@ -141,6 +141,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'rest_option_disabled', 'rest_option_2', 'rest_option_3', 'rest_option_4',
                        'leave', 'rank_title', 'rank_button', 'supply_chest_closed',
                        'supply_chest_open', 'supply_menu_first', 'supply_option_disabled',
+                       'supply_menu_first_variant', 'supply_loot_variant',
                        'supply_first_disabled', 'recruit_card_frame', 'recruit_reward_title',
                        'recruit_continue', 'recruit_skip_confirm_frame', 'recruit_skip_cancel_frame',
                        'ticket_class_knight', 'ticket_class_warrior', 'ticket_class_thief',

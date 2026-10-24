@@ -1890,10 +1890,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -1975,10 +1981,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -2008,10 +2020,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -3789,10 +3807,16 @@
       ],
       "exclude": [
         [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
           20,
-          20,
-          290,
-          58
+          36
         ]
       ],
       "region": [
@@ -7812,6 +7836,84 @@
       ],
       "threshold": 0.9,
       "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "supply_menu_first_variant",
+      "source": "images/chaos/node_progression/templates/supply/menu_first.png",
+      "crop": [
+        0,
+        0,
+        330,
+        94
+      ],
+      "source_size": [
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "supply_loot_variant",
+      "source": "images/chaos/node_progression/templates/supply/loot_active.png",
+      "crop": [
+        0,
+        0,
+        330,
+        94
+      ],
+      "source_size": [
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },

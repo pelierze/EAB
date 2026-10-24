@@ -20,6 +20,8 @@ class SupplyMenuTests(unittest.TestCase):
         cls.observer = NodeObserver(ROOT)
         with np.load(ROOT / 'tests/fixtures/exploration/english_supply_menu_20261024.npz') as data:
             cls.english = data['screen']
+        with np.load(ROOT / 'tests/fixtures/exploration/english_supply_background_20261025.npz') as data:
+            cls.latest = data['screen']
 
     def frame(self, name):
         return read_image(str(RAW / name))
@@ -28,6 +30,31 @@ class SupplyMenuTests(unittest.TestCase):
         self.assertEqual(self.observer.classify(self.english), 'supply')
         self.assertEqual(self.observer.find(self.english, 'supply_loot'), (905, 368, 330, 94))
         self.assertEqual(self.observer.find(self.english, 'leave'), (938, 628, 300, 64))
+
+    def test_latest_report_with_wrapped_caption_and_different_background(self):
+        self.assertEqual(self.observer.classify(self.latest), 'supply')
+        self.assertEqual(self.observer.find(self.latest, 'supply_loot'), (905, 368, 330, 94))
+        self.assertIsNone(self.observer.find(self.latest, 'supply_done'))
+
+    def test_latest_captions_and_edge_sparkle_are_excluded(self):
+        screen = self.latest.copy()
+        rng = np.random.default_rng(25)
+        for y in (258, 368):
+            for x0, y0, w, h in self.observer.config['markers']['supply_loot_variant']['exclude']:
+                screen[y+y0:y+y0+h, 905+x0:905+x0+w] = rng.integers(0, 256, (h, w, 3), dtype=np.uint8)
+        self.assertEqual(self.observer.supply_controls(screen), self.observer.supply_controls(self.latest))
+
+    def test_latest_still_requires_chest_and_both_frames(self):
+        for x, y, w, h in ((570, 505, 180, 65), (905, 258, 330, 94), (905, 368, 330, 94)):
+            screen = self.latest.copy()
+            screen[y:y+h, x:x+w] = 0
+            with self.subTest(bounds=(x, y, w, h)):
+                self.assertIsNone(self.observer.find(screen, 'supply_loot'))
+
+    def test_dimmed_latest_second_option_never_authorizes_loot_click(self):
+        screen = self.latest.copy()
+        screen[368:462, 905:1235] //= 2
+        self.assertIsNone(self.observer.find(screen, 'supply_loot'))
 
     def test_caption_lid_effects_and_party_are_not_matching_inputs(self):
         screen = self.english.copy()

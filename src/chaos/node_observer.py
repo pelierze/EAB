@@ -259,6 +259,7 @@ class NodeObserver:
         templates = [self.templates[name], self.templates['detail_rest']]
         if name == 'supply_menu_first':
             templates.append(self.templates['supply_first_disabled'])
+            templates.append(self.templates['supply_menu_first_variant'])
         for template in templates:
             score = ImageMatcher.match_template(sample, template, shape_only=True)
             if float(score[0, 0]) >= definition['threshold']:
@@ -271,7 +272,7 @@ class NodeObserver:
             return None
         if not self._menu_option_bounds(screen, 'supply_menu_first'):
             return None
-        active = self.all(screen, 'supply_loot')
+        active = self.all(screen, 'supply_loot') or self.all(screen, 'supply_loot_variant')
         if not active and not self.all(screen, 'supply_option_disabled'):
             return None
         leave = self.all(screen, 'action_frame')

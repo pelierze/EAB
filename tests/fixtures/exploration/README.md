@@ -75,3 +75,8 @@ are synthetic. See `docs/i18n/exploration-battle-loot.md` for scope and limits.
 `logs/report/20261025_080018_895193_세션_1_4b8c8d58/screen.png`.
 It reproduces a translucent-card border mismatch against a different battle
 background. Background replacement and missing-notch cases are synthetic.
+
+`english_supply_background_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_080552_812310_세션_1_318b38dd/screen.png`.
+It covers a supply menu with a wrapped English recruitment caption and a
+different background appearance. Caption/sparkle changes and dimming are synthetic.
