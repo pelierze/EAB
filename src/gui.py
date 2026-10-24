@@ -48,6 +48,7 @@ if __package__ in (None, ""):
     from src.auto_update import get_runtime_root
     from src.chaos.exploration import ExplorationBot
     from src.chaos.observer import RecruitmentObserver
+    from src.chaos.ui_values import RANK_PRIORITIES, DEFAULT_PRIORITIES, priority_index, selected_priority
     from src.image_matcher import ImageMatcher, read_image, matching_failure_guidance
     from src.json_macro_engine import JsonMacroEngine
     from src.penguin_bot import PenguinBot
@@ -69,6 +70,7 @@ else:
     from .auto_update import get_runtime_root
     from .chaos.exploration import ExplorationBot
     from .chaos.observer import RecruitmentObserver
+    from .chaos.ui_values import RANK_PRIORITIES, DEFAULT_PRIORITIES, priority_index, selected_priority
     from .image_matcher import ImageMatcher, read_image, matching_failure_guidance
     from .json_macro_engine import JsonMacroEngine
     from .penguin_bot import PenguinBot
@@ -930,6 +932,8 @@ class SessionView:
         if hasattr(self, "penguin_purchase_title_label"):
             self.penguin_purchase_title_label.config(text=i18n.tr("구매 완료:"))
 
+        self._apply_chaos_ui_language()
+
         if hasattr(self, "event_notice_label"):
             self.event_notice_label.config(text=i18n.tr("현재 지원하는 이벤트가 없습니다"))
 
@@ -1014,11 +1018,11 @@ class SessionView:
                 hero_id = self.chaos_hero_choices[class_id][idx]
                 hero_info = catalog.get("heroes", {}).get(hero_id, {})
                 if hero_info.get("cost") == "high" or hero_id in ("lisette", "rhianna_luciella"):
-                    high_cost_selected.append(hero_info.get("name", hero_id))
+                    high_cost_selected.append(i18n.tr(hero_info.get("name", hero_id)))
         if high_cost_selected:
             names = ", ".join(high_cost_selected)
             self.chaos_cost_warning_label.config(
-                text=f"⚠️ 고코스트 영웅 선택됨 ({names}): 스킬트리가 부족하면 코스트 초과로 대체 영웅이 영입될 수 있습니다."
+                text=i18n.tr("⚠️ 고코스트 영웅 선택됨 ({names}): 스킬트리가 부족하면 코스트 초과로 대체 영웅이 영입될 수 있습니다.", names=names)
             )
         else:
             self.chaos_cost_warning_label.config(text="")
@@ -1029,64 +1033,65 @@ class SessionView:
         combo = self.chaos_rank_priority_combos.get(changed_class_id)
         if not combo:
             return
-        new_val = combo.get()
-        if new_val == "1순위":
+        new_val = selected_priority(combo)
+        if new_val == 1:
             existing_first = None
             for class_id, p_combo in self.chaos_rank_priority_combos.items():
-                if class_id != changed_class_id and p_combo.get() == "1순위":
+                if class_id != changed_class_id and selected_priority(p_combo) == 1:
                     existing_first = class_id
                     break
 
             if existing_first:
                 taken = {
-                    p_combo.get()
+                    selected_priority(p_combo)
                     for class_id, p_combo in self.chaos_rank_priority_combos.items()
                     if class_id != existing_first
                 }
-                for candidate in ("1순위", "2순위", "3순위", "4순위"):
+                for candidate in (1, 2, 3, 4):
                     if candidate not in taken:
-                        self.chaos_rank_priority_combos[existing_first].set(candidate)
+                        self.chaos_rank_priority_combos[existing_first].current(priority_index(candidate))
                         break
 
     def _create_chaos_widgets(self):
-        settings = ttk.LabelFrame(self.chaos_tab, text="영웅 영입", style="Card.TLabelframe", padding=12)
+        self.chaos_i18n_widgets = []
+
+        def localized(factory, parent, text, **options):
+            widget = factory(parent, text=i18n.tr(text), **options)
+            self.chaos_i18n_widgets.append((widget, text))
+            return widget
+
+        settings = localized(ttk.LabelFrame, self.chaos_tab, "영웅 영입", style="Card.TLabelframe", padding=12)
         settings.pack(fill=tk.X, padx=10, pady=5)
         catalog = RecruitmentObserver.load_config(get_resource_root())
-        elements = {"dark": "암속성", "light": "광속성", "forest": "자연속성", "fire": "화염속성", "ice": "냉기속성"}
+        self.chaos_layout = catalog
         self.chaos_hero_combos = {}
         self.chaos_hero_choices = {}
         self.chaos_rank_priority_combos = {}
-        default_priorities = {
-            "warrior": "1순위",
-            "thief": "2순위",
-            "knight": "3순위",
-            "soul_weaver": "제외",
-        }
         for index, class_id in enumerate(catalog["class_order"]):
             row, col_idx = divmod(index, 2)
             base_col = col_idx * 4
             role = catalog["classes"][class_id]
             choices = [(key, hero) for key, hero in catalog["heroes"].items() if hero["class"] == class_id]
             self.chaos_hero_choices[class_id] = [key for key, hero in choices]
-            ttk.Label(settings, text=role["label"] + ":").grid(row=row, column=base_col, sticky=tk.W, padx=(10 if col_idx > 0 else 5, 2), pady=5)
-            combo = ttk.Combobox(settings, values=[hero["name"] + " · " + elements[hero["element"]] for key, hero in choices], state="readonly", width=18)
+            localized(ttk.Label, settings, role["label"] + ":").grid(row=row, column=base_col, sticky=tk.W, padx=(10 if col_idx > 0 else 5, 2), pady=5)
+            combo = ttk.Combobox(settings, values=[self._chaos_hero_label(hero) for key, hero in choices], state="readonly", width=18)
             default_hero = "savior_adin" if class_id == "thief" and "savior_adin" in self.chaos_hero_choices[class_id] else role["default_hero"]
             combo.current(self.chaos_hero_choices[class_id].index(default_hero))
             combo.grid(row=row, column=base_col + 1, sticky=tk.W, padx=2, pady=5)
             self.chaos_hero_combos[class_id] = combo
 
-            ttk.Label(settings, text="랭크업:").grid(row=row, column=base_col + 2, sticky=tk.W, padx=(6, 2), pady=5)
-            p_combo = ttk.Combobox(settings, values=["1순위", "2순위", "3순위", "4순위", "제외"], state="readonly", width=6)
-            p_combo.set(default_priorities.get(class_id, "제외"))
+            localized(ttk.Label, settings, "랭크업:").grid(row=row, column=base_col + 2, sticky=tk.W, padx=(6, 2), pady=5)
+            p_combo = ttk.Combobox(settings, values=self._chaos_priority_labels(), state="readonly", width=6)
+            p_combo.current(priority_index(DEFAULT_PRIORITIES.get(class_id)))
             p_combo.grid(row=row, column=base_col + 3, sticky=tk.W, padx=(2, 5), pady=5)
             self.chaos_rank_priority_combos[class_id] = p_combo
 
         options_row = ttk.Frame(settings, style="CardInner.TFrame")
         options_row.grid(row=2, column=0, columnspan=8, sticky=tk.W, padx=5, pady=(4, 2))
         self.chaos_cost_fallback = tk.BooleanVar(value=True)
-        ttk.Checkbutton(options_row, text="코스트 초과 시 대체 영웅 자동 영입", variable=self.chaos_cost_fallback,
+        localized(ttk.Checkbutton, options_row, "코스트 초과 시 대체 영웅 자동 영입", variable=self.chaos_cost_fallback,
                         command=self._save_chaos_preset).pack(side=tk.LEFT)
-        self.chaos_cost_warning_label = ttk.Label(options_row, text="", foreground="#d97706", font=("맑은 고딕", 9))
+        self.chaos_cost_warning_label = ttk.Label(options_row, text="", wraplength=480, foreground="#d97706", font=("맑은 고딕", 9))
         self.chaos_cost_warning_label.pack(side=tk.LEFT, padx=10)
 
         for combo in self.chaos_hero_combos.values():
@@ -1096,45 +1101,79 @@ class SessionView:
         for class_id, p_combo in self.chaos_rank_priority_combos.items():
             p_combo.bind("<<ComboboxSelected>>", lambda e, cid=class_id: self._on_chaos_rank_priority_changed(cid))
 
-        ttk.Label(
+        localized(ttk.Label,
             settings,
-            text="탐사 초기 화면 또는 노드 지도에서 시작하세요.\n"
+            "탐사 초기 화면 또는 노드 지도에서 시작하세요.\n"
                  "현재 설정된 난이도를 사용합니다.",
             justify=tk.LEFT,
         ).grid(row=3, column=0, columnspan=8, sticky=tk.W, padx=5, pady=(4, 10))
-        event_settings = ttk.LabelFrame(self.chaos_tab, text="미등록 이벤트 처리", padding=10)
+        event_settings = localized(ttk.LabelFrame, self.chaos_tab, "미등록 이벤트 처리", padding=10)
         event_settings.pack(fill=tk.X,padx=10,pady=5)
         self.chaos_event_mode = tk.StringVar(value="random")
         self.chaos_save_unknown = tk.BooleanVar(value=False)
         self.chaos_buy_future_investment = tk.BooleanVar(value=True)
         self.chaos_event_controls = [
-            ttk.Radiobutton(event_settings,text="무작위 선택 (선택지 내용 미판독)",variable=self.chaos_event_mode,value="random"),
-            ttk.Checkbutton(event_settings,text="미확인 이벤트 저장(제보용)",variable=self.chaos_save_unknown),
+            localized(ttk.Radiobutton, event_settings, "무작위 선택 (선택지 내용 미판독)",variable=self.chaos_event_mode,value="random"),
+            localized(ttk.Checkbutton, event_settings, "미확인 이벤트 저장(제보용)",variable=self.chaos_save_unknown),
         ]
         for control in self.chaos_event_controls:
             control.pack(anchor=tk.W)
-        shop_settings = ttk.LabelFrame(self.chaos_tab, text="상점", padding=10)
+        shop_settings = localized(ttk.LabelFrame, self.chaos_tab, "상점", padding=10)
         shop_settings.pack(fill=tk.X,padx=10,pady=5)
-        shop_buy = ttk.Checkbutton(shop_settings, text="미래 투자만 구매 (상점마다 1회)", variable=self.chaos_buy_future_investment)
+        shop_buy = localized(ttk.Checkbutton, shop_settings, "미래 투자만 구매 (상점마다 1회)", variable=self.chaos_buy_future_investment)
         shop_buy.pack(anchor=tk.W)
         self.chaos_event_controls.append(shop_buy)
-        ttk.Label(event_settings,text="등록된 이벤트는 기존 규칙 우선. 저장은 기본 꺼짐이며 자동 전송하지 않습니다.").pack(anchor=tk.W)
+        localized(ttk.Label, event_settings, "등록된 이벤트는 기존 규칙 우선. 저장은 기본 꺼짐이며 자동 전송하지 않습니다.").pack(anchor=tk.W)
         controls = ttk.Frame(self.chaos_tab, style="CardInner.TFrame", padding=10)
         controls.pack(fill=tk.X, padx=10, pady=5)
-        self.chaos_start_btn = ttk.Button(controls, text="자동 탐사 시작", command=self._start_chaos_bot, state=tk.DISABLED)
+        self.chaos_start_btn = localized(ttk.Button, controls, "자동 탐사 시작", command=self._start_chaos_bot, state=tk.DISABLED)
         self.chaos_start_btn.pack(side=tk.LEFT, padx=5)
-        self.chaos_stop_btn = ttk.Button(controls, text="중지", command=self._stop_bot, state=tk.DISABLED)
+        self.chaos_stop_btn = localized(ttk.Button, controls, "중지", command=self._stop_bot, state=tk.DISABLED)
         self.chaos_stop_btn.pack(side=tk.LEFT, padx=5)
-        ttk.Label(controls, text="목표 완주:").pack(side=tk.LEFT, padx=(15, 2))
+        localized(ttk.Label, controls, "목표 완주:").pack(side=tk.LEFT, padx=(15, 2))
         self.chaos_target_clears_entry = ttk.Entry(controls, width=5)
         self.chaos_target_clears_entry.insert(0, "1")
         self.chaos_target_clears_entry.pack(side=tk.LEFT, padx=2)
-        ttk.Label(controls, text="회").pack(side=tk.LEFT, padx=(2, 10))
-        self.chaos_status_label = ttk.Label(controls, text="대기 중", wraplength=520)
+        localized(ttk.Label, controls, "회").pack(side=tk.LEFT, padx=(2, 10))
+        self.chaos_status_label = ttk.Label(controls, text=i18n.tr("대기 중"), wraplength=520)
         self.chaos_status_label.pack(side=tk.LEFT, padx=5)
         self._restore_chaos_preset()
+        self._apply_chaos_ui_language()
         for combo in (*self.chaos_hero_combos.values(), *self.chaos_rank_priority_combos.values()):
             combo.bind('<<ComboboxSelected>>', lambda event: self._save_chaos_preset(), add='+')
+
+    @staticmethod
+    def _chaos_priority_labels():
+        return [i18n.tr("제외") if value is None else i18n.tr("{rank}순위", rank=value)
+                for value in RANK_PRIORITIES]
+
+    @staticmethod
+    def _chaos_hero_label(hero):
+        elements = {"dark": "암속성", "light": "광속성", "forest": "자연속성", "fire": "화염속성", "ice": "냉기속성"}
+        return i18n.tr(hero['name']) + " · " + i18n.tr(elements[hero['element']])
+
+    def _apply_chaos_ui_language(self):
+        if not hasattr(self, 'chaos_i18n_widgets'):
+            return
+        for widget, key in self.chaos_i18n_widgets:
+            widget.config(text=i18n.tr(key))
+        english = i18n.get_language() == i18n.LANG_EN
+        for role, combo in self.chaos_hero_combos.items():
+            index = combo.current()
+            combo.config(values=[self._chaos_hero_label(self.chaos_layout['heroes'][hero_id])
+                                 for hero_id in self.chaos_hero_choices[role]], width=32 if english else 18)
+            if index >= 0:
+                combo.current(index)
+        for combo in self.chaos_rank_priority_combos.values():
+            index = combo.current()
+            combo.config(values=self._chaos_priority_labels(), width=10 if english else 6)
+            if index >= 0:
+                combo.current(index)
+        self._check_chaos_hero_cost_warning()
+        if getattr(self, '_last_chaos_stats', None) is not None:
+            self._update_chaos_stats(self._last_chaos_stats)
+        else:
+            self.chaos_status_label.config(text=i18n.tr(getattr(self, '_chaos_status_raw', '대기 중')))
 
     @staticmethod
     def _chaos_preset_path():
@@ -1153,9 +1192,12 @@ class SessionView:
                 if hero in choices:
                     combo.current(choices.index(hero))
             for role, combo in self.chaos_rank_priority_combos.items():
-                priority = saved.get('rank_priorities', {}).get(role)
-                if priority in ('1순위', '2순위', '3순위', '4순위', '제외'):
-                    combo.set(priority)
+                priorities = saved.get('rank_priorities', {})
+                if role in priorities:
+                    try:
+                        combo.current(priority_index(priorities[role]))
+                    except ValueError:
+                        pass
             fallback = saved.get('auto_fallback')
             if isinstance(fallback, bool):
                 self.chaos_cost_fallback.set(fallback)
@@ -1178,7 +1220,7 @@ class SessionView:
                 'heroes': {role: self.chaos_hero_choices[role][combo.current()]
                            for role, combo in self.chaos_hero_combos.items()
                            if 0 <= combo.current() < len(self.chaos_hero_choices[role])},
-                'rank_priorities': {role: combo.get() for role, combo in self.chaos_rank_priority_combos.items()},
+                'rank_priorities': {role: selected_priority(combo) for role, combo in self.chaos_rank_priority_combos.items()},
                 'auto_fallback': self.chaos_cost_fallback.get(),
             }
             fd, temporary = tempfile.mkstemp(dir=path.parent, suffix='.tmp')
@@ -1839,22 +1881,21 @@ class SessionView:
             if self.is_running or getattr(self, '_stove_resize_pending', False) or (self.bot_thread and self.bot_thread.is_alive()):
                 return
             if not self.adb_controller:
-                messagebox.showerror("오류", "장치(ADB/STOVE)가 연결되지 않았습니다.")
+                messagebox.showerror(i18n.tr("오류"), i18n.tr("장치(ADB/STOVE)가 연결되지 않았습니다."))
                 return
             try:
                 hero_ids = []
-                priority_map = {"1순위": 1, "2순위": 2, "3순위": 3, "4순위": 4}
                 ranked_heroes = []
                 for class_id, combo in self.chaos_hero_combos.items():
                     index = combo.current()
                     if index < 0:
-                        raise ValueError("각 직업의 영웅을 선택해 주세요.")
+                        raise ValueError(i18n.tr("각 직업의 영웅을 선택해 주세요."))
                     hero_id = self.chaos_hero_choices[class_id][index]
                     hero_ids.append(hero_id)
                     p_combo = getattr(self, "chaos_rank_priority_combos", {}).get(class_id)
-                    p_val = p_combo.get() if p_combo else None
-                    if p_val in priority_map:
-                        ranked_heroes.append((priority_map[p_val], hero_id))
+                    p_val = selected_priority(p_combo) if p_combo else None
+                    if p_val is not None:
+                        ranked_heroes.append((p_val, hero_id))
                 ranked_heroes.sort(key=lambda x: x[0])
                 rank_priority = [h[1] for h in ranked_heroes]
                 if not rank_priority:
@@ -1864,7 +1905,7 @@ class SessionView:
                     if target_clears <= 0:
                         raise ValueError()
                 except Exception:
-                    messagebox.showerror("자동 탐사", "목표 완주 횟수는 1 이상의 정수여야 합니다.")
+                    messagebox.showerror(i18n.tr("자동 탐사"), i18n.tr("목표 완주 횟수는 1 이상의 정수여야 합니다."))
                     return
                 auto_fb = self.chaos_cost_fallback.get() if hasattr(self, "chaos_cost_fallback") else True
                 self.bot = ExplorationBot(self.adb_controller, get_resource_root(), self.runtime_dir, hero_ids=hero_ids,
@@ -1873,12 +1914,14 @@ class SessionView:
                                           auto_fallback=auto_fb,
                                           buy_future_investment=self.chaos_buy_future_investment.get() if hasattr(self, 'chaos_buy_future_investment') else False)
             except Exception as exc:
-                messagebox.showerror("자동 탐사 준비 실패", str(exc))
+                messagebox.showerror(i18n.tr("자동 탐사 준비 실패"), i18n.tr(str(exc)))
                 return
             self.was_stopped_by_user = False
             self.is_running = True
             self.current_mode = "chaos"
-            self.chaos_status_label.config(text="시작 화면 확인 중")
+            self._last_chaos_stats = None
+            self._chaos_status_raw = "시작 화면 확인 중"
+            self.chaos_status_label.config(text=i18n.tr(self._chaos_status_raw))
             self._set_running_ui(True)
             self.bot_thread = threading.Thread(target=self._run_chaos_bot, daemon=True)
             self.bot_thread.start()
@@ -1901,14 +1944,15 @@ class SessionView:
                 self.is_running = False
 
     def _update_chaos_stats(self, stats):
-        text = stats.get("phase", "준비")
+        self._last_chaos_stats = dict(stats)
+        text = i18n.tr(stats.get("phase", "준비"))
         attempt = stats.get("attempt", 1)
         cleared = stats.get("cleared_rounds", 0)
         target = stats.get("target_clears", 1)
         failed = stats.get("failed_rounds", 0)
-        header = f"{attempt}회차 [완주 {cleared}/{target}회"
+        header = i18n.tr("{attempt}회차 [완주 {cleared}/{target}회", attempt=attempt, cleared=cleared, target=target)
         if failed:
-            header += f", 패배 {failed}회"
+            header += i18n.tr(", 패배 {failed}회", failed=failed)
         header += "] · "
         text = header + text
         if stats.get("reason"):
@@ -2048,7 +2092,9 @@ class SessionView:
             if self.bot:
                 self.bot.set_user_action("stop")
             if self.current_mode == "chaos":
-                self.chaos_status_label.config(text="중지 처리 중…")
+                self._last_chaos_stats = None
+                self._chaos_status_raw = "중지 처리 중…"
+                self.chaos_status_label.config(text=i18n.tr(self._chaos_status_raw))
                 self.chaos_stop_btn.config(state=tk.DISABLED)
                 self.log("자동 탐사 중지 요청")
                 return
