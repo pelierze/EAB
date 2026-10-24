@@ -31,3 +31,10 @@ they do not connect to the game or prove a complete English exploration run.
 and limitations are documented in `docs/i18n/exploration-english-battle.md`.
 It adds actual selected hero/attribute, initial entry, battle detail/setup,
 level-up and victory. The offline replay skips combat and sends no game inputs.
+
+## Reported English rest detail
+
+`english_rest_detail_20261024.npz` contains the unmodified BGR `screen` from
+`logs/report/20261024_173442_158401_세션_1_30b8995c/screen.png`.
+It reproduces the timeout after choosing Rest with the detail pane still open.
+See `docs/i18n/exploration-detail-icons.md` for icon crops and validation scope.

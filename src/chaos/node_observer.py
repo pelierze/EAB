@@ -13,6 +13,16 @@ from .errors import RecognitionPending
 from .template_masks import apply_exclusions, color_error, matches_fixed_mask
 
 
+DETAIL_STATES = {
+    'detail_battle': 'battle_detail',
+    'rest_detail': 'rest_detail',
+    'supply_detail': 'supply_detail',
+    'elite_detail': 'elite_detail',
+    'boss_detail': 'boss_detail',
+    'event_detail': 'event_detail',
+}
+
+
 class NodeObserver:
     def __init__(self, root, ocr=None):
         root = Path(root)
@@ -169,10 +179,8 @@ class NodeObserver:
                     return self.find(screen, 'entry_action')
                 if name == 'battle_start' and self.find(screen, 'setup_symbol'):
                     return self.find(screen, 'action_frame')
-                if name == 'enter_node' and self.find(screen, 'detail_symbol'):
+                if name == 'enter_node' and self.detail_state(screen):
                     return self.find(screen, 'action_frame')
-                if name == 'detail_battle':
-                    return self.find(screen, 'detail_symbol')
                 if name == 'continue' and self.find(screen, 'victory'):
                     return self.find(screen, 'continue_frame')
         if 'rank_title' in self.config['markers'] and bool(self.all(screen, 'rank_title')):
@@ -182,6 +190,17 @@ class NodeObserver:
                 if target_class in scan:
                     return scan[target_class]['bounds']
         return None
+
+    def detail_state(self, screen):
+        """Require exactly one kind of icon in the right-hand detail header."""
+        found = []
+        for marker, state in DETAIL_STATES.items():
+            matches = self.all(screen, marker)
+            if len(matches) > 1:
+                return None
+            if matches:
+                found.append(state)
+        return found[0] if len(found) == 1 else None
 
     def levelup_controls(self, screen):
         """Pair the title with a moving down arrow; return a stable tap area."""
@@ -404,13 +423,14 @@ class NodeObserver:
             return 'event'
         if self.find(screen, 'leave'): return 'rest'
         if self.find(screen, 'battle_start'): return 'battle_setup'
-        if self.find(screen, 'enter_node') and self.find(screen, 'detail_battle'): return 'battle_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'rest_detail'): return 'rest_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'supply_detail'): return 'supply_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'elite_detail'): return 'elite_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'boss_detail'): return 'boss_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'event_detail'): return 'event_detail'
-        if self.find(screen, 'enter_node'): return 'node_detail'
+        if self.find(screen, 'enter_node'):
+            return self.detail_state(screen) or 'node_detail'
+        if self.detail_state(screen):
+            return None
+        # An unrecognized detail pane can retain the map footer and arrows.
+        # Do not select another map node while that pane's action is visible.
+        if self.find(screen, 'action_frame') and self.find(screen, 'map_footer'):
+            return None
         if self.find(screen, 'map_footer') and self.arrows(screen): return 'map'
         if self.find(screen, 'battle_ui'): return 'battle'
         return None

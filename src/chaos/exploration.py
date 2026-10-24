@@ -131,7 +131,9 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 raise OSError('진단 화면 인코딩 실패')
             encoded.tofile(str(path.with_suffix('.png')))
             markers = ('levelup', 'level_close', 'victory', 'continue', 'supply_loot',
-                       'supply_done', 'loot_button', 'loot_button_dim', 'event_loot_close')
+                       'supply_done', 'loot_button', 'loot_button_dim', 'event_loot_close',
+                       'enter_node', 'action_frame', 'detail_battle', 'rest_detail',
+                       'supply_detail', 'elite_detail', 'boss_detail', 'event_detail')
             metadata = {'phase': phase, 'reason': self.stats.get('reason'), 'markers': {}}
             try:
                 metadata['state'] = self.observer.classify(self.last_screen)

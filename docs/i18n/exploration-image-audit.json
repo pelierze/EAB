@@ -1961,10 +1961,10 @@
       "marker": "detail_battle",
       "source": "images/chaos/node_progression/raw/battle_detail_live.png",
       "crop": [
-        942,
-        100,
-        94,
-        26
+        1210,
+        96,
+        45,
+        40
       ],
       "source_size": [
         1280,
@@ -1972,10 +1972,10 @@
       ],
       "exclude": [],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.055,
@@ -3053,10 +3053,10 @@
       "marker": "rest_detail",
       "source": "images/chaos/node_progression/raw/rest_detail_live.png",
       "crop": [
-        943,
-        100,
-        60,
-        28
+        1210,
+        96,
+        45,
+        40
       ],
       "source_size": [
         1280,
@@ -3064,10 +3064,10 @@
       ],
       "exclude": [],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.055,
@@ -3079,10 +3079,10 @@
       "marker": "supply_detail",
       "source": "images/chaos/node_progression/raw/supply_detail_live.png",
       "crop": [
-        943,
-        100,
-        55,
-        28
+        1210,
+        96,
+        45,
+        40
       ],
       "source_size": [
         1280,
@@ -3090,10 +3090,10 @@
       ],
       "exclude": [],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.06,
@@ -3417,10 +3417,10 @@
       "marker": "elite_detail",
       "source": "images/chaos/node_progression/raw/elite_detail_live.png",
       "crop": [
-        943,
-        100,
-        100,
-        28
+        1210,
+        96,
+        45,
+        40
       ],
       "source_size": [
         1280,
@@ -3428,10 +3428,10 @@
       ],
       "exclude": [],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.06,
@@ -3443,10 +3443,10 @@
       "marker": "boss_detail",
       "source": "images/chaos/node_progression/raw/boss_detail_live.png",
       "crop": [
-        943,
-        100,
-        100,
-        28
+        1210,
+        96,
+        45,
+        40
       ],
       "source_size": [
         1280,
@@ -3454,10 +3454,10 @@
       ],
       "exclude": [],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.06,
@@ -3469,10 +3469,10 @@
       "marker": "event_detail",
       "source": "images/chaos/node_progression/raw/event_detail_live.png",
       "crop": [
-        940,
-        98,
-        65,
-        30
+        1210,
+        96,
+        45,
+        40
       ],
       "source_size": [
         1280,
@@ -3480,10 +3480,10 @@
       ],
       "exclude": [],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.92,
       "max_color_error": 0.07,
