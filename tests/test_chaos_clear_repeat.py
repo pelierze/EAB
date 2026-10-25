@@ -51,13 +51,13 @@ class ClearRepeatTests(unittest.TestCase):
                 self.assertEqual(result['summary_boss_count'], bosses)
                 self.assertEqual(current[0], 1)
 
-    def test_reported_summary_requires_title_and_close_icon(self):
+    def test_reported_summary_requires_statistics_icons_and_close_icon(self):
         frame = self.image('expedition_clear_summary_local_live.png')
         self.assertEqual(self.observer.classify(frame), 'expedition_summary')
         frame[670:715, 570:740] = 0
         self.assertNotEqual(self.observer.classify(frame), 'expedition_summary')
         frame = self.image('expedition_clear_summary_local_live.png')
-        frame[20:100, 550:730] = 0
+        frame[150:244, 732:812] = 0
         self.assertNotEqual(self.observer.classify(frame), 'expedition_summary')
 
     def test_final_boss_direct_summary_exits_battle_and_finishes(self):

@@ -4711,10 +4711,10 @@
       "marker": "expedition_summary",
       "source": "images/chaos/node_progression/raw/expedition_summary_live.png",
       "crop": [
-        571,
-        35,
-        145,
-        40
+        732,
+        150,
+        80,
+        94
       ],
       "source_size": [
         1280,
@@ -4722,13 +4722,13 @@
       ],
       "exclude": [],
       "region": [
-        550,
-        20,
-        180,
-        80
+        724,
+        142,
+        96,
+        110
       ],
       "threshold": 0.9,
-      "max_color_error": 0.15,
+      "max_color_error": 0.12,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },
@@ -8080,6 +8080,84 @@
       ],
       "threshold": 0.9,
       "max_color_error": 0.06,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "summary_nodes_icon",
+      "source": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        530,
+        156,
+        80,
+        80
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        522,
+        148,
+        96,
+        96
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "summary_fragments_icon",
+      "source": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        933,
+        158,
+        68,
+        72
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        925,
+        150,
+        84,
+        88
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "summary_loot_icon",
+      "source": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        1130,
+        156,
+        80,
+        80
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        1122,
+        148,
+        96,
+        96
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },

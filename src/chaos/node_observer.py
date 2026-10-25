@@ -167,6 +167,8 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
+            if name == 'expedition_summary':
+                return (self.summary_controls(screen) or {}).get(name)
             if name == 'loot_button':
                 # A shared purple frame alone never authorizes claiming loot.
                 # Require the three-card scene and a single selected card too.
@@ -980,6 +982,17 @@ class NodeObserver:
         red = ((hsv[:,:,0] <= 10) | (hsv[:,:,0] >= 170)) & (hsv[:,:,1] >= 150) & (hsv[:,:,2] >= 140)
         # Only inspect the target's price digits, never neighbouring products.
         return int(red.sum()) >= max(8, int(w*h*.015))
+
+    def summary_controls(self, screen):
+        """Recognize the statistics icon row and close symbol, never the title."""
+        controls = {}
+        for name in ('expedition_summary', 'summary_nodes_icon', 'summary_fragments_icon',
+                     'summary_loot_icon', 'summary_close'):
+            found = self.all(screen, name)
+            if len(found) != 1:
+                return None
+            controls[name] = found[0]
+        return controls
 
     def summary_boss_count(self, screen):
         if self.classify(screen) != 'expedition_summary':

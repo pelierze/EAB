@@ -2009,19 +2009,19 @@
     "expedition_summary": {
       "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
       "crop": [
-        571,
-        35,
-        145,
-        40
+        732,
+        150,
+        80,
+        94
       ],
       "region": [
-        550,
-        20,
-        180,
-        80
+        724,
+        142,
+        96,
+        110
       ],
       "threshold": 0.9,
-      "max_color_error": 0.15
+      "max_color_error": 0.12
     },
     "summary_close": {
       "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
@@ -4211,6 +4211,57 @@
       ],
       "threshold": 0.9,
       "max_color_error": 0.06
+    },
+    "summary_nodes_icon": {
+      "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        530,
+        156,
+        80,
+        80
+      ],
+      "region": [
+        522,
+        148,
+        96,
+        96
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12
+    },
+    "summary_fragments_icon": {
+      "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        933,
+        158,
+        68,
+        72
+      ],
+      "region": [
+        925,
+        150,
+        84,
+        88
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12
+    },
+    "summary_loot_icon": {
+      "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        1130,
+        156,
+        80,
+        80
+      ],
+      "region": [
+        1122,
+        148,
+        96,
+        96
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12
     }
   },
   "loot_cards": [

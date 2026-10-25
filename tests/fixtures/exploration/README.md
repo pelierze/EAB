@@ -115,3 +115,8 @@ reference and sends no live game input.
 It is the actual English shop with Book of the Stars in the top-right slot.
 Transient map frames and textless exit confirmations in replays are synthetic;
 the forbidden icon detection uses the original unmodified screenshot.
+
+`english_summary_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_150717_171001_세션_1_b281a9c6/screen.png`.
+It is a real English final summary showing three defeated bosses. Label removal
+and missing-icon cases are synthetic; the close replay uses a Korean entry frame.
