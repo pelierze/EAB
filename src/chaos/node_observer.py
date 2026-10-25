@@ -167,6 +167,8 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
+            if name in ('event_rank_reward_button', 'event_reward_continue'):
+                return (self.rank_reward_controls(screen) or {}).get(name)
             if name == 'defeat':
                 # Both upper crest patches exclude the localized result label.
                 # A single purple decoration does not establish battle defeat.
@@ -438,6 +440,27 @@ class NodeObserver:
         if cv2.minMaxLoc(scores)[1] >= .9:
             return buttons['cancel']
         return None
+
+    def rank_reward_controls(self, screen):
+        """Verify the rank emblem and card before exposing text-masked buttons."""
+        controls = {}
+        for name in ('event_rank_reward_icon', 'recruit_card_frame', 'event_reward_continue'):
+            matches = self.all(screen, name)
+            if len(matches) != 1:
+                return None
+            controls[name] = matches[0]
+        ix, iy, iw, ih = controls['event_rank_reward_icon']
+        cx, cy, cw, ch = controls['recruit_card_frame']
+        bx, by, bw, bh = controls['event_reward_continue']
+        if not (cx < ix and ix+iw < cx+cw and cy < iy and iy+ih < cy+ch
+                and abs(cx+cw/2-bx-bw/2) <= 8 and 65 <= by-cy-ch <= 85):
+            return None
+        buttons = self.all(screen, 'event_rank_reward_button')
+        if len(buttons) == 1:
+            x, y, w, h = buttons[0]
+            if cx < x and x+w < cx+cw and iy+ih < y and y+h < cy+ch:
+                controls['event_rank_reward_button'] = buttons[0]
+        return controls
 
     def recruit_reward_controls(self, screen):
         controls = {}
@@ -723,7 +746,7 @@ class NodeObserver:
         if self.find(screen, 'exploration_entry'): return 'exploration_entry'
         if self.find(screen, 'shop_exit_dialog') and self.find(screen, 'story_confirm'): return 'shop_exit_confirm'
         if self.find(screen, 'unclaimed_dialog'): return 'unclaimed_reward'
-        if self.find(screen, 'event_rank_reward_icon') and self.find(screen, 'event_reward_continue'): return 'rank_reward'
+        if self.rank_reward_controls(screen): return 'rank_reward'
         if self.recruit_reward_controls(screen): return 'recruit_reward'
         if self.find(screen, 'story_dialog'): return 'story_confirm'
         if self.event_warning_controls(screen): return 'event_warning'

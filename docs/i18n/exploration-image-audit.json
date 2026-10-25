@@ -6649,23 +6649,30 @@
       "marker": "event_rank_reward_button",
       "source": "images/chaos/node_progression/raw/event_rank_reward_live.png",
       "crop": [
-        578,
-        465,
-        126,
-        31
+        535,
+        454,
+        210,
+        54
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
-      "region": [
-        540,
-        450,
-        205,
-        60
+      "exclude": [
+        [
+          18,
+          8,
+          174,
+          38
+        ]
       ],
-      "threshold": 0.92,
+      "region": [
+        535,
+        454,
+        210,
+        54
+      ],
+      "threshold": 0.9,
       "max_color_error": 0.055,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
@@ -6675,23 +6682,30 @@
       "marker": "event_reward_continue",
       "source": "images/chaos/node_progression/raw/event_rank_reward_live.png",
       "crop": [
-        578,
-        633,
-        130,
-        32
+        475,
+        614,
+        330,
+        77
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
-      "region": [
-        545,
-        615,
-        195,
-        70
+      "exclude": [
+        [
+          28,
+          14,
+          274,
+          48
+        ]
       ],
-      "threshold": 0.92,
+      "region": [
+        475,
+        614,
+        330,
+        77
+      ],
+      "threshold": 0.9,
       "max_color_error": 0.055,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"

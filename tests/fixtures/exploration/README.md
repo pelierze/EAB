@@ -136,3 +136,9 @@ return to Korean event choices and send no live game input.
 `logs/report/20261025_161602_505343_세션_1_aaac56c2/screen.png`.
 It is the actual English Mimic result with a visible advance arrow. Arrow motion,
 particles, and changed caption strokes are synthetic, and no live input is sent.
+
+`english_rank_reward_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_174056_329023_세션_1_65a8c8b6/screen.png`.
+It is the actual English rank reward after an event choice. Missing frames and
+removed/randomized labels are synthetic. Rank-menu/return replays mock rank-up
+selection and send no live game input.

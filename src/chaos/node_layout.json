@@ -3266,36 +3266,18 @@
     },
     "event_rank_reward_button": {
       "file": "images/chaos/node_progression/raw/event_rank_reward_live.png",
-      "crop": [
-        578,
-        465,
-        126,
-        31
-      ],
-      "region": [
-        540,
-        450,
-        205,
-        60
-      ],
-      "threshold": 0.92,
+      "crop": [535, 454, 210, 54],
+      "region": [535, 454, 210, 54],
+      "exclude": [[18, 8, 174, 38]],
+      "threshold": 0.9,
       "max_color_error": 0.055
     },
     "event_reward_continue": {
       "file": "images/chaos/node_progression/raw/event_rank_reward_live.png",
-      "crop": [
-        578,
-        633,
-        130,
-        32
-      ],
-      "region": [
-        545,
-        615,
-        195,
-        70
-      ],
-      "threshold": 0.92,
+      "crop": [475, 614, 330, 77],
+      "region": [475, 614, 330, 77],
+      "exclude": [[28, 14, 274, 48]],
+      "threshold": 0.9,
       "max_color_error": 0.055
     },
     "event_bone_throne": {
