@@ -91,7 +91,7 @@ class RecruitSkipConfirmTests(unittest.TestCase):
         bot = self.bot()
         bot._capture = Mock(return_value=self.dialog)
         bot._handle_event_confirm()
-        bot._tap.assert_called_once_with(self.observer.find(self.dialog, 'story_cancel'))
+        bot._tap.assert_called_once_with(self.observer.event_warning_controls(self.dialog)['cancel'])
 
     def test_direct_map_return_needs_no_confirmation(self):
         bot = self.bot()

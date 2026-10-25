@@ -162,6 +162,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 metadata['verified_node'] = getattr(self, '_verified_noncombat_node', None)
                 metadata['noncombat_scene'] = self.observer.noncombat_controls(
                     self.last_screen, metadata['verified_node'])
+                metadata['warning_controls'] = self.observer.event_warning_controls(self.last_screen)
             except Exception as exc:
                 metadata['classification_error'] = str(exc)
             for name in markers:
@@ -953,6 +954,9 @@ class NodeProgressionBot(KnightRecruitmentBot):
         def cancel_ready(screen):
             if self._classify(screen) not in ('event_warning', 'unclaimed_reward'):
                 return None
+            controls = self.observer.event_warning_controls(screen)
+            if isinstance(controls, dict):
+                return controls['cancel']
             return self.observer.find(screen, 'story_cancel')
         cancel = self._wait('이벤트 경고 취소 버튼 확인', cancel_ready)
         if cancel_ready(self._capture()) != cancel:

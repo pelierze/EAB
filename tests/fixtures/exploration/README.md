@@ -125,3 +125,9 @@ and missing-icon cases are synthetic; the close replay uses a Korean entry frame
 `logs/report/20261025_151724_706099_세션_1_8adc25ed/screen.png`.
 It shows Immortal Wukong in the right column's second row. Name-area changes and
 missing-portrait cases are synthetic. No scrolling or live game input is sent.
+
+`english_event_warning_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_154241_744912_세션_1_9e9ddb79/screen.png`.
+It is the actual English Vitals warning with buttons at y=465. Text removal,
+button relocation, and missing controls are synthetic. Cancellation replays
+return to Korean event choices and send no live game input.

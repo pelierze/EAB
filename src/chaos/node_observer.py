@@ -443,16 +443,39 @@ class NodeObserver:
         controls['role'] = roles[0] if roles else 'legacy'
         return controls
 
-    def recruit_skip_buttons(self, screen):
+    def recruit_skip_buttons(self, screen, region=None):
         # Frames alone never authorize Confirm; callers must establish context.
-        confirm = self.all(screen, 'recruit_skip_confirm_frame')
-        cancel = self.all(screen, 'recruit_skip_cancel_frame')
+        confirm = self.all(screen, 'recruit_skip_confirm_frame', region) if region else self.all(screen, 'recruit_skip_confirm_frame')
+        cancel = self.all(screen, 'recruit_skip_cancel_frame', region) if region else self.all(screen, 'recruit_skip_cancel_frame')
         if len(confirm) == len(cancel) == 1:
             cx, cy, cw, ch = confirm[0]
             bx, by, bw, bh = cancel[0]
             if abs((cx+cw/2) - (bx+bw/2) - 215) <= 4 and abs(cy-by) <= 3:
                 return dict(confirm=confirm[0], cancel=cancel[0])
         return None
+
+    def event_warning_controls(self, screen):
+        """Full-width modal borders plus a paired, text-masked button row.
+
+        This only identifies a warning for cancellation, never permission to
+        confirm it. Title/body text and the vertical button position may vary.
+        """
+        buttons = self.recruit_skip_buttons(screen, [375, 320, 550, 325])
+        if not buttons:
+            return None
+        _, y, _, h = buttons['cancel']
+        gray = cv2.cvtColor(screen[100:650, :, :3], cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 10, 30)
+        coverage = (edges[:, 30:1250] > 0).mean(axis=1)
+        rows = np.flatnonzero(coverage >= .8) + 100
+        top = rows[(rows >= 100) & (rows <= y-80)]
+        bottom = rows[(rows >= y+h+5) & (rows <= y+h+65)]
+        if not len(top) or not len(bottom):
+            return None
+        top, bottom = int(top[-1]), int(bottom[0])
+        if not 220 <= bottom-top <= 500:
+            return None
+        return dict(buttons, panel=(0, top, 1280, bottom-top+1))
 
     def is_rank_menu(self, screen):
         # Geometry + exploration footer + distinct party class icons; no OCR.
@@ -691,6 +714,7 @@ class NodeObserver:
         if self.find(screen, 'event_rank_reward_icon') and self.find(screen, 'event_reward_continue'): return 'rank_reward'
         if self.recruit_reward_controls(screen): return 'recruit_reward'
         if self.find(screen, 'story_dialog'): return 'story_confirm'
+        if self.event_warning_controls(screen): return 'event_warning'
         if self.find(screen, 'story_confirm'): return 'event_warning'
         if self.levelup_controls(screen): return 'levelup'
         if self.is_rank_result(screen): return 'rank_result'
