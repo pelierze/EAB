@@ -490,13 +490,17 @@ class NodeObserver:
                 return dict(confirm=confirm[0], cancel=cancel[0])
         return None
 
+    def event_choice_warning_controls(self, screen):
+        """Textless pair; usable only immediately after a general event choice."""
+        return self.recruit_skip_buttons(screen, [375, 320, 550, 325])
+
     def event_warning_controls(self, screen):
         """Full-width modal borders plus a paired, text-masked button row.
 
         This only identifies a warning for cancellation, never permission to
         confirm it. Title/body text and the vertical button position may vary.
         """
-        buttons = self.recruit_skip_buttons(screen, [375, 320, 550, 325])
+        buttons = self.event_choice_warning_controls(screen)
         if not buttons:
             return None
         _, y, _, h = buttons['cancel']

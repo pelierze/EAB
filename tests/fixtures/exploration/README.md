@@ -153,3 +153,9 @@ no live game input.
 `logs/report/20261025_214241_238891_세션_1_1276a97f/screen.png`.
 It shows the actual English 4-to-5(Max) result. Symbol-only screens, horizontal
 spacing changes, wrong ordering/alignment, and extra marks are synthetic.
+
+`english_event_choice_warning_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_223947_421098_세션_1_b68b614c/screen.png`.
+Its modal top border fails the global warning check while both text-masked
+buttons match. Pair-only images, missing/duplicate buttons, and choice/cancel
+replays are synthetic and send no live game input.

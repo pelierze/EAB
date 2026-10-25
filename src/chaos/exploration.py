@@ -838,8 +838,10 @@ class NodeProgressionBot(KnightRecruitmentBot):
     def _event(self):
         return self._unknown_event()
 
-    def _event_transition(self, previous_signature=None):
+    def _event_transition(self, previous_signature=None, *, choice_warning=False):
         def changed(screen):
+            if choice_warning and self.observer.event_choice_warning_controls(screen):
+                return ('event_warning',)
             state = self._classify(screen)
             if state in ('unknown_event', 'event') and previous_signature is not None:
                 if self._event_signature(screen) == previous_signature:
@@ -952,9 +954,12 @@ class NodeProgressionBot(KnightRecruitmentBot):
         # The random outcome is never assumed from the selected event text.
         return self._state('전리품 소모 후 실제 보상 종류 확인', EVENT_FOLLOWUPS - {'event_loot_consume'})
 
-    def _handle_event_confirm(self, failed_target=None, available_cards=None):
+    def _handle_event_confirm(self, failed_target=None, available_cards=None, *, choice_warning=False):
         # A generic Confirm label does not identify the consequence of a warning.
         def cancel_ready(screen):
+            if choice_warning:
+                controls = self.observer.event_choice_warning_controls(screen)
+                return controls['cancel'] if isinstance(controls, dict) else None
             if self._classify(screen) not in ('event_warning', 'unclaimed_reward'):
                 return None
             controls = self.observer.event_warning_controls(screen)
@@ -968,7 +973,16 @@ class NodeProgressionBot(KnightRecruitmentBot):
             self.rejected_event_choices.add(tuple(failed_target))
         self._tap(cancel)
         # Re-enter the common policy; never choose randomly inside a popup handler.
-        state = self._state('이벤트 경고 취소 후 화면 확인', EVENT_FOLLOWUPS - {'event_warning','unclaimed_reward'})
+        allowed = EVENT_FOLLOWUPS - {'event_warning','unclaimed_reward'}
+        if choice_warning:
+            def cancelled(frame):
+                if self.observer.event_choice_warning_controls(frame):
+                    return None
+                state = self._classify(frame)
+                return (state,) if state in allowed else None
+            state = self._wait('이벤트 경고 취소 후 화면 확인', cancelled)[0]
+        else:
+            state = self._state('이벤트 경고 취소 후 화면 확인', allowed)
         if state not in ('event', 'unknown_event'):
             self._accept_event_page(state)
         return state
@@ -1020,12 +1034,15 @@ class NodeProgressionBot(KnightRecruitmentBot):
         logger.info('이벤트 선택 확정: 방식=%s, 후보=%d개, 위치=%s', self.event_mode, len(available), target)
         self._last_event_choice_bounds = target
         self._tap(target)
-        state = self._event_transition(signature)
+        state = self._event_transition(signature, choice_warning=True)
+        choice_warning = True
         while state in ('event_loot_consume', 'event_warning', 'unclaimed_reward'):
             if state == 'event_loot_consume':
+                choice_warning = False
                 state = self._handle_loot_consume()
             elif state in ('event_warning', 'unclaimed_reward'):
-                state = self._handle_event_confirm(target, available)
+                state = self._handle_event_confirm(target, available, choice_warning=choice_warning)
+                choice_warning = False
         if state == 'map':
             self.stats['nodes'] += 1
         return state

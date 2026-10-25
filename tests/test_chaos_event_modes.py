@@ -213,7 +213,7 @@ class EventModesTest(unittest.TestCase):
             bot._unknown_event()
             bot._tap.assert_called_once()
             self.assertFalse(hasattr(bot, 'event_reader'))
-            bot._event_transition.assert_called_once_with(bot._event_signature(self.screen()))
+            bot._event_transition.assert_called_once_with(bot._event_signature(self.screen()), choice_warning=True)
 
     def test_registered_event_uses_common_random_handler(self):
         with tempfile.TemporaryDirectory() as tmp:
