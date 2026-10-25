@@ -816,6 +816,29 @@ class NodeObserver:
                 & (hsv[:, :, 1] >= 15) & (hsv[:, :, 1] <= 100)
                 & (hsv[:, :, 2] >= 150))
 
+    @staticmethod
+    def event_result_page_changed(before, after):
+        """Compare visual caption strokes, without OCR or an exact pixel hash.
+
+        The illustration and moving advance arrow are outside this region.
+        Small isolated particles and a couple of pixels of rendering drift do
+        not acknowledge a click as a new result page.
+        """
+        def strokes(screen):
+            hsv = cv2.cvtColor(screen[455:550, 260:1020, :3], cv2.COLOR_BGR2HSV)
+            mask = ((hsv[:, :, 1] < 100) & (hsv[:, :, 2] > 170)).astype(np.uint8)*255
+            mask = (cv2.resize(mask, None, fx=.5, fy=.5, interpolation=cv2.INTER_AREA) >= 128).astype(np.uint8)
+            count, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+            keep = np.zeros(count, np.uint8)
+            keep[1:] = stats[1:, cv2.CC_STAT_AREA] >= 3
+            return keep[labels]
+        a, b = strokes(before), strokes(after)
+        kernel = np.ones((3, 3), np.uint8)
+        different = int(np.count_nonzero(a & ~cv2.dilate(b, kernel))
+                        + np.count_nonzero(b & ~cv2.dilate(a, kernel)))
+        total = int(a.sum()+b.sum())
+        return different >= 30 and different/max(1, total) >= .10
+
     def event_result_marker(self, screen):
         names = list(dict.fromkeys(self.config.get('event_result_markers', []) + [e['result_marker'] for e in self.config.get('events', []) if e.get('result_marker')]))
         found = [name for name in names if self.find(screen, name)]

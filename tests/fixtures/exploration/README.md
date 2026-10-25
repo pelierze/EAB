@@ -131,3 +131,8 @@ missing-portrait cases are synthetic. No scrolling or live game input is sent.
 It is the actual English Vitals warning with buttons at y=465. Text removal,
 button relocation, and missing controls are synthetic. Cancellation replays
 return to Korean event choices and send no live game input.
+
+`english_event_result_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_161602_505343_세션_1_aaac56c2/screen.png`.
+It is the actual English Mimic result with a visible advance arrow. Arrow motion,
+particles, and changed caption strokes are synthetic, and no live input is sent.

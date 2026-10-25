@@ -1090,37 +1090,54 @@ class NodeProgressionBot(KnightRecruitmentBot):
 
     def _event_result(self):
         def ready(screen):
-            if self._classify(screen) not in ('event_result','unknown_event_result'):
+            state = self._classify(screen)
+            if state not in ('event_result','unknown_event_result'):
+                if state in EVENT_FOLLOWUPS:
+                    return ('followup', state)
                 return None
             if self.observer.event_cards(screen):
                 return None
             advance = self.observer.find(screen, 'event_advance')
             if not advance:
                 return None
-            identity = self.observer.event_result_marker(screen) or self._event_signature(screen)
-            return (identity, *advance)
-        target = self._wait('확인된 이벤트 결과 닫기', ready)
-        screen = self._capture()
-        if ready(screen) != target:
-            raise RecognitionTimeout('이벤트 결과 화면 변경')
+            return ('ready',)
+        def completed(state):
+            self.pending_event_id = None
+            if state == 'map': self.stats['nodes'] += 1
+            return state
+        for _ in range(self.observer.config.get('recognition_attempts', 3)):
+            target = self._wait('확인된 이벤트 결과 닫기', ready)
+            if target[0] == 'followup':
+                return completed(target[1])
+            screen = self._capture()
+            if ready(screen) == ('ready',):
+                # Use the arrow on this fresh frame, not its previous position.
+                advance = self.observer.find(screen, 'event_advance')
+                if advance:
+                    break
+            self._check_stop()
+            logger.info('이벤트 결과 클릭 전 화면 변화 — 입력 없이 재판별')
+        else:
+            raise RecognitionTimeout('이벤트 결과 화면 변경 반복 — 입력 없이 중지')
         if self._classify(screen) == 'unknown_event_result':
             self._start_report(screen, {'mode':self.event_mode, 'stage':'result'})
         self._report('dialogue', screen)
-        signature = self._event_signature(screen)
-        self._tap(target[1:])
+        identity = self.observer.event_result_marker(screen)
+        self._tap(advance)
         def changed(frame):
             state = self._classify(frame)
             if state in ('event_result','unknown_event_result'):
-                page = ready(frame)
-                if not page or (page[0] == target[0] and self._event_signature(frame) == signature):
+                if ready(frame) != ('ready',):
+                    return None
+                current_identity = self.observer.event_result_marker(frame)
+                if not (identity and current_identity and identity != current_identity
+                        or self.observer.event_result_page_changed(screen, frame)):
                     return None
             return (state,) if state in EVENT_FOLLOWUPS else None
         # One page per dispatch: loot, heroes, new choices and text all go through
         # their own validation before any further input.
         state = self._wait('이벤트 결과 다음 화면', changed)[0]
-        self.pending_event_id = None
-        if state == 'map': self.stats['nodes'] += 1
-        return state
+        return completed(state)
 
     def _event_rank_reward(self):
         self.event_context = True
