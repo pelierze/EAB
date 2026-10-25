@@ -8058,6 +8058,32 @@
       "language_review": "pending_visual_and_paired_screen_review"
     },
     {
+      "group": "node",
+      "marker": "shop_detail",
+      "source": "images/chaos/node_progression/templates/nodes/shop_detail_icon.png",
+      "crop": [
+        0,
+        0,
+        45,
+        40
+      ],
+      "source_size": [
+        45,
+        40
+      ],
+      "exclude": [],
+      "region": [
+        1200,
+        85,
+        70,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.06,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
       "group": "theme",
       "marker": "select_supply_1",
       "source": "images/chaos/hero_selection/templates/themes/select_supply_1.png",

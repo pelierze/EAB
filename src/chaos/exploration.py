@@ -137,7 +137,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'battle_loot_icon', 'battle_rank_icon', 'battle_reward_card',
                        'battle_reward_card_legacy', 'battle_warning_cancel', 'battle_unresolved_reward',
                        'enter_node', 'action_frame', 'detail_battle', 'rest_detail',
-                       'supply_detail', 'elite_detail', 'boss_detail', 'event_detail',
+                       'supply_detail', 'elite_detail', 'boss_detail', 'event_detail', 'shop_detail',
                        'rest_static_left', 'rest_static_roof', 'detail_rest', 'rest_done',
                        'rest_option_disabled', 'rest_option_2', 'rest_option_3', 'rest_option_4', 'rest_option_4_active',
                        'leave', 'rank_title', 'rank_button', 'supply_chest_closed',
@@ -1239,8 +1239,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
         logger.info('자동 탐사 선택 노드: %s', kind)
         self.event_context = kind == 'event'
         self._tap(target[1:])
-        detail_states = {'battle':{'battle_detail'}, 'rest':{'rest_detail'}, 'supply':{'supply_detail'},
-                         'elite':{'elite_detail'}, 'boss':{'boss_detail'}, 'shop':{'node_detail'}, 'event':{'event_detail'}}
+        detail_states = {node: {node+'_detail'} for node in self.observer.config['supported_nodes']}
         detail = self._state('노드 상세 대기', detail_states[kind])
         def entry(screen):
             if self._classify(screen) not in detail_states[kind]:

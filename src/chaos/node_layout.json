@@ -4200,6 +4200,17 @@
       ],
       "threshold": 0.9,
       "max_color_error": 0.06
+    },
+    "shop_detail": {
+      "file": "images/chaos/node_progression/templates/nodes/shop_detail_icon.png",
+      "region": [
+        1200,
+        85,
+        70,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.06
     }
   },
   "loot_cards": [

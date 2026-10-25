@@ -20,16 +20,18 @@ class DetailIconTests(unittest.TestCase):
         cls.observer = NodeObserver(ROOT)
         with np.load(ROOT / 'tests/fixtures/exploration/english_rest_detail_20261024.npz') as data:
             cls.reported = data['screen']
+        with np.load(ROOT / 'tests/fixtures/exploration/english_shop_detail_20261025.npz') as data:
+            cls.shop = data['screen']
 
     def test_reported_english_rest_is_detail_and_authorizes_enter(self):
         self.assertEqual(self.observer.classify(self.reported), 'rest_detail')
         self.assertEqual(self.observer.find(self.reported, 'enter_node'), (939, 629, 300, 64))
         self.assertIsNotNone(self.observer.find(self.reported, 'rest_detail'))
 
-    def test_all_six_headers_use_distinct_icons_without_title_or_description(self):
+    def test_all_seven_headers_use_distinct_icons_without_title_or_description(self):
         rng = np.random.default_rng(24)
-        for kind in ('battle', 'rest', 'supply', 'elite', 'boss', 'event'):
-            screen = read_image(str(RAW / f'{kind}_detail_live.png'))
+        for kind in ('battle', 'rest', 'supply', 'elite', 'boss', 'event', 'shop'):
+            screen = self.shop.copy() if kind == 'shop' else read_image(str(RAW / f'{kind}_detail_live.png'))
             bx, by, _, _ = self.observer.find(screen, 'action_frame')
             # Preserve the separate icon at the right of the header. All text,
             # including the Enter caption, can change without changing meaning.
@@ -41,6 +43,39 @@ class DetailIconTests(unittest.TestCase):
                 self.assertIsNotNone(self.observer.find(screen, 'enter_node'))
                 matches = [key for key in DETAIL_STATES if self.observer.find(screen, key)]
                 self.assertEqual(matches, ['detail_battle' if kind == 'battle' else kind + '_detail'])
+
+    def test_every_supported_node_has_a_detail_icon_state(self):
+        expected = {kind+'_detail' for kind in self.observer.config['supported_nodes']}
+        self.assertEqual(set(DETAIL_STATES.values()), expected)
+
+    def test_reported_shop_header_is_distinct_and_authorizes_enter(self):
+        self.assertEqual(self.observer.classify(self.shop), 'shop_detail')
+        self.assertEqual(self.observer.find(self.shop, 'enter_node'), (939, 629, 300, 64))
+        missing = self.shop.copy()
+        missing[85:150, 1200:1270] = 0
+        self.assertIsNone(self.observer.classify(missing))
+        self.assertIsNone(self.observer.find(missing, 'enter_node'))
+
+    def test_shop_selection_enters_only_after_matching_detail_and_scene(self):
+        observer = NodeObserver(ROOT)
+        observer.config.update(timeout_seconds=5, stable_frames=2, poll_seconds=0)
+        frames = [read_image(str(RAW/'map_after_rest_live.png')), self.shop,
+                  read_image(str(RAW/'shop/shop_full.png'))]
+        with tempfile.TemporaryDirectory() as tmp:
+            bot = NodeProgressionBot(Mock(), ROOT, tmp, observer=observer)
+            index = [0]
+            taps = []
+            bot._capture = lambda: frames[index[0]]
+            def tap(bounds):
+                taps.append(tuple(bounds))
+                index[0] += 1
+            bot._tap = tap
+            with patch.object(observer, 'choose_node', return_value=('shop', (920, 115, 40, 40))):
+                self.assertTrue(bot._select_node())
+            self.assertEqual(taps, [(920, 115, 40, 40), (939, 629, 300, 64)])
+            self.assertEqual(bot._verified_noncombat_node, 'shop')
+            self.assertEqual(bot._classify(frames[-1]), 'shop')
+            bot.adb.tap.assert_not_called()
 
     def test_missing_icon_does_not_authorize_enter_or_another_map_click(self):
         screen = self.reported.copy()

@@ -21,6 +21,7 @@ DETAIL_STATES = {
     'elite_detail': 'elite_detail',
     'boss_detail': 'boss_detail',
     'event_detail': 'event_detail',
+    'shop_detail': 'shop_detail',
 }
 
 

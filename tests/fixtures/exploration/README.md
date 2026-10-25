@@ -103,3 +103,9 @@ replay uses a Korean victory return. No live game input is sent.
 It reproduces the supply menu missed by both existing frame references.
 Shifted buttons and textless shop confirmations are synthetic. See
 `docs/i18n/exploration-noncombat-coordinates.md` for the verified-entry workflow.
+
+`english_shop_detail_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_134118_404480_세션_1_b56d85b8/screen.png`.
+It is the actual English shop detail pane with a scales icon. Caption changes
+and missing-icon cases are synthetic; the entry replay returns to a Korean shop
+reference and sends no live game input.
