@@ -120,3 +120,8 @@ the forbidden icon detection uses the original unmodified screenshot.
 `logs/report/20261025_150717_171001_세션_1_b281a9c6/screen.png`.
 It is a real English final summary showing three defeated bosses. Label removal
 and missing-icon cases are synthetic; the close replay uses a Korean entry frame.
+
+`english_wukong_list_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_151724_706099_세션_1_8adc25ed/screen.png`.
+It shows Immortal Wukong in the right column's second row. Name-area changes and
+missing-portrait cases are synthetic. No scrolling or live game input is sent.

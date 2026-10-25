@@ -587,9 +587,9 @@
       "marker": "wukong",
       "source": "images/chaos/hero_selection/templates/heroes/warrier_wukong.png",
       "crop": [
+        48,
         0,
-        0,
-        132,
+        84,
         45
       ],
       "source_size": [
