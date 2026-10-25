@@ -82,7 +82,7 @@ class EventModesTest(unittest.TestCase):
             with patch('src.chaos.exploration.random.choice', side_effect=lambda choices: choices[0]):
                 self.assertEqual(bot._event(), 'unknown_event_result')
             self.assertEqual(bot._event_result(), 'event')
-            self.assertEqual(taps, [(268,556,362,131), tuple(observer.config['event_advance_bounds'])])
+            self.assertEqual(taps, [(268,556,362,131), observer.find(result, 'event_advance')])
 
     def test_retained_marker_without_advance_does_not_authorize_result(self):
         frame = self.screen('event_library_book_result_live.png').copy()

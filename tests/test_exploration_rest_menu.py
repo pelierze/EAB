@@ -156,6 +156,7 @@ class RestMenuTests(unittest.TestCase):
                    self.frame('rest_wukong_rankup_live.png'), complete, self.frame('map_after_rest_live.png')]
         with tempfile.TemporaryDirectory() as tmp, patch.object(observer, 'forbidden', return_value=[]):
             bot = NodeProgressionBot(Mock(), ROOT, tmp, observer=observer, rank_priority=['wukong'])
+            bot._verified_noncombat_node = 'rest'
             index = [0]
             taps = []
             bot._capture = lambda: screens[index[0]]

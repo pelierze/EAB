@@ -4183,6 +4183,23 @@
       ],
       "threshold": 0.9,
       "max_color_error": 0.09
+    },
+    "shop_display_base": {
+      "file": "images/chaos/node_progression/raw/shop/shop_full.png",
+      "crop": [
+        381,
+        570,
+        18,
+        38
+      ],
+      "region": [
+        375,
+        560,
+        40,
+        55
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.06
     }
   },
   "loot_cards": [

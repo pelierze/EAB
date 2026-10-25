@@ -122,15 +122,27 @@ class SupplyRetrySafetyTests(unittest.TestCase):
         self.bot.stop_event.wait.return_value = False
         self.bot._check_stop = Mock()
         self.current = 'supply'
+        self.completed = False
         self.button = (930, 400, 160, 31)
         self.leave = (930, 620, 160, 31)
         self.taps = []
         self.bot._capture = lambda: self.current
         self.bot._classify = lambda screen: screen
-        observer.find.side_effect = lambda screen, marker: self.button if screen == 'supply' and marker == 'supply_loot' else None
+        def find(screen, marker):
+            if screen != 'supply':
+                return None
+            if marker == 'supply_loot' and not self.completed:
+                return self.button
+            if marker == 'supply_done' and self.completed:
+                return (1174, 396, 40, 42)
+            if marker == 'leave' and self.completed:
+                return self.leave
+            return None
+        observer.find.side_effect = find
         self.bot._wait = Mock(side_effect=[('btn', *self.button), self.leave, ('map',)])
         def claimed():
             self.current = 'supply'
+            self.completed = True
             return 'supply'
         self.bot._loot = Mock(side_effect=claimed)
 

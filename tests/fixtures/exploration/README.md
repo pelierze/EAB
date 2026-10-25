@@ -97,3 +97,9 @@ rank-up state are synthetic; the reported screen itself is a real English captur
 It is a real English unselected loot screen. Selected-edge and active-button
 states use Korean reference fragments composited into this capture; the claim
 replay uses a Korean victory return. No live game input is sent.
+
+`english_supply_geometry_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_085445_188886_세션_1_116df12c/screen.png`.
+It reproduces the supply menu missed by both existing frame references.
+Shifted buttons and textless shop confirmations are synthetic. See
+`docs/i18n/exploration-noncombat-coordinates.md` for the verified-entry workflow.

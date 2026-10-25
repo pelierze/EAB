@@ -392,62 +392,49 @@ class NodeFlowTest(unittest.TestCase):
         b._run_stages.assert_called_once()
 
     def test_supply_acquires_loot_and_leaves_to_map(self):
-        n = NodeObserver(ROOT); n.config['poll_seconds'] = 0
-        b = NodeProgressionBot(Mock(), ROOT, self.temp.name, observer=n)
-        dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
-        b._capture = Mock(return_value=dummy)
-        b._tap = Mock()
-        b._loot = Mock(return_value='supply')
-        b._classify = Mock(side_effect=['supply', 'loot', 'supply', 'map'])
-        b._wait = Mock(side_effect=[
-            ('btn', 930, 400, 160, 31),
-            (930, 620, 320, 80),
-            ('map',)
-        ])
-        b._supply()
+        b, taps, _ = self._supply_replay(
+            ['supply_menu_live.png', 'loot_cards_live.png', 'supply_done_live.png', 'map_after_rest_live.png'], 2)
         self.assertEqual(b.stats['nodes'], 1)
         b._loot.assert_called_once()
-        b._tap.assert_any_call((930, 400, 160, 31))
-        b._tap.assert_any_call((930, 620, 320, 80))
+        self.assertEqual(taps, [(905, 368, 330, 94), (938, 628, 300, 64)])
 
     def test_supply_unclaimed_loot_popup_confirmed_and_returns_to_map(self):
-        n = NodeObserver(ROOT); n.config['poll_seconds'] = 0
-        b = NodeProgressionBot(Mock(), ROOT, self.temp.name, observer=n)
-        b._capture = Mock(return_value=None)
-        b._tap = Mock()
-        b._tap_with_verify = Mock()
-        b._loot = Mock(return_value='supply')
-        b._wait = Mock(side_effect=[
-            ('already_done',),
-            (930, 620, 320, 80),
-            ('unclaimed_reward',),
-            (700, 425, 110, 75)
-        ])
-        b._state = Mock(return_value='map')
-        b._supply()
+        b, taps, observer = self._supply_replay(
+            ['supply_done_live.png', 'shop_exit_confirm_live.png', 'map_after_rest_live.png'])
         self.assertEqual(b.stats['nodes'], 1)
         b._loot.assert_not_called()
-        b._tap.assert_any_call((930, 620, 320, 80))
-        b._tap_with_verify.assert_called_once()
-        self.assertEqual(b._tap_with_verify.call_args[0][0], (700, 425, 110, 75))
+        confirm = observer.find(read_image(str(RAW/'shop_exit_confirm_live.png')), 'story_confirm')
+        self.assertEqual(taps, [(938, 628, 300, 64), confirm])
 
     def test_supply_cancels_existing_unclaimed_popup_to_acquire_loot(self):
-        n = NodeObserver(ROOT); n.config['poll_seconds'] = 0
-        b = NodeProgressionBot(Mock(), ROOT, self.temp.name, observer=n)
-        dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
-        b._capture = Mock(return_value=dummy)
-        b._tap = Mock()
-        b._loot = Mock(return_value='supply')
-        b._classify = Mock(side_effect=['unclaimed_reward', 'supply', 'loot', 'supply', 'map'])
-        b._wait = Mock(side_effect=[
-            ('btn', 930, 400, 160, 31),
-            (930, 620, 320, 80),
-            ('map',)
-        ])
-        b._supply()
+        b, taps, observer = self._supply_replay(
+            ['shop_exit_confirm_live.png', 'supply_menu_live.png', 'loot_cards_live.png',
+             'supply_done_live.png', 'map_after_rest_live.png'], 3)
         self.assertEqual(b.stats['nodes'], 1)
-        b._tap.assert_any_call((532, 460))
+        cancel = observer.find(read_image(str(RAW/'shop_exit_confirm_live.png')), 'story_cancel')
+        self.assertEqual(taps, [cancel, (905, 368, 330, 94), (938, 628, 300, 64)])
         b._loot.assert_called_once()
+
+    def _supply_replay(self, names, claim_return=None):
+        observer = NodeObserver(ROOT)
+        observer.config.update(poll_seconds=0, stable_frames=2, timeout_seconds=5)
+        bot = NodeProgressionBot(Mock(), ROOT, self.temp.name, observer=observer)
+        bot._verified_noncombat_node = 'supply'
+        frames = [read_image(str(RAW/name)) for name in names]
+        index = [0]
+        taps = []
+        bot._capture = lambda: frames[index[0]]
+        def tap(bounds):
+            taps.append(tuple(bounds))
+            index[0] += 1
+        bot._tap = tap
+        def claim():
+            index[0] = claim_return
+            return 'supply'
+        bot._loot = Mock(side_effect=claim)
+        bot._supply()
+        bot.adb.tap.assert_not_called()
+        return bot, taps, observer
 
     def test_state_callable_retry_tap_does_not_blind_click_when_button_disappears(self):
         n = NodeObserver(ROOT); n.config['poll_seconds'] = 0
@@ -520,12 +507,14 @@ class NodeFlowTest(unittest.TestCase):
         for kind in ('elite','boss'):
             self.observer.config['supported_nodes']=['elite','boss']
             target=(kind,20,30,40,50)
-            self.bot._wait=Mock(return_value=target)
+            self.bot._wait=Mock(side_effect=[target, (900,620,300,64)])
             self.bot._capture=Mock(return_value=None)
             self.observer.classify.return_value='map'
             self.observer.choose_node.return_value=(kind,(20,30,40,50))
             self.bot._tap=Mock();self.bot._guarded_tap=Mock()
             self.bot._state=Mock(side_effect=[kind+'_detail','battle_setup'])
+            self.bot._classify=Mock(return_value=kind+'_detail')
+            self.observer.find.return_value=(900,620,300,64)
             self.assertTrue(self.bot._select_node())
             self.assertIn('battle_setup',self.bot._state.call_args.args[1])
 

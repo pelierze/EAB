@@ -11,6 +11,7 @@ import numpy as np
 from src.image_matcher import ImageMatcher, read_image
 from .errors import RecognitionPending
 from .template_masks import apply_exclusions, color_error, matches_fixed_mask
+from .noncombat import menu_stack, active_menu
 
 
 DETAIL_STATES = {
@@ -264,6 +265,78 @@ class NodeObserver:
         done = self.all(screen, 'rest_done')
         return dict(leave=leave[0], detail_rest=active[0] if len(active) == 1 and not done else None,
                     rest_done=done[0] if len(done) == 1 else None)
+
+    def noncombat_kind(self, screen):
+        """Recover one unambiguous node identity when entry history is unavailable."""
+        if self.recruit_skip_buttons(screen):
+            return None  # A generic dialog must not expose its underlying node.
+        kinds = []
+        if all(self.all(screen, name) for name in ('rest_static_left', 'rest_static_roof')):
+            kinds.append('rest')
+        if any(self.all(screen, 'supply_chest_'+state) for state in ('open', 'closed')):
+            kinds.append('supply')
+        if all(self.all(screen, name) for name in ('shop_frame', 'shop_display_base')):
+            kinds.append('shop')
+        if self.all(screen, 'event_card_left') and self.all(screen, 'event_card_right'):
+            kinds.append('event')
+        return kinds[0] if len(kinds) == 1 else None
+
+    def noncombat_controls(self, screen, node_kind):
+        """Node intent -> current scene symbols -> fresh control coordinates.
+
+        The caller supplies verified entry history. History alone never permits
+        a click, and these controls never override a separately recognized popup.
+        """
+        if node_kind not in ('rest', 'supply', 'shop', 'event'):
+            return None
+        symbols = []
+        if node_kind == 'rest':
+            for name in ('rest_static_left', 'rest_static_roof'):
+                if not self.all(screen, name):
+                    return None
+                symbols.append(name)
+            names = ['detail_rest', 'rest_option_2', 'rest_option_3', 'rest_option_4']
+        elif node_kind == 'supply':
+            symbols = [name for name in ('supply_chest_closed', 'supply_chest_open') if self.all(screen, name)]
+            if not symbols:
+                return None
+            names = ['supply_menu_first', 'supply_loot']
+        elif node_kind == 'shop':
+            # Static display brackets avoid the vendor's animation and dialogue.
+            if not self.all(screen, 'shop_display_base') or not self.all(screen, 'shop_frame'):
+                return None
+            leave = self.all(screen, 'action_frame')
+            if len(leave) != 1:
+                return None
+            return dict(state='shop', symbols=['shop_display_base', 'shop_frame'], controls={'shop_exit': leave[0]})
+        else:
+            # Event art differs for each encounter. Paired choice-panel corner
+            # ornaments identify the generic scene even for unregistered art.
+            cards = self.event_cards(screen)
+            if not cards or not self.all(screen, 'event_card_left') or not self.all(screen, 'event_card_right'):
+                return None
+            known = self.known_event_candidates(screen)
+            return dict(state='event' if known else 'unknown_event',
+                        symbols=known or ['event_card_left', 'event_card_right'],
+                        controls={'event_cards': cards})
+        rows = [self.config['markers'][name]['region'] for name in names]
+        menus = menu_stack(screen, rows)
+        leave = self.all(screen, 'action_frame')
+        if not menus or len(leave) != 1:
+            return None
+        controls = {'leave': leave[0]}
+        done_name = 'rest_done' if node_kind == 'rest' else 'supply_done'
+        action_name = 'detail_rest' if node_kind == 'rest' else 'supply_loot'
+        index = 0 if node_kind == 'rest' else 1
+        done = self.all(screen, done_name, menus[index])
+        if len(done) > 1:
+            return None
+        controls['leave'] = leave[0] if done else None
+        controls[done_name] = done[0] if done else None
+        inactive = 'rest_option_disabled' if node_kind == 'rest' else 'supply_option_disabled'
+        enabled = active_menu(screen, menus[index], self.templates[action_name], self.templates[inactive])
+        controls[action_name] = menus[index] if enabled and not done else None
+        return dict(state=node_kind, symbols=symbols, menus=menus, exit_bounds=leave[0], controls=controls)
 
     def _menu_option_bounds(self, screen, name):
         # Unselected choices can be active or disabled independently.
@@ -866,7 +939,8 @@ class NodeObserver:
         raise RecognitionPending('상점 가격 또는 보유 파편 재확인')
 
     def shop_investment_offer(self, screen):
-        if self.classify(screen) != 'shop': return None
+        if self.classify(screen) != 'shop' and not self.noncombat_controls(screen, 'shop'):
+            return None
         if self.find(screen, 'shop_insufficient_notice'): return ('skip',)
         product = self.find(screen, 'shop_future_investment')
         if not product:
