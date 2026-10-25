@@ -142,3 +142,9 @@ particles, and changed caption strokes are synthetic, and no live input is sent.
 It is the actual English rank reward after an event choice. Missing frames and
 removed/randomized labels are synthetic. Rank-menu/return replays mock rank-up
 selection and send no live game input.
+
+`english_rank_result_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_202627_941056_세션_1_b8fcff98/screen.png`.
+It is the actual English Wukong rank-up result in a rest node. Removed text,
+numbers, portraits, symbols, and panel borders are synthetic; replay tests send
+no live game input.

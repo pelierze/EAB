@@ -2,7 +2,6 @@
 
 import json
 import re
-from difflib import SequenceMatcher
 from pathlib import Path
 
 import cv2
@@ -753,8 +752,8 @@ class NodeObserver:
         if self.find(screen, 'story_confirm'): return 'event_warning'
         if self.levelup_controls(screen): return 'levelup'
         if self.is_rank_result(screen): return 'rank_result'
-        # Rank and loot results share the close icon. Wait for readable rank
-        # text instead of treating a transient OCR miss as a loot transition.
+        # Rank and loot results share the close icon. Partial rank geometry
+        # must not authorize a loot close during a transition.
         if self.find(screen, 'rank_result_arrow'): return None
         if self.find(screen, 'event_loot_close'): return 'event_loot_popup'
         if self.is_loot_consume(screen): return 'event_loot_consume'
@@ -976,24 +975,29 @@ class NodeObserver:
             return digit_wide
         return None
 
-    @staticmethod
-    def rank_up_text_matches(text, confidence):
-        # The glowing text overlaps each hero's artwork. Allow one imperfect
-        # letter, but only together with the separate rank transition arrow.
-        normalized = re.sub(r'[^A-Z]', '', text.upper())
-        return confidence >= .55 and 5 <= len(normalized) <= 7 and (
-            SequenceMatcher(None, normalized, 'RANKUP').ratio() >= .8)
-
     def is_rank_result(self, screen):
-        if not self.find(screen, 'rank_result_arrow'):
-            return False
-        x, y, w, h = self.config['rank_result_text_region']
-        if self.ocr is None:
-            from rapidocr_onnxruntime import RapidOCR
-            self.ocr = RapidOCR(intra_op_num_threads=2, inter_op_num_threads=2)
-        rows, _ = self.ocr(cv2.resize(screen[y:y+h, x:x+w], None, fx=2, fy=2),
-                           use_det=False, use_cls=False)
-        return bool(rows and len(rows) == 1 and self.rank_up_text_matches(*rows[0]))
+        return self.rank_result_controls(screen) is not None
+
+    def rank_result_controls(self, screen):
+        """Verify the transition symbols and panel border without reading text."""
+        controls = {}
+        for name in ('rank_result_arrow', 'rank_result_before_icon',
+                     'rank_result_after_icon', 'rank_result_panel'):
+            matches = self.all(screen, name)
+            if len(matches) != 1:
+                return None
+            controls[name] = matches[0]
+        lx, ly, lw, lh = controls['rank_result_before_icon']
+        rx, ry, rw, rh = controls['rank_result_after_icon']
+        ax, ay, aw, ah = controls['rank_result_arrow']
+        px, py, pw, ph = controls['rank_result_panel']
+        if not (px < lx and lx+lw < ax and ax+aw < rx and rx+rw < px+pw
+                and abs(ly+lh/2-ry-rh/2) <= 4
+                and abs(ly+lh/2-ay-ah/2) <= 5
+                and py < min(ly, ry, ay) and max(ly+lh, ry+rh, ay+ah) < py+ph):
+            return None
+        controls['rank_close'] = tuple(self.config['rank_result_close_bounds'])
+        return controls
 
     def shop_currency_mask(self, screen):
         """Extract bright neutral digit strokes without reading their value."""

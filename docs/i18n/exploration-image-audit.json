@@ -6764,6 +6764,91 @@
     },
     {
       "group": "node",
+      "marker": "rank_result_panel",
+      "source": "images/chaos/node_progression/raw/rank_result_event_live.png",
+      "crop": [
+        640,
+        184,
+        410,
+        350
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          10,
+          14,
+          390,
+          320
+        ]
+      ],
+      "region": [
+        640,
+        184,
+        410,
+        350
+      ],
+      "threshold": 0.85,
+      "max_color_error": 0.12,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "rank_result_before_icon",
+      "source": "images/chaos/node_progression/raw/rank_result_event_live.png",
+      "crop": [
+        749,
+        214,
+        35,
+        34
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        744,
+        209,
+        45,
+        44
+      ],
+      "threshold": 0.88,
+      "max_color_error": 0.12,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "rank_result_after_icon",
+      "source": "images/chaos/node_progression/raw/rank_result_event_live.png",
+      "crop": [
+        887,
+        214,
+        35,
+        34
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        882,
+        209,
+        45,
+        44
+      ],
+      "threshold": 0.88,
+      "max_color_error": 0.12,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
       "marker": "rank_result_arrow",
       "source": "images/chaos/node_progression/raw/rank_result_event_live.png",
       "crop": [

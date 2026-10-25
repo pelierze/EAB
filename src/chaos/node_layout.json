@@ -3314,6 +3314,28 @@
       "threshold": 0.92,
       "max_color_error": 0.055
     },
+    "rank_result_panel": {
+      "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
+      "crop": [640, 184, 410, 350],
+      "region": [640, 184, 410, 350],
+      "exclude": [[10, 14, 390, 320]],
+      "threshold": 0.85,
+      "max_color_error": 0.12
+    },
+    "rank_result_before_icon": {
+      "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
+      "crop": [749, 214, 35, 34],
+      "region": [744, 209, 45, 44],
+      "threshold": 0.88,
+      "max_color_error": 0.12
+    },
+    "rank_result_after_icon": {
+      "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
+      "crop": [887, 214, 35, 34],
+      "region": [882, 209, 45, 44],
+      "threshold": 0.88,
+      "max_color_error": 0.12
+    },
     "rank_result_arrow": {
       "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
       "crop": [
@@ -5753,12 +5775,6 @@
     236,
     29,
     29
-  ],
-  "rank_result_text_region": [
-    335,
-    340,
-    210,
-    80
   ],
   "rank_result_close_bounds": [
     582,
