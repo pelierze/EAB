@@ -49,19 +49,15 @@ class RankResultSymbolTests(unittest.TestCase):
         self.assertEqual(self.observer.find(screen, 'rank_close'),
                          self.observer.find(self.screen, 'rank_close'))
 
-    def test_each_symbol_and_panel_border_is_required(self):
+    def test_each_transition_symbol_is_required(self):
         names = ('rank_result_arrow', 'rank_result_before_icon',
-                 'rank_result_after_icon', 'rank_result_panel')
+                 'rank_result_after_icon')
         for name in names:
             screen = self.screen.copy()
-            bounds = self.observer.all(screen, name)[0]
+            bounds = self.observer.rank_result_controls(screen)[name]
             x, y, w, h = bounds
             sample = screen[y:y+h, x:x+w]
-            template = self.observer.templates[name]
-            if template.shape[2] == 4:
-                sample[template[:, :, 3] > 0] = 0
-            else:
-                sample[:] = 0
+            sample[:] = 0
             with self.subTest(missing=name):
                 self.assertFalse(self.observer.is_rank_result(screen))
                 self.assertIsNone(self.observer.find(screen, 'rank_close'))
@@ -100,10 +96,11 @@ class RankResultSymbolTests(unittest.TestCase):
         self.assertEqual(taps, [tuple(bot.observer.config['rank_result_close_bounds'])])
         bot.adb.tap.assert_not_called()
 
-    def test_preclick_missing_panel_does_not_reuse_close_coordinates(self):
+    def test_preclick_missing_mark_does_not_reuse_close_coordinates(self):
         bot = self.bot()
         missing = self.screen.copy()
-        missing[184:198, 640:1050] = 0
+        x, y, w, h = bot.observer.find(missing, 'rank_result_after_icon')
+        missing[y:y+h, x:x+w] = 0
         bot._wait = lambda phase, predicate: predicate(self.screen)
         bot._capture = Mock(return_value=missing)
         bot._tap = Mock()

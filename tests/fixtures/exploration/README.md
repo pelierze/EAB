@@ -148,3 +148,8 @@ selection and send no live game input.
 It is the actual English Wukong rank-up result in a rest node. Removed text,
 numbers, portraits, symbols, and panel borders are synthetic; replay tests send
 no live game input.
+
+`english_max_rank_result_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_214241_238891_세션_1_1276a97f/screen.png`.
+It shows the actual English 4-to-5(Max) result. Symbol-only screens, horizontal
+spacing changes, wrong ordering/alignment, and extra marks are synthetic.

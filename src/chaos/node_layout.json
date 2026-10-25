@@ -3314,25 +3314,10 @@
       "threshold": 0.92,
       "max_color_error": 0.055
     },
-    "rank_result_panel": {
+    "rank_result_mark": {
       "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
-      "crop": [640, 184, 410, 350],
-      "region": [640, 184, 410, 350],
-      "exclude": [[10, 14, 390, 320]],
-      "threshold": 0.85,
-      "max_color_error": 0.12
-    },
-    "rank_result_before_icon": {
-      "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
-      "crop": [749, 214, 35, 34],
-      "region": [744, 209, 45, 44],
-      "threshold": 0.88,
-      "max_color_error": 0.12
-    },
-    "rank_result_after_icon": {
-      "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
-      "crop": [887, 214, 35, 34],
-      "region": [882, 209, 45, 44],
+      "crop": [893, 220, 21, 24],
+      "region": [710, 205, 320, 50],
       "threshold": 0.88,
       "max_color_error": 0.12
     },
@@ -3345,10 +3330,10 @@
         24
       ],
       "region": [
-        805,
-        195,
-        90,
-        70
+        710,
+        205,
+        320,
+        50
       ],
       "threshold": 0.85,
       "max_color_error": 0.15

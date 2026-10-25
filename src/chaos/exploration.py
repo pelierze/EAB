@@ -143,7 +143,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'summary_loot_icon', 'summary_close',
                        'event_rank_reward_icon', 'event_rank_reward_button', 'event_reward_continue',
                        'rank_result_arrow', 'rank_result_before_icon', 'rank_result_after_icon',
-                       'rank_result_panel', 'rank_close',
+                       'rank_close',
                        'supply_done', 'loot_button', 'loot_button_dim', 'loot_selected_edge', 'event_loot_close',
                        'loot_reward', 'reward_hero', 'battle_rank_reward', 'battle_reward_button',
                        'battle_loot_icon', 'battle_rank_icon', 'battle_reward_card',

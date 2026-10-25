@@ -166,6 +166,8 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
+            if name in ('rank_result_before_icon', 'rank_result_after_icon'):
+                return (self.rank_result_controls(screen) or {}).get(name)
             if name in ('event_rank_reward_button', 'event_reward_continue'):
                 return (self.rank_reward_controls(screen) or {}).get(name)
             if name == 'defeat':
@@ -979,22 +981,21 @@ class NodeObserver:
         return self.rank_result_controls(screen) is not None
 
     def rank_result_controls(self, screen):
-        """Verify the transition symbols and panel border without reading text."""
-        controls = {}
-        for name in ('rank_result_arrow', 'rank_result_before_icon',
-                     'rank_result_after_icon', 'rank_result_panel'):
-            matches = self.all(screen, name)
-            if len(matches) != 1:
-                return None
-            controls[name] = matches[0]
+        """Find mark → arrow → mark across a shared horizontal band."""
+        arrows = self.all(screen, 'rank_result_arrow')
+        if len(arrows) != 1:
+            return None
+        marks = sorted(self.all(screen, 'rank_result_mark'))
+        if len(marks) != 2:
+            return None
+        controls = dict(rank_result_before_icon=marks[0], rank_result_after_icon=marks[1],
+                        rank_result_arrow=arrows[0])
         lx, ly, lw, lh = controls['rank_result_before_icon']
         rx, ry, rw, rh = controls['rank_result_after_icon']
         ax, ay, aw, ah = controls['rank_result_arrow']
-        px, py, pw, ph = controls['rank_result_panel']
-        if not (px < lx and lx+lw < ax and ax+aw < rx and rx+rw < px+pw
+        if not (lx+lw < ax and ax+aw < rx
                 and abs(ly+lh/2-ry-rh/2) <= 4
-                and abs(ly+lh/2-ay-ah/2) <= 5
-                and py < min(ly, ry, ay) and max(ly+lh, ry+rh, ay+ah) < py+ph):
+                and abs(ly+lh/2-ay-ah/2) <= 5):
             return None
         controls['rank_close'] = tuple(self.config['rank_result_close_bounds'])
         return controls
