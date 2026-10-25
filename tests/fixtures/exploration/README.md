@@ -109,3 +109,9 @@ Shifted buttons and textless shop confirmations are synthetic. See
 It is the actual English shop detail pane with a scales icon. Caption changes
 and missing-icon cases are synthetic; the entry replay returns to a Korean shop
 reference and sends no live game input.
+
+`english_shop_live_20261025.npz` contains unmodified BGR `screen` from
+`logs/report/20261025_141316_208863_세션_1_4095f375/screen.png`.
+It is the actual English shop with Book of the Stars in the top-right slot.
+Transient map frames and textless exit confirmations in replays are synthetic;
+the forbidden icon detection uses the original unmodified screenshot.

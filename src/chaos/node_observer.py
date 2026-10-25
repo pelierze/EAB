@@ -523,10 +523,16 @@ class NodeObserver:
 
     def forbidden(self, screen):
         found = []
+        # Shop icons are smaller than the loot-card references. Search that
+        # footprint only inside a verified display, without widening all scans.
+        shop_display = bool(self.all(screen, 'shop_frame') and self.all(screen, 'shop_display_base'))
         for name, template in self.blocked:
-            for scale in (1., .85, .9, .8, 1.1):
+            searches = [(scale, [0, 0, 1280, 720]) for scale in (1., .85, .9, .8, 1.1)]
+            if shop_display:
+                searches.append((64/max(template.shape[:2]), [380, 80, 780, 520]))
+            for scale, region in searches:
                 scaled = template if scale == 1 else cv2.resize(template, None, fx=scale, fy=scale)
-                for bounds in self.matches(screen, scaled, [0,0,1280,720], .88, .18):
+                for bounds in self.matches(screen, scaled, region, .88, .18):
                     x,y,w,h = bounds
                     if not any(old_name == name and abs(ox+ow/2-x-w/2)<max(w,ow)/2
                                and abs(oy+oh/2-y-h/2)<max(h,oh)/2 for old_name,(ox,oy,ow,oh) in found):

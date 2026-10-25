@@ -12,7 +12,7 @@ import numpy as np
 import cv2
 
 from .bot import KnightRecruitmentBot, PartyRecruitmentBot, _Stopped, RecognitionTimeout
-from .node_observer import NodeObserver
+from .node_observer import DETAIL_STATES, NodeObserver
 from .errors import RecognitionPending
 from .event_flow import run_event_flow, EVENT_STATES, TERMINALS
 
@@ -98,7 +98,14 @@ class NodeProgressionBot(KnightRecruitmentBot):
         attempts = self.observer.config.get('recognition_attempts', 3)
         for attempt in range(1, attempts+1):
             try:
-                return super()._wait(f'{phase} ({attempt}/{attempts})', predicate)
+                result = super()._wait(f'{phase} ({attempt}/{attempts})', predicate)
+                # Clear only an accepted, stable map outcome, never a map
+                # observation which the current entry predicate rejects.
+                if isinstance(result, tuple) and result and isinstance(result[0], str):
+                    if (result[0] == 'map' or (result[0] in ('closed', 'followup')
+                                             and len(result) == 2 and result[1] == 'map')):
+                        self._verified_noncombat_node = None
+                return result
             except RecognitionTimeout:
                 if attempt == attempts:
                     self._save_failure_diagnostic('recognition_timeout', phase)
@@ -215,8 +222,6 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 and state in ('rest', 'supply', 'shop', 'event', 'unknown_event')
                 and ('event' if state == 'unknown_event' else state) != expected_node):
             return None
-        if state == 'map':
-            self._verified_noncombat_node = None
         if state is None:
             scene = self._noncombat_scene(screen)
             if scene:
@@ -291,7 +296,10 @@ class NodeProgressionBot(KnightRecruitmentBot):
     def _state(self, phase, allowed, retry_tap=None, max_retries=3):
         # retry_tap is retained for call compatibility, but recognition retries
         # must never replay a previous screen's coordinates.
-        return self._wait(phase, lambda s: (kind,) if (kind := self._classify(s)) in allowed else None)[0]
+        state = self._wait(phase, lambda s: (kind,) if (kind := self._classify(s)) in allowed else None)[0]
+        if state == 'map':
+            self._verified_noncombat_node = None
+        return state
 
     def _guarded_tap(self, phase, state, marker, *, exiting=False, followups=None, defer_markers=()):
         def ready(screen):
@@ -302,7 +310,12 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 return None
             if any(self.observer.find(screen, name) for name in defer_markers):
                 return ('followup', kind)
-            if self.observer.forbidden(screen) and not exiting:
+            blocked = self.observer.forbidden(screen)
+            trace = getattr(self, 'debug_recorder', None)
+            if blocked and trace:
+                trace.event('forbidden_items', phase=phase, node=self.current_node_kind,
+                            items=blocked, exiting=exiting)
+            if blocked and not exiting:
                 raise RuntimeError('금지 항목이 발견되어 입력을 중지했습니다.')
             return self._find_control(screen, marker)
         for attempt in range(self.observer.config.get('recognition_attempts', 3)):
@@ -1240,9 +1253,17 @@ class NodeProgressionBot(KnightRecruitmentBot):
         self.event_context = kind == 'event'
         self._tap(target[1:])
         detail_states = {node: {node+'_detail'} for node in self.observer.config['supported_nodes']}
-        detail = self._state('노드 상세 대기', detail_states[kind])
+        self._state('노드 상세 대기', detail_states[kind])
+        return self._enter_confirmed_node(kind)
+
+    def _enter_confirmed_node(self, kind):
+        """Use the same checked entry path for selection and detail-pane resume."""
+        if kind not in self.observer.config['supported_nodes']:
+            raise RecognitionTimeout('지원하지 않는 상세 노드 — 진입 없이 중지')
+        self.current_node_kind = kind
+        self.event_context = kind == 'event'
         def entry(screen):
-            if self._classify(screen) not in detail_states[kind]:
+            if self._classify(screen) != kind+'_detail':
                 return None
             return self.observer.find(screen, 'enter_node')
         enter_bounds = self._wait('노드 진입 버튼 확인', entry)
@@ -1288,11 +1309,14 @@ class NodeProgressionBot(KnightRecruitmentBot):
                         self.stats.update(status='stopped', reason='초기 화면 복귀 — 최종 클리어 정산 미확인')
                     break
                 if state == 'map':
+                    self._verified_noncombat_node = None
                     self.event_context = False
                     self.report_dir = None
                     self.pending_event_id = None
                     self.rejected_event_choices.clear()
                     if not self._select_node(): break
+                elif state in DETAIL_STATES.values():
+                    self._enter_confirmed_node(state[:-len('_detail')])
                 elif state == 'battle_setup':
                     self._guarded_tap('전투 시작', state, 'battle_start')
                     self._state('전투 화면 대기', {'battle','story','story_confirm'})

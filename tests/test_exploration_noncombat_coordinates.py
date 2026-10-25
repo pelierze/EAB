@@ -218,6 +218,9 @@ class NoncombatCoordinatesTests(unittest.TestCase):
     def test_map_return_discards_the_previous_verified_entry(self):
         bot = self.bot('supply')
         self.assertEqual(bot._classify(self.frame('map_after_rest_live.png')), 'map')
+        self.assertEqual(bot._verified_noncombat_node, 'supply')
+        bot._wait = Mock(return_value=('map',))
+        self.assertEqual(bot._state('confirmed return', {'map'}), 'map')
         self.assertIsNone(bot._verified_noncombat_node)
         self.assertIsNone(bot._classify(self.supply))
 
