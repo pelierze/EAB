@@ -138,7 +138,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
             if not success:
                 raise OSError('진단 화면 인코딩 실패')
             encoded.tofile(str(path.with_suffix('.png')))
-            markers = ('levelup', 'level_close', 'victory', 'continue', 'supply_loot',
+            markers = ('levelup', 'level_close', 'victory', 'continue', 'defeat', 'defeat_ornament', 'supply_loot',
                        'expedition_summary', 'summary_nodes_icon', 'summary_fragments_icon',
                        'summary_loot_icon', 'summary_close',
                        'supply_done', 'loot_button', 'loot_button_dim', 'loot_selected_edge', 'event_loot_close',

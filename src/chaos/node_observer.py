@@ -167,6 +167,18 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
+            if name == 'defeat':
+                # Both upper crest patches exclude the localized result label.
+                # A single purple decoration does not establish battle defeat.
+                crest = self.all(screen, name)
+                if len(crest) != 1:
+                    return None
+                ornaments = self.all(screen, 'defeat_ornament')
+                if len(ornaments) != 1:
+                    return None
+                x, y, _, _ = crest[0]
+                ox, oy, _, _ = ornaments[0]
+                return crest[0] if abs(ox-x+72) <= 4 and abs(oy-y-98) <= 4 else None
             if name == 'expedition_summary':
                 return (self.summary_controls(screen) or {}).get(name)
             if name == 'loot_button':

@@ -4685,10 +4685,10 @@
       "marker": "defeat",
       "source": "images/chaos/node_progression/raw/battle_defeat_live.png",
       "crop": [
-        497,
-        282,
-        295,
-        47
+        550,
+        52,
+        184,
+        216
       ],
       "source_size": [
         1280,
@@ -4696,10 +4696,36 @@
       ],
       "exclude": [],
       "region": [
-        460,
-        250,
-        360,
-        105
+        538,
+        40,
+        208,
+        240
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "defeat_ornament",
+      "source": "images/chaos/node_progression/raw/battle_defeat_live.png",
+      "crop": [
+        478,
+        150,
+        76,
+        112
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        466,
+        138,
+        100,
+        136
       ],
       "threshold": 0.9,
       "max_color_error": 0.15,

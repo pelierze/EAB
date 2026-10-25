@@ -1992,17 +1992,24 @@
     "defeat": {
       "file": "images/chaos/node_progression/raw/battle_defeat_live.png",
       "crop": [
-        497,
-        282,
-        295,
-        47
+        550,
+        52,
+        184,
+        216
       ],
       "region": [
-        460,
-        250,
-        360,
-        105
+        538,
+        40,
+        208,
+        240
       ],
+      "threshold": 0.9,
+      "max_color_error": 0.15
+    },
+    "defeat_ornament": {
+      "file": "images/chaos/node_progression/raw/battle_defeat_live.png",
+      "crop": [478, 150, 76, 112],
+      "region": [466, 138, 100, 136],
       "threshold": 0.9,
       "max_color_error": 0.15
     },
