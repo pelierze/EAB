@@ -78,11 +78,10 @@ class RankRewardFrameTests(unittest.TestCase):
                 self.assertIsNone(self.observer.rank_reward_controls(screen))
                 self.assertIsNone(self.observer.find(screen, 'event_reward_continue'))
 
-    def test_choice_result_then_use_rank_reward_and_continue_once(self):
+    def test_choice_result_then_use_rank_reward_routes_to_common_hero_menu(self):
         bot = self.bot()
         menu = read_image(str(RAW / 'rest_rank_menu_live.png'))
-        map_frame = read_image(str(RAW / 'map_after_rest_live.png'))
-        frames = [self.screen, menu, self.screen, map_frame]
+        frames = [self.screen, menu]
         index = [0]
         taps = []
         bot._capture = lambda: frames[index[0]]
@@ -90,13 +89,12 @@ class RankRewardFrameTests(unittest.TestCase):
             taps.append(tuple(bounds))
             index[0] += 1
         bot._tap = tap
-        bot._rankup = Mock(side_effect=lambda: index.__setitem__(0, 2))
+        bot._rankup = Mock()
         self.assertEqual(bot._event_transition('previous choice'), 'rank_reward')
-        self.assertEqual(bot._event_rank_reward(), 'map')
-        bot._rankup.assert_called_once()
-        self.assertEqual(taps, [bot.observer.find(self.screen, 'event_rank_reward_button'),
-                                bot.observer.find(self.screen, 'event_reward_continue')])
-        self.assertEqual(bot.stats['nodes'], 1)
+        self.assertEqual(bot._event_rank_reward(), 'event_hero_menu')
+        bot._rankup.assert_not_called()
+        self.assertEqual(taps, [bot.observer.find(self.screen, 'event_rank_reward_button')])
+        self.assertEqual(bot.stats['nodes'], 0)
         bot.adb.tap.assert_not_called()
 
     def test_stale_reward_screen_does_not_click_previous_button(self):

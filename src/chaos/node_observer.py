@@ -746,7 +746,6 @@ class NodeObserver:
         if self.battle_unclaimed_cancel(screen): return 'battle_unclaimed_reward'
         if self.find(screen, 'shop_purchase_dialog'): return 'shop_purchase_confirm'
         if self.find(screen, 'defeat'): return 'defeat'
-        if self.find(screen, 'hero_departure_title') and self.find(screen, 'hero_departure_button'): return 'hero_departure'
         if self.find(screen, 'expedition_summary') and self.find(screen, 'summary_close'): return 'expedition_summary'
         if self.find(screen, 'exploration_entry'): return 'exploration_entry'
         if self.find(screen, 'shop_exit_dialog') and self.find(screen, 'story_confirm'): return 'shop_exit_confirm'
@@ -807,36 +806,41 @@ class NodeObserver:
                 return False
         return True
 
-    def hero_departure_candidates(self, screen):
-        if not (self.find(screen, 'hero_departure_title')
-                and self.find(screen, 'hero_departure_button')):
+    def event_hero_candidates(self, screen):
+        """Find each row by class icon and the rank mark beneath it, never names."""
+        if not self.all(screen, 'rank_title') or not self.all(screen, 'map_footer'):
             return []
-        corners = self.all(screen, 'hero_departure_card')
+        if self.event_choice_warning_controls(screen):
+            return []  # Never expose the list underneath a confirmation dialog.
         cards = []
         for y in (85, 190, 295, 400):
-            bounds = (350, y, 290, 80)
-            # The same gold border replaces the blue corner on a selected row.
-            if (any(abs(x-353) <= 3 and abs(cy-(y+1)) <= 3 for x, cy, _, _ in corners)
-                    or self.hero_departure_highlight(screen, bounds)):
-                cards.append(bounds)
+            marks = self.all(screen, 'event_hero_rank_mark', [345, y+40, 55, 40])
+            if len(marks) != 1:
+                continue
+            mx, my, _, _ = marks[0]
+            sample = screen[y-10:y+70, 350:410]
+            classes = []
+            for name, template in self.class_templates.items():
+                _, score, _, (x, cy) = cv2.minMaxLoc(ImageMatcher.match_template(sample, template))
+                if score >= .8 and abs(x+350-mx) <= 20 and 20 <= my-(y-10+cy) <= 65:
+                    classes.append(name)
+            if len(classes) == 1:
+                cards.append((350, y, 290, 80))
         return cards
 
-    def hero_departure_selected(self, screen, bounds, portrait):
-        if not (self.find(screen, 'hero_departure_title')
-                and self.hero_departure_highlight(screen, bounds)):
-            return None
-        button = self.find(screen, 'hero_departure_button')
-        if not button:
-            return None
-        x, y, w, h = button
-        label = cv2.cvtColor(screen[y:y+h, x:x+w], cv2.COLOR_BGR2GRAY)
-        if np.count_nonzero(label >= 200) < 40:
+    def event_hero_selected(self, screen, bounds, portrait):
+        if bounds not in self.event_hero_candidates(screen) or not self.hero_departure_highlight(screen, bounds):
             return None
         _, cy, _, _ = bounds
-        # A reordered party must not authorize departing the old row's hero.
         if not self.matches(screen, portrait, [510, cy+6, 120, 65], .90, .15):
             return None
-        return button
+        active = self.all(screen, 'rank_button')
+        dim = self.all(screen, 'event_hero_action_dim')
+        if len(active) == 1 and not dim:
+            return ('active', active[0])
+        if len(dim) == 1 and not active:
+            return ('disabled',)
+        return None
 
     def event_intro_panel(self, screen):
         """Recognize the compact narration panel, never its words or artwork."""

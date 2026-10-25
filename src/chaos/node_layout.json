@@ -1876,26 +1876,20 @@
       "threshold": 0.92,
       "max_color_error": 0.07
     },
-    "hero_departure_title": {
-      "file": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
-      "crop": [69, 18, 148, 31],
-      "region": [60, 12, 170, 45],
-      "threshold": 0.92,
-      "max_color_error": 0.10
-    },
-    "hero_departure_button": {
-      "file": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
-      "crop": [1034, 646, 107, 29],
-      "region": [1020, 637, 135, 46],
+    "event_hero_rank_mark": {
+      "file": "images/chaos/node_progression/raw/rest_rank_menu_live.png",
+      "crop": [361, 135, 20, 22],
+      "region": [345, 120, 55, 370],
       "threshold": 0.88,
-      "max_color_error": 0.30
-    },
-    "hero_departure_card": {
-      "file": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
-      "crop": [353, 86, 20, 12],
-      "region": [335, 75, 50, 440],
-      "threshold": 0.90,
       "max_color_error": 0.15
+    },
+    "event_hero_action_dim": {
+      "file": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
+      "crop": [938, 628, 300, 64],
+      "region": [938, 628, 300, 64],
+      "exclude": [[18, 6, 264, 52]],
+      "threshold": 0.9,
+      "max_color_error": 0.09
     },
     "event_intro_panel": {
       "file": "images/chaos/node_progression/raw/event_intro_issue17.png",

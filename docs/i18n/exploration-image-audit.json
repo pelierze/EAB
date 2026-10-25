@@ -4448,79 +4448,60 @@
     },
     {
       "group": "node",
-      "marker": "hero_departure_title",
-      "source": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
+      "marker": "event_hero_rank_mark",
+      "source": "images/chaos/node_progression/raw/rest_rank_menu_live.png",
       "crop": [
-        69,
-        18,
-        148,
-        31
-      ],
-      "source_size": [
-        1280,
-        720
-      ],
-      "exclude": [],
-      "region": [
-        60,
-        12,
-        170,
-        45
-      ],
-      "threshold": 0.92,
-      "max_color_error": 0.1,
-      "packaged": true,
-      "language_review": "pending_visual_and_paired_screen_review"
-    },
-    {
-      "group": "node",
-      "marker": "hero_departure_button",
-      "source": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
-      "crop": [
-        1034,
-        646,
-        107,
-        29
-      ],
-      "source_size": [
-        1280,
-        720
-      ],
-      "exclude": [],
-      "region": [
-        1020,
-        637,
+        361,
         135,
-        46
+        20,
+        22
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [],
+      "region": [
+        345,
+        120,
+        55,
+        370
       ],
       "threshold": 0.88,
-      "max_color_error": 0.3,
+      "max_color_error": 0.15,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },
     {
       "group": "node",
-      "marker": "hero_departure_card",
+      "marker": "event_hero_action_dim",
       "source": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
       "crop": [
-        353,
-        86,
-        20,
-        12
+        938,
+        628,
+        300,
+        64
       ],
       "source_size": [
         1280,
         720
       ],
-      "exclude": [],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
+      ],
       "region": [
-        335,
-        75,
-        50,
-        440
+        938,
+        628,
+        300,
+        64
       ],
       "threshold": 0.9,
-      "max_color_error": 0.15,
+      "max_color_error": 0.09,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },

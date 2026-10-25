@@ -18,7 +18,7 @@ from .event_flow import run_event_flow, EVENT_STATES, TERMINALS
 
 logger = logging.getLogger(__name__)
 
-EVENT_FOLLOWUPS = {'hero_departure', 'event_intro', 'map', 'battle_setup', 'battle', 'story', 'story_confirm',
+EVENT_FOLLOWUPS = {'event_hero_menu', 'hero_departure', 'event_intro', 'map', 'battle_setup', 'battle', 'story', 'story_confirm',
     'rank_menu', 'rank_result', 'rank_reward', 'event', 'unknown_event', 'event_result',
     'unknown_event_result', 'loot', 'event_loot_popup', 'event_loot_consume',
     'recruit_reward', 'unclaimed_reward', 'battle_unclaimed_reward', 'event_warning', 'levelup', 'victory', 'battle_rank_complete'} | TERMINALS
@@ -144,6 +144,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'event_rank_reward_icon', 'event_rank_reward_button', 'event_reward_continue',
                        'rank_result_arrow', 'rank_result_before_icon', 'rank_result_after_icon',
                        'rank_close',
+                       'event_hero_rank_mark', 'event_hero_action_dim', 'rank_button',
                        'supply_done', 'loot_button', 'loot_button_dim', 'loot_selected_edge', 'event_loot_close',
                        'loot_reward', 'reward_hero', 'battle_rank_reward', 'battle_reward_button',
                        'battle_loot_icon', 'battle_rank_icon', 'battle_reward_card',
@@ -222,6 +223,10 @@ class NodeProgressionBot(KnightRecruitmentBot):
 
     def _classify_observed(self, screen):
         if screen is None: return None
+        if self.event_context and isinstance(screen, np.ndarray):
+            cards = self.observer.event_hero_candidates(screen)
+            if isinstance(cards, list) and cards:
+                return 'event_hero_menu'
         state = self.observer.classify(screen)
         expected_node = getattr(self, '_verified_noncombat_node', None)
         if (expected_node in ('rest', 'supply', 'shop', 'event')
@@ -443,7 +448,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 # Let the event flow re-observe and validate the next choice.
                 logger.info('이벤트 전투 후 선택 화면 복귀: %s', state)
                 return
-            if state in ('victory', 'battle_rank_complete', 'levelup', 'event_loot_popup', 'rank_result', 'rank_reward',
+            if state in ('event_hero_menu', 'victory', 'battle_rank_complete', 'levelup', 'event_loot_popup', 'rank_result', 'rank_reward',
                          'rank_menu', 'recruit_reward', 'loot', 'event_result', 'unknown_event_result', 'map'):
                 self.auto_verified = True
                 self.stats['auto_verified'] = True
@@ -531,7 +536,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
         state = self._state('랭크업 결과 대기', {'rank_result', 'battle_rank_complete'})
         if state == 'battle_rank_complete':
             return state
-        # Completion uses shared arrow + RANK UP text, independent of hero art
+        # Completion uses shared rank marks and arrow, independent of hero art
         # and the card's rank-number position. _state requires stable frames.
         return self._dismiss_popup('랭크업 결과 닫기', 'rank_result', 'rank_close', EVENT_FOLLOWUPS | {'rest'})
 
@@ -856,6 +861,8 @@ class NodeProgressionBot(KnightRecruitmentBot):
         """A handler performs one verified task, then the flow observes again."""
         if state == 'hero_departure':
             return self._event_hero_departure()
+        if state == 'event_hero_menu':
+            return self._event_hero_menu()
         if state == 'event_intro':
             return self._event_intro()
         if state in ('event', 'unknown_event'):
@@ -1048,48 +1055,62 @@ class NodeProgressionBot(KnightRecruitmentBot):
         return state
 
     def _event_hero_departure(self):
-        def candidates(screen):
-            cards = self.observer.hero_departure_candidates(screen)
-            return tuple(cards) if cards else None
-        cards = self._wait('이탈 가능한 영웅 목록 확인', candidates)
-        screen = self._capture()
-        if candidates(screen) != cards:
-            raise RecognitionTimeout('이탈 영웅 목록 변경 — 입력 없이 중지')
-        target = random.choice(cards)
-        _, y, _, _ = target
-        portrait = screen[y+6:y+71, 510:630].copy()
-        logger.info('이벤트 영웅 이탈: %d명 중 무작위 선택, 카드=%s', len(cards), target)
-        self._tap(target)
+        return self._event_hero_menu()
 
-        def selected(frame):
-            return self.observer.hero_departure_selected(frame, target, portrait)
-        button = self._wait('이탈 영웅 금색 선택 테두리 및 활성 버튼 확인', selected)
-        if not button or selected(self._capture()) != button:
-            raise RecognitionTimeout('이탈 영웅 선택 상태 변경 — 확정 없이 중지')
-        self._tap(button)
-        allowed = EVENT_FOLLOWUPS - {'hero_departure'}
+    def _event_hero_menu(self):
+        def candidates(screen):
+            cards = self.observer.event_hero_candidates(screen)
+            return tuple(cards) if cards else None
+        cards = self._wait('이벤트 영웅 목록의 직업·랭크 마크 확인', candidates)
+        remaining = list(cards)
+        while remaining:
+            screen = self._capture()
+            if candidates(screen) != cards:
+                raise RecognitionTimeout('이벤트 영웅 목록 변경 — 입력 없이 중지')
+            target = random.choice(remaining)
+            remaining.remove(target)
+            _, y, _, _ = target
+            portrait = screen[y+6:y+71, 510:630].copy()
+            logger.info('이벤트 영웅 무작위 선택: 남은 후보=%d명, 카드=%s', len(remaining)+1, target)
+            self._tap(target)
+            def selected(frame):
+                return self.observer.event_hero_selected(frame, target, portrait)
+            selection = self._wait('이벤트 영웅 선택 테두리 및 실행 상태 확인', selected)
+            if selected(self._capture()) != selection:
+                raise RecognitionTimeout('이벤트 영웅 선택 상태 변경 — 실행 없이 중지')
+            if selection[0] == 'disabled':
+                logger.info('이벤트 영웅 실행 비활성 — 해당 후보 제외 후 다른 영웅 확인')
+                continue
+            self._tap(selection[1])
+            break
+        else:
+            raise RecognitionTimeout('실행 가능한 이벤트 영웅 없음 — 추가 입력 없이 중지')
+        allowed = EVENT_FOLLOWUPS - {'hero_departure', 'event_hero_menu', 'rank_menu'}
 
         def outcome(frame):
+            # Only this verified hero action authorizes its textless confirmation.
+            buttons = self.observer.event_choice_warning_controls(frame)
+            if buttons:
+                return ('confirm', buttons['confirm'])
             state = self._classify(frame)
-            # Confirmation is authorized only immediately after this handler
-            # clicked the verified departure button, never from a resumed popup.
             if state in ('event_warning', 'story_confirm', 'unclaimed_reward'):
-                confirm = self.observer.find(frame, 'story_confirm')
-                if confirm and self.observer.find(frame, 'story_cancel'):
-                    return ('confirm', confirm)
                 return None
             return ('followup', state) if state in allowed else None
 
-        action, value = self._wait('영웅 이탈 이후 화면 확인', outcome)
+        action, value = self._wait('이벤트 영웅 실행 이후 실제 결과 확인', outcome)
         if action == 'confirm':
             if outcome(self._capture()) != (action, value):
-                raise RecognitionTimeout('영웅 이탈 확인창 변경 — 확정 없이 중지')
+                raise RecognitionTimeout('이벤트 영웅 확인창 변경 — 승인 없이 중지')
             self._tap(value)
-            value = self._state('영웅 이탈 확인 후 다음 화면',
-                                allowed - {'event_warning', 'story_confirm', 'unclaimed_reward'})
-        self.stats['departed_heroes'] = self.stats.get('departed_heroes', 0) + 1
+            def confirmed(frame):
+                if self.observer.event_choice_warning_controls(frame):
+                    return None
+                state = self._classify(frame)
+                return (state,) if state in allowed - {'event_warning', 'story_confirm', 'unclaimed_reward'} else None
+            value = self._wait('이벤트 영웅 승인 후 다음 화면', confirmed)[0]
+        self.stats['event_hero_actions'] = self.stats.get('event_hero_actions', 0) + 1
         self._accept_event_page(value)
-        logger.info('이벤트 영웅 이탈 완료 — 다음 화면: %s', value)
+        logger.info('이벤트 영웅 실행 완료 — 다음 화면: %s', value)
         return value
 
     def _event_intro(self):
