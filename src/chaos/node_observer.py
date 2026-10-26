@@ -926,6 +926,15 @@ class NodeObserver:
         # Bottom corners remain visible when a magnifier replaces the top icon.
         left = sorted((x,y-100,w,h) for x,y,w,h in self.all(screen,'event_card_left'))
         right = sorted(self.all(screen,'event_card_right'))
+        # Mirror the left-grid fallback below: wing/glow effects can obscure
+        # bottom-left corners while all top-right ornaments remain visible.
+        if 0 < len(left) < len(right) and len(right) in (2, 3):
+            gaps = [b[0]-a[0] for a, b in zip(right, right[1:])]
+            aligned = max(r[1] for r in right)-min(r[1] for r in right) <= 3
+            paired = all(sum(330 <= rx-x <= 345 and abs(ry-y) <= 3
+                             for rx, ry, _, _ in right) == 1 for x, y, _, _ in left)
+            if aligned and all(378 <= gap <= 382 for gap in gaps) and paired:
+                return [(rx-332, ry+4, 362, 131) for rx, ry, _, _ in right]
         if len(left) in (1, 2, 3) and len(right) == len(left):
             cards = []
             for (x,y,_,_),(rx,ry,_,_) in zip(left,right):

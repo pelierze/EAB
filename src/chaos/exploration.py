@@ -1119,7 +1119,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
             raise RecognitionTimeout('이벤트 설명 입력 전 화면 변경')
         text = self.observer.event_intro_text_mask(screen)
         logger.info('이벤트 진입 설명창 확인 — 본문을 한 번 눌러 다음 화면 확인')
-        self._tap((640, 490))
+        self._tap((640, 490, 0, 0))
         def changed(frame):
             state = self._classify(frame)
             if state == 'event_intro':

@@ -159,3 +159,10 @@ spacing changes, wrong ordering/alignment, and extra marks are synthetic.
 Its modal top border fails the global warning check while both text-masked
 buttons match. Pair-only images, missing/duplicate buttons, and choice/cancel
 replays are synthetic and send no live game input.
+
+`english_eye_intro_choices_20261026.npz` contains unmodified BGR `intro` and
+`choices` from `logs/report/20261026_165257_926063_세션_1_f8a6e673/screen.png`
+and `epicseven 2026-10-26 20-27-51-91.png` in that same report folder.
+The choices capture was supplied by the user after the error. Partial narration,
+missing/moved corners, and erased choice labels are synthetic. Replay exercises
+the real bot tap wrapper against a mocked ADB client; no live input is sent.
