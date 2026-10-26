@@ -1587,23 +1587,6 @@
       "threshold": 0.9,
       "max_color_error": 0.12
     },
-    "loot_reward": {
-      "file": "images/chaos/raw/Screenshot_2026.09.24_09.31.37.239.png",
-      "crop": [
-        727,
-        517,
-        98,
-        27
-      ],
-      "region": [
-        210,
-        495,
-        850,
-        75
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.06
-    },
     "shop_npc": {
       "file": "images/chaos/node_progression/raw/shop/shop_full.png",
       "crop": [
@@ -1651,23 +1634,6 @@
         280,
         450,
         85
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.06
-    },
-    "reward_hero": {
-      "file": "images/chaos/raw/Screenshot_2026.09.24_09.52.22.437.png",
-      "crop": [
-        867,
-        517,
-        83,
-        27
-      ],
-      "region": [
-        210,
-        495,
-        850,
-        75
       ],
       "threshold": 0.9,
       "max_color_error": 0.06
@@ -3791,23 +3757,6 @@
       "threshold": 0.9,
       "max_color_error": 0.12
     },
-    "battle_rank_reward": {
-      "file": "images/chaos/node_progression/raw/battle/victory_rank_reward_live.png",
-      "crop": [
-        588,
-        516,
-        109,
-        30
-      ],
-      "region": [
-        240,
-        480,
-        800,
-        100
-      ],
-      "threshold": 0.92,
-      "max_color_error": 0.055
-    },
     "event_rusted_bars": {
       "file": "images/chaos/node_progression/raw/event_rusted_bars_live.png",
       "crop": [
@@ -3946,6 +3895,7 @@
     },
     "battle_loot_icon": {
       "file": "images/chaos/node_progression/templates/battle/loot_icon.png",
+      "crop": [1, 5, 73, 60],
       "region": [
         240,
         205,
@@ -3990,98 +3940,6 @@
       ],
       "threshold": 0.9,
       "max_color_error": 0.09
-    },
-    "battle_reward_card": {
-      "file": "images/chaos/node_progression/templates/battle/reward_card.png",
-      "region": [
-        240,
-        150,
-        800,
-        455
-      ],
-      "exclude": [
-        [
-          16,
-          0,
-          220,
-          426
-        ],
-        [
-          0,
-          0,
-          16,
-          275
-        ],
-        [
-          236,
-          0,
-          16,
-          275
-        ],
-        [
-          0,
-          310,
-          16,
-          116
-        ],
-        [
-          236,
-          310,
-          16,
-          116
-        ]
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.09
-    },
-    "battle_reward_card_legacy": {
-      "file": "images/chaos/node_progression/raw/boss_victory_rewards_live.png",
-      "region": [
-        240,
-        150,
-        800,
-        455
-      ],
-      "exclude": [
-        [
-          16,
-          0,
-          220,
-          426
-        ],
-        [
-          0,
-          0,
-          16,
-          275
-        ],
-        [
-          236,
-          0,
-          16,
-          275
-        ],
-        [
-          0,
-          310,
-          16,
-          116
-        ],
-        [
-          236,
-          310,
-          16,
-          116
-        ]
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.09,
-      "crop": [
-        515,
-        164,
-        252,
-        426
-      ]
     },
     "supply_menu_first_variant": {
       "file": "images/chaos/node_progression/templates/supply/menu_first.png",

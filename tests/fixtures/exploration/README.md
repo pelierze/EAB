@@ -166,3 +166,9 @@ and `epicseven 2026-10-26 20-27-51-91.png` in that same report folder.
 The choices capture was supplied by the user after the error. Partial narration,
 missing/moved corners, and erased choice labels are synthetic. Replay exercises
 the real bot tap wrapper against a mocked ADB client; no live input is sent.
+
+`english_battle_rewards_20261026.npz` contains unmodified BGR `screen` from
+`logs/report/20261026_231704_938283_세션_1_5e1cf611/screen.png`.
+The center loot card's old border check failed despite a valid chest and pill.
+Icon-only rewards and removed/changed frames, captions, and backgrounds are
+synthetic. No live input is sent.

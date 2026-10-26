@@ -4006,32 +4006,6 @@
     },
     {
       "group": "node",
-      "marker": "loot_reward",
-      "source": "images/chaos/raw/Screenshot_2026.09.24_09.31.37.239.png",
-      "crop": [
-        727,
-        517,
-        98,
-        27
-      ],
-      "source_size": [
-        1280,
-        720
-      ],
-      "exclude": [],
-      "region": [
-        210,
-        495,
-        850,
-        75
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.06,
-      "packaged": true,
-      "language_review": "pending_visual_and_paired_screen_review"
-    },
-    {
-      "group": "node",
       "marker": "shop_npc",
       "source": "images/chaos/node_progression/raw/shop/shop_full.png",
       "crop": [
@@ -4102,32 +4076,6 @@
         280,
         450,
         85
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.06,
-      "packaged": true,
-      "language_review": "pending_visual_and_paired_screen_review"
-    },
-    {
-      "group": "node",
-      "marker": "reward_hero",
-      "source": "images/chaos/raw/Screenshot_2026.09.24_09.52.22.437.png",
-      "crop": [
-        867,
-        517,
-        83,
-        27
-      ],
-      "source_size": [
-        1280,
-        720
-      ],
-      "exclude": [],
-      "region": [
-        210,
-        495,
-        850,
-        75
       ],
       "threshold": 0.9,
       "max_color_error": 0.06,
@@ -7499,32 +7447,6 @@
     },
     {
       "group": "node",
-      "marker": "battle_rank_reward",
-      "source": "images/chaos/node_progression/raw/battle/victory_rank_reward_live.png",
-      "crop": [
-        588,
-        516,
-        109,
-        30
-      ],
-      "source_size": [
-        1280,
-        720
-      ],
-      "exclude": [],
-      "region": [
-        240,
-        480,
-        800,
-        100
-      ],
-      "threshold": 0.92,
-      "max_color_error": 0.055,
-      "packaged": true,
-      "language_review": "pending_visual_and_paired_screen_review"
-    },
-    {
-      "group": "node",
       "marker": "event_rusted_bars",
       "source": "images/chaos/node_progression/raw/event_rusted_bars_live.png",
       "crop": [
@@ -7736,10 +7658,10 @@
       "marker": "battle_loot_icon",
       "source": "images/chaos/node_progression/templates/battle/loot_icon.png",
       "crop": [
-        0,
-        0,
-        80,
-        80
+        1,
+        5,
+        73,
+        60
       ],
       "source_size": [
         80,
@@ -7810,120 +7732,6 @@
         205,
         800,
         95
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.09,
-      "packaged": true,
-      "language_review": "pending_visual_and_paired_screen_review"
-    },
-    {
-      "group": "node",
-      "marker": "battle_reward_card",
-      "source": "images/chaos/node_progression/templates/battle/reward_card.png",
-      "crop": [
-        0,
-        0,
-        252,
-        426
-      ],
-      "source_size": [
-        252,
-        426
-      ],
-      "exclude": [
-        [
-          16,
-          0,
-          220,
-          426
-        ],
-        [
-          0,
-          0,
-          16,
-          275
-        ],
-        [
-          236,
-          0,
-          16,
-          275
-        ],
-        [
-          0,
-          310,
-          16,
-          116
-        ],
-        [
-          236,
-          310,
-          16,
-          116
-        ]
-      ],
-      "region": [
-        240,
-        150,
-        800,
-        455
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.09,
-      "packaged": true,
-      "language_review": "pending_visual_and_paired_screen_review"
-    },
-    {
-      "group": "node",
-      "marker": "battle_reward_card_legacy",
-      "source": "images/chaos/node_progression/raw/boss_victory_rewards_live.png",
-      "crop": [
-        515,
-        164,
-        252,
-        426
-      ],
-      "source_size": [
-        1280,
-        720
-      ],
-      "exclude": [
-        [
-          16,
-          0,
-          220,
-          426
-        ],
-        [
-          0,
-          0,
-          16,
-          275
-        ],
-        [
-          236,
-          0,
-          16,
-          275
-        ],
-        [
-          0,
-          310,
-          16,
-          116
-        ],
-        [
-          236,
-          310,
-          16,
-          116
-        ]
-      ],
-      "region": [
-        240,
-        150,
-        800,
-        455
       ],
       "threshold": 0.9,
       "max_color_error": 0.09,

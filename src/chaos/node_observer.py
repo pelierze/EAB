@@ -406,27 +406,36 @@ class NodeObserver:
         return best[1] if best else None
 
     def battle_reward_controls(self, screen):
-        """Pair a reward symbol with its own card and active, textless button."""
+        """Pair small reward icons with their own active, text-masked pills."""
         if not self.all(screen, 'victory'):
             return {}
-        controls = {}
+        pairs = []
         for button in self.all(screen, 'battle_reward_button'):
             x, y, w, h = button
             center = x + w / 2
-            card_region = (int(center-135), 150, 270, 455)
-            # Only the paired lower side notches belong to this mask. Long
-            # translucent edges and card contents vary with the scene behind it.
-            if not (self.all(screen, 'battle_reward_card', card_region)
-                    or self.all(screen, 'battle_reward_card_legacy', card_region)):
-                continue
             icon_region = (int(center-55), 205, 110, 95)
-            if self.all(screen, 'battle_loot_icon', icon_region):
-                controls['loot_reward'] = button
-            elif self.all(screen, 'battle_rank_icon', icon_region):
-                controls['battle_rank_reward'] = button
-            elif any(self._ticket_icon(screen, 'ticket_class_'+role, icon_region)
-                     for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage', 'all')):
-                controls['reward_hero'] = button
+            icons = []
+            for name, marker in (('loot_reward', 'battle_loot_icon'),
+                                 ('battle_rank_reward', 'battle_rank_icon')):
+                icons.extend((name, bounds) for bounds in self.all(screen, marker, icon_region))
+            for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage', 'all'):
+                bounds = self._ticket_icon(screen, 'ticket_class_'+role, icon_region)
+                if bounds:
+                    icons.append(('reward_hero', bounds))
+            if len(icons) != 1:
+                continue
+            name, icon = icons[0]
+            ix, iy, iw, ih = icon
+            if abs(ix+iw/2-center) <= 24 and 180 <= y-iy-ih <= 280:
+                pairs.append((name, icon, button))
+        controls = {}
+        for name, icon, button in pairs:
+            # An ambiguous icon/type must not silently overwrite another card.
+            if sum(other_name == name for other_name, _, _ in pairs) != 1:
+                continue
+            if sum(other_icon == icon for _, other_icon, _ in pairs) != 1:
+                continue
+            controls[name] = button
         return controls
 
     def battle_unclaimed_cancel(self, screen):
