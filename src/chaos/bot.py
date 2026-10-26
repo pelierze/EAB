@@ -10,6 +10,7 @@ from pathlib import Path
 from src.image_matcher import read_image
 from .observer import KnightObserver, RecruitmentObserver
 from .errors import RecognitionPending
+from .pause import ResumeExploration
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,18 @@ class KnightRecruitmentBot:
     def _check_stop(self):
         if self.stop_event.is_set():
             raise _Stopped()
+        control = getattr(self, 'pause_control', None)
+        if control and control.requested.is_set():
+            control.acknowledged.set()
+            try:
+                while control.requested.is_set():
+                    if self.stop_event.wait(.05):
+                        raise _Stopped()
+                if self.stop_event.is_set():
+                    raise _Stopped()
+                raise ResumeExploration()
+            finally:
+                control.acknowledged.clear()
 
     def _capture(self):
         self._check_stop()
@@ -116,6 +129,7 @@ class KnightRecruitmentBot:
         if not (0 <= px < 1280 and 0 <= py < 720):
             raise RuntimeError("클릭 좌표가 화면 밖입니다.")
         self._record("before_input")
+        self._check_stop()
         if not self.adb.tap(px, py, delay=0):
             raise RuntimeError("ADB 입력 실패 — 중복 입력하지 않고 중지합니다.")
         self.stats["clicks"] += 1

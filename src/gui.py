@@ -747,6 +747,7 @@ class SessionView:
             self.test_btn,
             self.penguin_start_btn,
             self.chaos_start_btn,
+            self.chaos_resume_btn,
         ]
         for button in accent_buttons:
             button.configure(style="Accent.TButton")
@@ -758,6 +759,7 @@ class SessionView:
             self.clear_log_btn,
             self.penguin_stop_btn,
             self.chaos_stop_btn,
+            self.chaos_pause_btn,
         ]
         for button in subtle_buttons:
             button.configure(style="Secondary.TButton")
@@ -1137,6 +1139,13 @@ class SessionView:
         localized(ttk.Label, controls, "회").pack(side=tk.LEFT, padx=(2, 10))
         self.chaos_status_label = ttk.Label(controls, text=i18n.tr("대기 중"), wraplength=520)
         self.chaos_status_label.pack(side=tk.LEFT, padx=5)
+        pause_controls = ttk.Frame(self.chaos_tab, style="CardInner.TFrame", padding=10)
+        pause_controls.pack(fill=tk.X, padx=10, pady=(0, 5))
+        self.chaos_pause_btn = localized(ttk.Button, pause_controls, "⏸ 일시정지", command=self._pause_bot, state=tk.DISABLED)
+        self.chaos_pause_btn.pack(side=tk.LEFT, padx=5)
+        self.chaos_resume_btn = localized(ttk.Button, pause_controls, "▶ 재개", command=self._resume_bot, state=tk.DISABLED)
+        self.chaos_resume_btn.pack(side=tk.LEFT, padx=5)
+        localized(ttk.Label, pause_controls, "일시 정지 완료를 확인한 뒤 다른 작업을 하세요. 탐사 화면으로 돌아온 뒤 재개하세요.", wraplength=620).pack(side=tk.LEFT, padx=8)
         self._restore_chaos_preset()
         self._apply_chaos_ui_language()
         for combo in (*self.chaos_hero_combos.values(), *self.chaos_rank_priority_combos.values()):
@@ -2054,6 +2063,7 @@ class SessionView:
                 self._update_penguin_stats(stats)
             elif self.current_mode == "chaos":
                 self._update_chaos_stats(stats)
+                self._update_chaos_pause_controls()
             else:
                 self._update_stats(stats)
 
@@ -2071,6 +2081,9 @@ class SessionView:
         with log_session(self.name):
             if self.bot:
                 self.bot.set_user_action("pause")
+                if self.current_mode == 'chaos':
+                    self._update_chaos_pause_controls()
+                    return
                 self.log("⏸️ 일시정지 요청됨")
                 self.pause_label.config(text=i18n.tr("⏸️  일시정지 중"))
                 self.pause_btn.config(state=tk.DISABLED)
@@ -2079,6 +2092,12 @@ class SessionView:
     def _resume_bot(self):
         with log_session(self.name):
             if self.bot:
+                if self.current_mode == 'chaos':
+                    if not self.bot.paused:
+                        return
+                    self.bot.set_user_action('resume')
+                    self._update_chaos_pause_controls()
+                    return
                 self.bot.set_user_action("resume")
                 self.log("▶️ 재개 요청됨")
                 self.pause_label.config(text="")
@@ -2097,6 +2116,10 @@ class SessionView:
                 self._chaos_status_raw = "중지 처리 중…"
                 self.chaos_status_label.config(text=i18n.tr(self._chaos_status_raw))
                 self.chaos_stop_btn.config(state=tk.DISABLED)
+                for name in ('chaos_pause_btn', 'chaos_resume_btn'):
+                    button = getattr(self, name, None)
+                    if button is not None:
+                        button.config(state=tk.DISABLED)
                 self.log("자동 탐사 중지 요청")
                 return
             self.is_running = False
@@ -2195,11 +2218,22 @@ class SessionView:
             self.disconnect_btn.config(state=tk.DISABLED)
             self.log("✅ ADB 연결이 해제되었습니다.")
 
+    def _update_chaos_pause_controls(self, running=None):
+        if not hasattr(self, 'chaos_pause_btn'):
+            return
+        running = (self.is_running if running is None else running) and self.current_mode == 'chaos' and self.bot is not None
+        running = running and not getattr(self, 'was_stopped_by_user', False)
+        paused = running and self.bot.paused
+        requested = running and self.bot.pause_requested
+        self.chaos_pause_btn.config(state=tk.NORMAL if running and not requested and not paused else tk.DISABLED)
+        self.chaos_resume_btn.config(state=tk.NORMAL if paused else tk.DISABLED)
+
     def _set_running_ui(self, running):
         self.start_btn.config(state=tk.DISABLED if running else (tk.NORMAL if self.adb_controller else tk.DISABLED))
         self.penguin_start_btn.config(state=tk.DISABLED if running else (tk.NORMAL if self.adb_controller else tk.DISABLED))
         self.chaos_start_btn.config(state=tk.DISABLED if running else (tk.NORMAL if self.adb_controller else tk.DISABLED))
         self.chaos_stop_btn.config(state=tk.NORMAL if running and self.current_mode == "chaos" else tk.DISABLED)
+        self._update_chaos_pause_controls(running)
         for combo in self.chaos_hero_combos.values():
             combo.config(state=tk.DISABLED if running else "readonly")
         for control in self.chaos_event_controls:

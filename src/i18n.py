@@ -280,6 +280,9 @@ _CATALOG: dict[str, dict[str, str]] = {
         "■ 중지": "■ Stop",
         "💡 이미지 테스트": "💡 Image Test",
         "⏸️  일시정지 중": "⏸️  Paused",
+        "일시 정지 중 — 탐사 화면으로 돌아온 뒤 재개하세요.": "Paused — return to the exploration screen, then resume.",
+        "일시 정지 요청 중 — 멈춤 확인 후 다른 작업을 진행하세요.": "Pausing — wait for confirmation before doing other tasks.",
+        "일시 정지 완료를 확인한 뒤 다른 작업을 하세요. 탐사 화면으로 돌아온 뒤 재개하세요.": "Wait until paused before doing other tasks. Return to the exploration screen before resuming.",
 
         # Secret Shop Statistics
         "통계": "Statistics",

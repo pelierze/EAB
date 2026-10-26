@@ -14,6 +14,7 @@ import cv2
 from .bot import KnightRecruitmentBot, PartyRecruitmentBot, _Stopped, RecognitionTimeout
 from .node_observer import DETAIL_STATES, NodeObserver
 from .errors import RecognitionPending
+from .pause import ExplorationPause, ResumeExploration
 from .event_flow import run_event_flow, EVENT_STATES, TERMINALS
 
 logger = logging.getLogger(__name__)
@@ -1462,6 +1463,9 @@ class ExplorationBot:
         self.nodes = NodeProgressionBot(adb, root, runtime_dir, max_nodes=max_nodes, **self.node_options)
         self.nodes.stop_event = self.recruitment.stop_event
         self.active = self.recruitment
+        self.pause_control = ExplorationPause()
+        self.recruitment.pause_control = self.nodes.pause_control = self.pause_control
+        self._resume_scan = False
         self.debug_recorder = None
         if debug_mode:
             from .debug import ExplorationDebugRecorder
@@ -1472,7 +1476,44 @@ class ExplorationBot:
                 logger.warning('탐사 디버그 기록 초기화 실패', exc_info=True)
 
     def set_user_action(self, action):
-        self.active.set_user_action(action)
+        if action == 'pause':
+            self.pause_control.pause()
+        elif action == 'resume':
+            self.pause_control.resume()
+        else:
+            self.active.set_user_action(action)
+            if action == 'stop':
+                self.pause_control.resume()
+
+    @property
+    def paused(self):
+        return self.pause_control.acknowledged.is_set()
+
+    @property
+    def pause_requested(self):
+        return self.pause_control.requested.is_set()
+
+    def _restart_after_pause(self):
+        """Keep round progress, discard handler-local coordinates and timers."""
+        stop = self.nodes.stop_event
+        old_nodes = self.nodes
+        old_recruitment = self.recruitment
+        adb, root, runtime_dir, hero_ids, rank_priority, max_nodes = self._args
+        self.recruitment = PartyRecruitmentBot(adb, root, runtime_dir, hero_ids=hero_ids, auto_fallback=self.auto_fallback)
+        self.nodes = NodeProgressionBot(adb, root, runtime_dir, max_nodes=max_nodes, **self.node_options)
+        self.recruitment.stop_event = self.nodes.stop_event = stop
+        self.recruitment.pause_control = self.nodes.pause_control = self.pause_control
+        for key in ('clicks', 'nodes', 'auto_verified', 'outcome'):
+            if key in old_nodes.stats:
+                self.nodes.stats[key] = old_nodes.stats[key]
+        self.recruitment.stats['clicks'] = old_recruitment.stats.get('clicks', 0)
+        self.nodes.auto_verified = old_nodes.auto_verified
+        self.nodes.auto_tapped = old_nodes.auto_tapped
+        self.nodes.event_context = old_nodes.event_context
+        self.nodes._event_intro_pending = old_nodes.event_context
+        self.active = self.nodes
+        self._resume_scan = True
+        logger.info('탐사 재개: 이전 입력 대상을 버리고 현재 화면부터 재판별합니다.')
 
     def get_stats(self):
         stats = getattr(self.active, 'stats', {})
@@ -1481,6 +1522,10 @@ class ExplorationBot:
             if isinstance(res, dict):
                 stats = res
         base = dict(stats) if isinstance(stats, dict) else {}
+        if self.paused:
+            base.update(status='paused', phase='일시 정지 중 — 탐사 화면으로 돌아온 뒤 재개하세요.')
+        elif self.pause_requested:
+            base.update(status='pausing', phase='일시 정지 요청 중 — 멈춤 확인 후 다른 작업을 진행하세요.')
         return dict(base,
                     cleared_rounds=self.cleared_rounds,
                     failed_rounds=self.failed_rounds,
@@ -1501,7 +1546,11 @@ class ExplorationBot:
         try:
             logger.info('자동 탐사 반복 설정: 목표 완주 %d회, 패배 재도전=%s', self.target_clears, self.repeat_on_failure)
             while True:
-                result = self._run_stages()
+                try:
+                    result = self._run_stages()
+                except ResumeExploration:
+                    self._restart_after_pause()
+                    continue
                 status = result.get('status') if isinstance(result, dict) else None
                 logger.info('탐사 회차 결과: %d회차, 상태=%s, 사유=%s, 누적 완주=%d/%d',
                             self.attempt, status, result.get('reason', '') if isinstance(result, dict) else '',
@@ -1575,16 +1624,17 @@ class ExplorationBot:
             return dict(self.get_stats(), status='failed', reason=str(exc))
 
     def _run_stages(self):
+        self.recruitment.pause_control = self.nodes.pause_control = self.pause_control
         if self.debug_recorder:
             self.recruitment.debug_recorder = self.debug_recorder
             self.nodes.debug_recorder = self.debug_recorder
         screen = self.nodes._capture()
-        state = self.nodes.observer.classify(screen)
+        state = self.nodes._classify(screen) if self._resume_scan else self.nodes.observer.classify(screen)
         if state == 'exploration_entry': state = None
         if state is None and self.recruitment._entry(screen) is None:
             self.active = self.nodes
             def ready(frame):
-                kind = self.nodes.observer.classify(frame)
+                kind = self.nodes._classify(frame) if self._resume_scan else self.nodes.observer.classify(frame)
                 if kind: return ('nodes', kind)
                 candidate = self.nodes.observer.noncombat_kind(frame)
                 if candidate in ('rest', 'supply', 'shop', 'event'):
@@ -1601,6 +1651,7 @@ class ExplorationBot:
                 self.nodes.event_context = state == 'event'
                 logger.info('중간 탐사 화면 복구: 상징 이미지·버튼 배치 확인 (%s)', state)
         if state == 'exploration_entry': state = None
+        self._resume_scan = False
         if state is None:
             self.active = self.recruitment
             result = self.recruitment.run()
