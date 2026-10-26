@@ -140,15 +140,16 @@ class EventModesTest(unittest.TestCase):
         self.assertEqual(choices[0], (704, 192))
 
     def test_handle_loot_consume_taps_item_and_confirm(self):
-        frame = self.screen('event_loot_consume_live.png')
+        frame = self.screen('event_loot_consume_leaf_live.png')
+        selected = self.screen('event_loot_consume_leaf_selected_live.png')
         result_frame = self.screen('event_abandoned_pack_result_live.png')
         index = [0]
-        adb = Mock(capture_frame=lambda: frame if index[0] < 2 else result_frame)
+        adb = Mock(capture_frame=lambda: frame if index[0] == 0 else selected if index[0] == 1 else result_frame)
         def tap(*args, **kwargs):
             index[0] += 1
             return True
         adb.tap.side_effect = tap
-        with tempfile.TemporaryDirectory() as tmp, patch.object(self.observer, 'loot_consume_selected', side_effect=lambda *args: index[0] == 1):
+        with tempfile.TemporaryDirectory() as tmp:
             bot = NodeProgressionBot(adb, ROOT, tmp, self.observer)
             state = bot._handle_loot_consume()
             self.assertEqual(state, 'event_result')

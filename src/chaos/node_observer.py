@@ -674,32 +674,50 @@ class NodeObserver:
         return cards[0] if len(cards)==1 else None
 
     def loot_consume_plus(self, screen):
+        return bool(self.loot_consume_pluses(screen))
+
+    def loot_consume_pluses(self, screen):
         x, y, w, h = self.config['event_loot_consume_plus_region']
         sample = screen[y:y+h, x:x+w]
         if sample.shape[:2] != (h, w):
-            return False
+            return []
         hsv = cv2.cvtColor(sample, cv2.COLOR_BGR2HSV)
         mask = ((hsv[:, :, 1] < 80) & (hsv[:, :, 2] >= 190)).astype(np.uint8)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        centers = []
         for contour in contours:
             cx, cy, cw, ch = cv2.boundingRect(contour)
             if not (24 <= cw <= 40 and 24 <= ch <= 40 and abs(cw-ch) <= 4):
-                continue
-            if abs(cx+cw/2-w/2) > 5 or abs(cy+ch/2-h/2) > 5:
                 continue
             cross = mask[cy:cy+ch, cx:cx+cw]
             horizontal = cross[ch//2-2:ch//2+3].any(axis=0).mean()
             vertical = cross[:, cw//2-2:cw//2+3].any(axis=1).mean()
             if horizontal >= .85 and vertical >= .85 and cross.mean() <= .35:
-                return True
-        return False
+                centers.append((int(x+cx+cw/2), int(y+cy+ch/2)))
+        return sorted(centers)
+
+    def loot_consume_slots(self, screen):
+        """Empty crosses or filled-slot remove symbols, across the lower tray."""
+        filled = [(x+6, y+6, 84, 84, True) for x, y, _, _ in
+                  self.all(screen, 'event_loot_consume_selected_slot')]
+        slots = list(filled)
+        for cx, cy in self.loot_consume_pluses(screen):
+            if not any(abs(x+42-cx) <= 5 and abs(y+42-cy) <= 5 for x, y, _, _, _ in filled):
+                slots.append((cx-42, cy-42, 84, 84, False))
+        slots.sort()
+        if not 1 <= len(slots) <= 5:
+            return []
+        x, y, w, h = self.config['event_loot_consume_plus_region']
+        if any(sx < x or sy < y or sx+sw > x+w or sy+sh > y+h for sx, sy, sw, sh, _ in slots):
+            return []
+        if max(s[1] for s in slots)-min(s[1] for s in slots) > 4:
+            return []
+        if any(a[0]+a[2]+4 > b[0] for a, b in zip(slots, slots[1:])):
+            return []
+        return slots
 
     def is_loot_consume(self, screen):
-        # A plus identifies the empty slot. Selection replaces it with an item
-        # and its remove control; inventory geometry is required in both cases.
-        slot = (self.loot_consume_plus(screen)
-                or self.find(screen, 'event_loot_consume_selected_slot'))
-        return bool(slot and self.loot_consume_choices(screen))
+        return bool(self.loot_consume_slots(screen) and self.loot_consume_choices(screen))
 
     def loot_consume_choices(self, screen):
         sub = screen[145:470, 650:1140]
@@ -718,9 +736,13 @@ class NodeObserver:
         return centers
 
     def loot_consume_target(self, screen):
+        targets = self.loot_consume_targets(screen)
+        return targets[0] if targets else None
+
+    def loot_consume_targets(self, screen):
         items = self.loot_consume_choices(screen)
         if not items:
-            return None
+            return []
         blocked = self.forbidden(screen)
         # Inventory thumbnails may be smaller than the acquisition cards.
         for name, template in self.blocked:
@@ -731,25 +753,44 @@ class NodeObserver:
         banned = [point for point in items if any(
             abs(point[0]-(x+w/2)) <= 42 and abs(point[1]-(y+h/2)) <= 42
             for _, (x,y,w,h) in blocked)]
-        return (banned or items)[0]
+        return banned + [point for point in items if point not in banned]
 
     def loot_consume_selected(self, screen, item_icon):
-        """Require the chosen icon in the sacrifice slot AND a 1/1 counter."""
-        matched = False
+        return self.loot_consume_selection_matches(screen, [item_icon], require_full=True)
+
+    def loot_consume_icon_in_slot(self, screen, item_icon, slot):
+        x, y, w, h, _ = slot
         for scale in (.8, .9, 1., 1.1, 1.2):
             sample = cv2.resize(item_icon, None, fx=scale, fy=scale)
-            if self.matches(screen, sample, [855,516,84,84], .80, .20):
-                matched = True
-                break
-        if not matched:
+            if self.matches(screen, sample, [x, y, w, h], .80, .20):
+                return True
+        return False
+
+    def loot_consume_selection_matches(self, screen, icons, require_full=False):
+        slots = self.loot_consume_slots(screen)
+        filled = [slot for slot in slots if slot[4]]
+        if not slots or len(filled) != len(icons) or (require_full and len(filled) != len(slots)):
             return False
-        if self.ocr is None:
-            from rapidocr_onnxruntime import RapidOCR
-            self.ocr = RapidOCR(intra_op_num_threads=2, inter_op_num_threads=2)
-        rows, _ = self.ocr(cv2.resize(screen[650:686,575:718], None, fx=3, fy=3),
-                           use_det=False, use_cls=False)
-        return bool(rows and any(score >= .85 and re.search(r'(?<!\d)1\s*/\s*1(?!\d)', text)
-                                 for text, score in rows))
+        matches = [[i for i, slot in enumerate(filled) if self.loot_consume_icon_in_slot(screen, icon, slot)]
+                   for icon in icons]
+        def assign(index, used):
+            if index == len(matches):
+                return True
+            return any(assign(index+1, used | {i}) for i in matches[index] if i not in used)
+        return assign(0, set())
+
+    def loot_consume_confirm(self, screen):
+        slots = self.loot_consume_slots(screen)
+        if not slots or not all(slot[4] for slot in slots):
+            return None
+        if not self.all(screen, 'consume_confirm_active'):
+            return None
+        definition = self.config['markers']['consume_confirm_active']
+        x, y, w, h = definition['crop']
+        sample = screen[y:y+h, x:x+w]
+        active = float(ImageMatcher.match_template(sample, self.templates['consume_confirm_active'])[0, 0])
+        dim = float(ImageMatcher.match_template(sample, self.templates['consume_confirm_dim'])[0, 0])
+        return tuple(self.config['event_loot_consume_bounds']) if active-dim >= .02 else None
 
     def classify(self, screen):
         if self.battle_unclaimed_cancel(screen): return 'battle_unclaimed_reward'

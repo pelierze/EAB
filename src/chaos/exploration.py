@@ -150,6 +150,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'loot_reward', 'reward_hero', 'battle_rank_reward', 'battle_reward_button',
                        'battle_loot_icon', 'battle_rank_icon',
                        'battle_warning_cancel', 'battle_unresolved_reward',
+                       'event_loot_consume_selected_slot', 'consume_confirm_active', 'consume_confirm_dim',
                        'enter_node', 'action_frame', 'detail_battle', 'rest_detail',
                        'supply_detail', 'elite_detail', 'boss_detail', 'event_detail', 'shop_detail',
                        'rest_static_left', 'rest_static_roof', 'detail_rest', 'rest_done',
@@ -168,6 +169,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 metadata['noncombat_scene'] = self.observer.noncombat_controls(
                     self.last_screen, metadata['verified_node'])
                 metadata['warning_controls'] = self.observer.event_warning_controls(self.last_screen)
+                metadata['consume_slots'] = self.observer.loot_consume_slots(self.last_screen)
             except Exception as exc:
                 metadata['classification_error'] = str(exc)
             for name in markers:
@@ -938,24 +940,52 @@ class NodeProgressionBot(KnightRecruitmentBot):
             self._last_event_choice_bounds = None
 
     def _handle_loot_consume(self):
-        def choice(screen):
+        def layout(screen):
             if self._classify(screen) != 'event_loot_consume': return None
-            return self.observer.loot_consume_target(screen)
-        target = self._wait('소모할 전리품 확인: 금지 전리품 우선', choice)
+            slots = self.observer.loot_consume_slots(screen)
+            return tuple(slots) if slots else None
+        initial = self._wait('소모 슬롯 개수와 위치 확인', layout)
         screen = self._capture()
-        if choice(screen) != target:
-            raise RecognitionTimeout('소모 전리품 후보 변경')
-        x, y = target
-        icon = screen[y-22:y+22, x-22:x+22].copy()
-        if not self.observer.loot_consume_selected(screen, icon):
+        if layout(screen) != initial:
+            raise RecognitionTimeout('소모 슬롯 배치 변경')
+        def same_slots(frame):
+            current = layout(frame)
+            return current if current and len(current) == len(initial) and all(
+                abs(a[0]-b[0]) <= 4 and abs(a[1]-b[1]) <= 4
+                for a, b in zip(initial, current)) else None
+        filled = [slot for slot in initial if slot[4]]
+        icons = [screen[y+20:y+64, x+20:x+64].copy() for x, y, _, _, _ in filled]
+        targets = []
+        for point in self.observer.loot_consume_targets(screen):
+            x, y = point
+            icon = screen[y-22:y+22, x-22:x+22].copy()
+            # On resume, never toggle an item already present in a filled slot.
+            if not any(self.observer.loot_consume_icon_in_slot(screen, icon, slot) for slot in filled):
+                targets.append((point, icon))
+        needed = len(initial)-len(filled)
+        logger.info('전리품 소모 슬롯 확인: 총 %d개, 이미 선택 %d개, 추가 선택 %d개', len(initial), len(filled), needed)
+        if len(targets) < needed:
+            raise RecognitionTimeout('필요한 수의 서로 다른 소모 전리품을 확인하지 못했습니다.')
+        for (x, y), icon in targets[:needed]:
+            screen = self._capture()
+            if (not same_slots(screen) or not self.observer.loot_consume_selection_matches(screen, icons)
+                    or not self.observer.matches(screen, icon, [x-22, y-22, 44, 44], .90, .15)):
+                raise RecognitionTimeout('소모 전리품 선택 전 슬롯 또는 후보 변경')
             self._tap((x, y, 0, 0))
-        def selected(frame):
-            if self._classify(frame) != 'event_loot_consume':
+            icons.append(icon)
+            def selected(frame):
+                current = same_slots(frame)
+                if current and self.observer.loot_consume_selection_matches(frame, icons):
+                    return current
                 return None
-            if self.observer.loot_consume_selected(frame, icon):
-                return tuple(self.observer.config['event_loot_consume_bounds'])
+            selection = self._wait('소모 슬롯에 선택한 아이콘 추가 확인', selected)
+            if selected(self._capture()) != selection:
+                raise RecognitionTimeout('소모 전리품 선택 직후 슬롯 변경')
+        def selected(frame):
+            if same_slots(frame) and self.observer.loot_consume_selection_matches(frame, icons, require_full=True):
+                return self.observer.loot_consume_confirm(frame)
             return None
-        confirm = self._wait('소모 대상 아이콘 및 선택 1/1 확인', selected)
+        confirm = self._wait('모든 소모 슬롯 아이콘 및 활성 확정 버튼 확인', selected)
         if selected(self._capture()) != confirm:
             raise RecognitionTimeout('전리품 소모 확정 직전 선택 상태 변경')
         self._tap(confirm)

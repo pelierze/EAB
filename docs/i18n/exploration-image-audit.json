@@ -7513,13 +7513,79 @@
       ],
       "exclude": [],
       "region": [
-        840,
-        502,
-        44,
-        44
+        650,
+        500,
+        490,
+        110
       ],
       "threshold": 0.9,
       "max_color_error": 0.1,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "consume_confirm_active",
+      "source": "images/chaos/node_progression/raw/event_loot_consume_leaf_selected_live.png",
+      "crop": [
+        472,
+        636,
+        336,
+        68
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          32,
+          8,
+          272,
+          48
+        ]
+      ],
+      "region": [
+        472,
+        636,
+        336,
+        68
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "packaged": true,
+      "language_review": "pending_visual_and_paired_screen_review"
+    },
+    {
+      "group": "node",
+      "marker": "consume_confirm_dim",
+      "source": "images/chaos/node_progression/raw/event_loot_consume_leaf_live.png",
+      "crop": [
+        472,
+        636,
+        336,
+        68
+      ],
+      "source_size": [
+        1280,
+        720
+      ],
+      "exclude": [
+        [
+          32,
+          8,
+          272,
+          48
+        ]
+      ],
+      "region": [
+        472,
+        636,
+        336,
+        68
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
       "packaged": true,
       "language_review": "pending_visual_and_paired_screen_review"
     },

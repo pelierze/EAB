@@ -3800,13 +3800,29 @@
         28
       ],
       "region": [
-        840,
-        502,
-        44,
-        44
+        650,
+        500,
+        490,
+        110
       ],
       "threshold": 0.9,
       "max_color_error": 0.1
+    },
+    "consume_confirm_active": {
+      "file": "images/chaos/node_progression/raw/event_loot_consume_leaf_selected_live.png",
+      "crop": [472, 636, 336, 68],
+      "region": [472, 636, 336, 68],
+      "exclude": [[32, 8, 272, 48]],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "consume_confirm_dim": {
+      "file": "images/chaos/node_progression/raw/event_loot_consume_leaf_live.png",
+      "crop": [472, 636, 336, 68],
+      "region": [472, 636, 336, 68],
+      "exclude": [[32, 8, 272, 48]],
+      "threshold": 0.9,
+      "max_color_error": 0.09
     },
     "battle_rank_complete_knight": {
       "file": "images/chaos/hero_selection/raw/knight_select_finish.png",
@@ -5672,9 +5688,9 @@
     ]
   },
   "event_loot_consume_plus_region": [
-    868,
-    528,
-    55,
-    55
+    650,
+    510,
+    490,
+    100
   ]
 }

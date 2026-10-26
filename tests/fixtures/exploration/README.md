@@ -172,3 +172,12 @@ the real bot tap wrapper against a mocked ADB client; no live input is sent.
 The center loot card's old border check failed despite a valid chest and pill.
 Icon-only rewards and removed/changed frames, captions, and backgrounds are
 synthetic. No live input is sent.
+
+`english_two_consume_slots_20261027.npz` contains unmodified BGR `screen` from
+`logs/report/20261027_064559_766741_세션_1_d08fdcaf/screen.png`.
+It shows seven inventory items and two empty sacrifice slots. Keys `partial`,
+`full`, `reward`, `result` contain the actual followups from `images/raws/1.PNG`
+through `4.PNG`, cropped at [x=1, y=31, w=1280, h=720] to remove window chrome
+without resizing. Other multi-slot states and alternate positions/counts are
+synthetic. Actual statue/leaf replay overrides only the candidate order to match
+the user's captures. Replays use mocked ADB and send no live game input.

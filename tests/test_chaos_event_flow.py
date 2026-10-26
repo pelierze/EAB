@@ -212,15 +212,16 @@ class EventRewardImagesTest(unittest.TestCase):
         with patch.object(self.observer, 'forbidden', return_value=[('ban',(x-10,y-10,20,20))]):
             self.assertEqual(self.observer.loot_consume_target(frame), items[-1])
 
-    def test_selected_slot_requires_same_icon_and_one_of_one(self):
-        frame = read_image(str(RAW/'event_loot_consume_live.png'))
-        icon = frame[170:214,682:726].copy()
-        with patch.object(self.observer, 'ocr', Mock(return_value=([('선택 (1/1)', .99)], None))):
-            self.assertFalse(self.observer.loot_consume_selected(frame,icon))
-            frame[535:579,875:919] = icon
-            self.assertTrue(self.observer.loot_consume_selected(frame,icon))
-        with patch.object(self.observer, 'ocr', Mock(return_value=([('선택 (0/1)', .99)], None))):
-            self.assertFalse(self.observer.loot_consume_selected(frame,icon))
+    def test_selected_slot_requires_remove_symbol_and_same_icon_without_ocr(self):
+        before = read_image(str(RAW/'event_loot_consume_leaf_live.png'))
+        selected = read_image(str(RAW/'event_loot_consume_leaf_selected_live.png'))
+        icon = before[170:214,682:726].copy()
+        with patch.object(self.observer, 'ocr', side_effect=AssertionError('OCR forbidden')) as ocr:
+            self.assertFalse(self.observer.loot_consume_selected(before, icon))
+            self.assertTrue(self.observer.loot_consume_selected(selected, icon))
+            selected[510:538,849:877] = 0
+            self.assertFalse(self.observer.loot_consume_selected(selected, icon))
+            ocr.assert_not_called()
 
     def test_live_consume_slot_and_counter_without_ocr_mock(self):
         observer = NodeObserver(ROOT)
@@ -242,9 +243,8 @@ class EventRewardImagesTest(unittest.TestCase):
             bot = NodeProgressionBot(Mock(),ROOT,tmp,observer)
             bot._capture = Mock(return_value=frame)
             bot._tap = Mock()
-            bot._wait = Mock(side_effect=[(704,192), RecognitionTimeout('selection')])
-            with patch.object(observer,'loot_consume_selected',return_value=False):
-                with self.assertRaises(RecognitionTimeout): bot._handle_loot_consume()
+            bot._wait = Mock(side_effect=[tuple(observer.loot_consume_slots(frame)), RecognitionTimeout('selection')])
+            with self.assertRaises(RecognitionTimeout): bot._handle_loot_consume()
             bot._tap.assert_called_once_with((704,192,0,0))
 
     def test_real_images_multipage_choice_loot_hero_rank_chain(self):
