@@ -1,6 +1,6 @@
-name: 오류 신고
-description: 앱 실행 또는 자동화 중 발생한 문제를 알려 주세요.
-title: "[오류] "
+name: 오류 신고 / Bug report
+description: 앱 실행 또는 자동화 문제를 알려 주세요. / Report startup or automation problems.
+title: "[오류 / Bug] "
 body:
   - type: markdown
     attributes:
@@ -13,27 +13,48 @@ body:
         **`bot.log`만 첨부하면 오류 당시 화면을 확인할 수 없습니다.** 보고서 폴더에는 최근 로그, 마지막 스크린샷(`screen.png`), 종료 정보가 함께 들어 있습니다. 화면 캡처에 실패했다면 스크린샷이 없을 수도 있으니, 만들어진 폴더 전체를 첨부해 주세요.
 
         정상 완료나 사용자 중지에는 보고서가 생성되지 않습니다. 보고서가 없는 실행 오류는 아래에 그 사유를 적고, 확보할 수 있는 로그와 화면을 첨부해 주세요.
+
+        첨부 전에 로그와 화면에 계정 정보 등 개인정보가 포함되어 있는지 확인해 주세요. 한국어 또는 영어로 작성하셔도 됩니다.
+
+        ## How to attach an error report
+        When automation stops because of an error, the app's log panel shows the **error report location**.
+
+        **Compress the entire report folder for that run under `logs/report` into a ZIP and attach it below.** On Windows, right-click the folder and choose the ZIP compression option.
+
+        **Attaching only `bot.log` leaves out the screenshot of the problem.** The report folder contains recent logs, the last screenshot (`screen.png`), and the stop information. If screenshot capture failed, the image may be missing; please attach the entire folder that was created anyway. Include any subfolders, such as `scrolls`, when present.
+
+        Normal completion and a manual stop do not create a report. If a startup error or another problem has no report, explain why below and attach any available logs and screenshots.
+
+        Check logs and screenshots for personal information, such as account details, before attaching them. You can write your report in Korean or English.
   - type: input
     id: app_version
     attributes:
-      label: 사용 중인 앱 버전
-      description: 앱에 표시된 버전을 적어 주세요.
-      placeholder: 예) v1.5.17
+      label: 사용 중인 앱 버전 / App version
+      description: 앱에 표시된 버전을 적어 주세요. / Enter the version shown in the app.
+      placeholder: "예 / e.g. v1.6.0"
     validations:
       required: true
   - type: textarea
     id: problem
     attributes:
-      label: 발생한 문제와 재현 방법
-      description: 사용한 기능, 멈춘 단계, 기대한 동작과 실제 동작을 알려 주세요.
-      placeholder: 예) 자동 탐사에서 오공 영입 버튼을 누른 뒤 다음 영웅으로 넘어가지 않습니다.
+      label: 발생한 문제와 재현 방법 / Problem and steps to reproduce
+      description: |
+        사용한 기능, 멈춘 단계, 기대한 동작과 실제 동작을 알려 주세요. 앱·게임 언어와 실행 환경(STOVE 또는 앱플레이어 이름)도 적어 주세요.
+        Describe the feature, where it stopped, steps to reproduce, and expected versus actual behavior. Include your app/game languages and whether you use STOVE or an emulator (with its name).
+      placeholder: |
+        예) 자동 탐사에서 오공 영입 버튼을 누른 뒤 다음 영웅으로 넘어가지 않습니다.
+        e.g. In Dimensional Exploration, recruitment does not move to the next hero after clicking Wukong's recruit button.
     validations:
       required: true
   - type: textarea
     id: report
     attributes:
-      label: 보고서 폴더 ZIP 첨부
-      description: 보고서 폴더 전체를 압축한 ZIP을 이 입력칸에 끌어다 놓거나 파일 첨부 기능으로 올려 주세요. 보고서가 없다면 이유를 적어 주세요.
-      placeholder: ZIP 파일을 첨부해 주세요. bot.log 파일 하나가 아니라 오류 발생 시 생성된 보고서 폴더 전체가 필요합니다.
+      label: 보고서 폴더 ZIP 첨부 / Error report ZIP
+      description: |
+        보고서 폴더 전체를 압축한 ZIP을 이 입력칸에 끌어다 놓거나 파일 첨부 기능으로 올려 주세요. 보고서가 없다면 이유를 적어 주세요.
+        Drag and drop the ZIP of the entire report folder into this field, or use the file attachment option. If no report is available, explain why.
+      placeholder: |
+        ZIP 파일을 첨부해 주세요. bot.log 파일 하나가 아니라 오류 발생 시 생성된 보고서 폴더 전체가 필요합니다.
+        Attach the ZIP of the entire report folder created for the error, rather than just bot.log.
     validations:
       required: true
