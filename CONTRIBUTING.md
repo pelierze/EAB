@@ -17,8 +17,8 @@
 Windows와 Python 3.12를 기준으로 개발 환경을 준비합니다. 아래 명령은 저장소 루트에서 PowerShell로 실행하세요. 외부 기여자는 저장소를 Fork한 뒤 자신의 Fork를 복제하고 작업 브랜치를 만들어 주세요.
 
 ```powershell
-git clone https://github.com/<내-GitHub-ID>/SecretShopBot-E7.git
-cd SecretShopBot-E7
+git clone https://github.com/<내-GitHub-ID>/EAB.git
+cd EAB
 git switch -c fix/short-description
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
@@ -46,7 +46,7 @@ ADB 연결이나 배포 빌드에 필요한 도구는 다음 명령으로 설치
 - `images/`: 화면 인식용 이미지와 재현용 캡처
 - `tests/`: `unittest` 기반 테스트
 - `build_support/`, `EAB.spec`, `build_release.ps1`: 배포 파일 구성과 빌드
-- `docs/`: 설계·검증 기록과 릴리즈 문서
+- `docs/releases/`: 사용자용 릴리즈 노트
 
 변경은 한 가지 목적에 집중하고, 기존 코드의 형식과 명명 방식을 따라 주세요. 인식이나 입력 동작을 바꾸는 경우 재현 화면과 발생 조건을 설명하고, 가능한 경우 해당 오류를 재현하는 테스트를 함께 추가해 주세요. 새 이미지를 추가할 때는 용도와 촬영 조건을 설명하고, 배포 자산 수집 코드인 `build_support/release_assets.py`에서 필요한 파일이 포함되는지 확인해 주세요. 외부 코드·모델·이미지를 추가할 때는 출처와 라이선스도 기록해 주세요.
 
@@ -70,7 +70,13 @@ git diff --check
 
 일부 테스트에는 저장된 화면이나 Windows 환경이 필요합니다. 실패하면 실행 명령, 오류 내용과 누락된 파일·환경 조건을 PR에 적어 주세요. 실제 게임에서 확인한 동작과 저장 화면·모의 객체로 확인한 동작을 구분하고, 실행하지 않은 검증은 명시해 주세요.
 
-배포 파일을 변경했다면 [DEPLOY.md](DEPLOY.md)에 따라 빌드와 패키지 구성을 확인하세요. PR을 제출하기 위해 GitHub Release를 게시할 필요는 없습니다.
+배포 파일을 변경했다면 앱 버전과 빌드 인자를 일치시켜 `build_release.ps1`로 빌드하고,
+`build_support/release_assets.py`와 `build_support/release_packages.py`의 배포 파일 검증을
+확인하세요. PR을 제출하기 위해 GitHub Release를 게시할 필요는 없습니다.
+
+내부 설계·조사·검증 기록과 일회성 점검 도구는 로컬에서 보관하며 Git에 추가하지 않습니다.
+`docs/releases/`에는 사용자에게 필요한 릴리즈 노트만 남깁니다. 변경의 근거와 검증
+내용은 PR 설명에도 기록해 주세요.
 
 ## Pull Request 작성
 

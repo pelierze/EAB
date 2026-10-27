@@ -32,6 +32,7 @@ def main():
                     f'<td><img alt="Original {name}" src="data:image/png;base64,{original}"></td>'
                     f'<td class="checker"><img alt="Masked {name}" src="data:image/png;base64,{masked}"></td></tr>')
     preview = ROOT / 'docs/i18n/secret-shop-button-masks.html'
+    preview.parent.mkdir(parents=True, exist_ok=True)
     preview.write_text('''<!doctype html><html lang="ko"><meta charset="utf-8">
 <title>비밀상점 버튼 문자 제외 마스크</title>
 <style>body{font:16px system-ui,sans-serif;background:#20252d;color:#eef2f7;margin:32px}

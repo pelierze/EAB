@@ -56,3 +56,17 @@ platform-tools.zip
 
 # Local matching screenshots
 images/raws/
+
+# Local development records, archived implementations, and one-off utilities.
+# Keep public release notes; user guides live in the root README files.
+/docs/*
+!/docs/releases/
+/DEPLOY.md
+/old/
+/images/**/*.md
+/images/README.txt
+/tests/fixtures/**/*.md
+/fix_png_metadata.py
+/test_image_match.py
+/tools/audit_exploration_images.py
+/tools/run_gui_preview.sh
