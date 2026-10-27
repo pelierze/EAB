@@ -49,7 +49,7 @@ class EventChoiceRetryTests(unittest.TestCase):
         self.assertEqual(result, 'map')
         self.assertEqual(choose.call_args_list, [call([A]), call([B])])
         self.bot._tap.assert_called_once_with(B)
-        self.bot._event_transition.assert_called_once_with('after')
+        self.bot._event_transition.assert_called_once_with('after', choice_warning=True)
         self.assertEqual(self.bot.stop_event.wait.call_args_list.count(call(1)), 1)
 
     def test_change_during_review_restarts_before_random_selection(self):

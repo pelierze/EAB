@@ -87,7 +87,7 @@ class EventIntroTests(unittest.TestCase):
 
         self.bot._wait = Mock(side_effect=wait)
         self.assertEqual(self.bot._event_intro(), 'event_intro')
-        self.bot._tap.assert_called_once_with((640, 490))
+        self.bot._tap.assert_called_once_with((640, 490, 0, 0))
 
     def test_stalled_page_stops_after_single_input(self):
         self.bot._event_intro_pending = True

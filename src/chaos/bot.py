@@ -10,6 +10,7 @@ from pathlib import Path
 from src.image_matcher import read_image
 from .observer import KnightObserver, RecruitmentObserver
 from .errors import RecognitionPending
+from .pause import ResumeExploration
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,18 @@ class KnightRecruitmentBot:
     def _check_stop(self):
         if self.stop_event.is_set():
             raise _Stopped()
+        control = getattr(self, 'pause_control', None)
+        if control and control.requested.is_set():
+            control.acknowledged.set()
+            try:
+                while control.requested.is_set():
+                    if self.stop_event.wait(.05):
+                        raise _Stopped()
+                if self.stop_event.is_set():
+                    raise _Stopped()
+                raise ResumeExploration()
+            finally:
+                control.acknowledged.clear()
 
     def _capture(self):
         self._check_stop()
@@ -64,9 +77,13 @@ class KnightRecruitmentBot:
         self._check_stop()
         screen = read_image(str(self.screen_path))
         self.observer.validate_screen(screen)
+        self.last_screen = screen
         return screen
 
     def _record(self, label):
+        trace = getattr(self, 'debug_recorder', None)
+        if trace and label in ('failed', 'hero_missing_or_cost_exceeded'):
+            trace.failure(self, label)
         if self.screen_path.exists():
             self.sequence += 1
             shutil.copyfile(self.screen_path, self.runtime_dir / f"{self.sequence:02d}_{label}.png")
@@ -79,9 +96,17 @@ class KnightRecruitmentBot:
         while time.monotonic() < deadline:
             try:
                 value = predicate(self._capture())
-            except RecognitionPending:
+            except RecognitionPending as exc:
                 value = None
+                trace = getattr(self, 'debug_recorder', None)
+                if trace:
+                    trace.event('pending', phase=phase, reason=str(exc))
             self._check_stop()
+            trace = getattr(self, 'debug_recorder', None)
+            if trace:
+                trace.event('observation', stage=type(self).__name__, phase=phase,
+                            result=value, stable_count=(count + 1 if value == previous else 1)
+                            if value is not None else 0)
             if value is not None:
                 # Stable outcomes must refer to the same position, not just any match.
                 if value == previous:
@@ -104,9 +129,14 @@ class KnightRecruitmentBot:
         if not (0 <= px < 1280 and 0 <= py < 720):
             raise RuntimeError("클릭 좌표가 화면 밖입니다.")
         self._record("before_input")
+        self._check_stop()
         if not self.adb.tap(px, py, delay=0):
             raise RuntimeError("ADB 입력 실패 — 중복 입력하지 않고 중지합니다.")
         self.stats["clicks"] += 1
+        trace = getattr(self, 'debug_recorder', None)
+        if trace:
+            trace.event('input', stage=type(self).__name__, phase=self.stats.get('phase'),
+                        bounds=bounds, point=[px, py])
         logger.info("자동 탐사 입력: (%s, %s)", px, py)
         if self.stop_event.wait(self.observer.config["poll_seconds"]):
             raise _Stopped()
@@ -119,7 +149,12 @@ class KnightRecruitmentBot:
         if self.observer.completed(screen):
             return ("done",)
         button = self.observer.find(screen, "start")
-        return ("start", *button) if button else None
+        if button:
+            return ("start", *button)
+        theme = self.observer.theme.observe(screen)
+        if theme.state in ('unselected', 'selected') and theme.bounds:
+            return ("theme",)
+        return None
 
     def _theme_ready(self, screen):
         if self.observer.find(screen, "unlock"):
@@ -290,8 +325,9 @@ class KnightRecruitmentBot:
         try:
             entry = self._wait("탐사 시작 화면 확인", self._entry)
             if entry[0] != "done":
-                if entry[0] == "start":
-                    self._tap(entry[1:])
+                if entry[0] in ("start", "theme"):
+                    if entry[0] == "start":
+                        self._tap(entry[1:])
                     theme = self._wait("고용 서약서 화면 대기", self._theme_ready)
                     if theme[0] == "popup":
                         self._point("popup_dismiss_point")

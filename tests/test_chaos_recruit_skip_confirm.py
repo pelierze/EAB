@@ -42,7 +42,7 @@ class RecruitSkipConfirmTests(unittest.TestCase):
         self.assertFalse(bot._recruit_skip_confirmation_pending)
 
     def test_reported_battle_warning_confirms_after_verified_hero_skip(self):
-        self.assertEqual(self.observer.classify(self.battle_dialog), 'event_warning')
+        self.assertEqual(self.observer.classify(self.battle_dialog), 'battle_unclaimed_reward')
         # Model the already-claimed loot card, leaving the real hero button.
         rewards = self.battle_rewards.copy()
         rewards[495:570, 560:710] = 0
@@ -70,11 +70,13 @@ class RecruitSkipConfirmTests(unittest.TestCase):
         bot = self.bot()
         bot.event_context = True
         bot._capture = Mock(return_value=read_image(str(RAW / 'battle/victory_live.png')))
-        bot._state.return_value = 'event_warning'
-        self.assertEqual(bot._victory(), 'event_warning')
+        bot._state.return_value = 'battle_unclaimed_reward'
+        self.assertEqual(bot._victory(), 'battle_unclaimed_reward')
         bot._capture.return_value = self.battle_dialog
-        bot._handle_event_confirm()
-        bot._tap.assert_called_once_with(self.observer.find(self.battle_dialog, 'story_cancel'))
+        bot._state.return_value = 'victory'
+        self.assertEqual(bot._dispatch_event_screen('battle_unclaimed_reward'), 'victory')
+        self.assertEqual(bot._guarded_tap.call_args.args[2], 'battle_warning_cancel')
+        bot._tap.assert_not_called()
 
     def test_failed_continue_input_never_authorizes_confirmation(self):
         bot = self.bot()
@@ -89,7 +91,7 @@ class RecruitSkipConfirmTests(unittest.TestCase):
         bot = self.bot()
         bot._capture = Mock(return_value=self.dialog)
         bot._handle_event_confirm()
-        bot._tap.assert_called_once_with(self.observer.find(self.dialog, 'story_cancel'))
+        bot._tap.assert_called_once_with(self.observer.event_warning_controls(self.dialog)['cancel'])
 
     def test_direct_map_return_needs_no_confirmation(self):
         bot = self.bot()

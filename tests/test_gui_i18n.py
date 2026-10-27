@@ -78,14 +78,14 @@ class TestGuiI18n(unittest.TestCase):
         session.penguin_tab = "tab_penguin"
         session.chaos_tab = "tab_chaos"
         session.event_tab = "tab_event"
-        # Exploration remains unsupported; Penguin is now available in English.
-        session.mode_notebook.select.return_value = "tab_chaos"
+        # Only event automation remains unavailable in English.
+        session.mode_notebook.select.return_value = "tab_event"
 
         SessionView._apply_language_feature_support(session, "en")
 
         session.mode_notebook.tab.assert_any_call("tab_shop", state="normal")
         session.mode_notebook.tab.assert_any_call("tab_penguin", state="normal")
-        session.mode_notebook.tab.assert_any_call("tab_chaos", state="disabled")
+        session.mode_notebook.tab.assert_any_call("tab_chaos", state="normal")
         session.mode_notebook.tab.assert_any_call("tab_event", state="disabled")
         session.mode_notebook.select.assert_called_with("tab_shop")
 

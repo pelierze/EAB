@@ -1,7 +1,9 @@
 # 영어 지원(i18n) 계획
 
+> Current follow-up: [Entry, battle and opt-in diagnostics](exploration-english-battle.md). English exploration is now enabled for iterative testing; full English completion is not yet verified. Earlier stage statements below describe their original scope.
+
 - 작성일: 2026-10-23
-- 현재 작업 브랜치: `codex/i18n-penguin` (초기 계획: `feat/i18n-english`)
+- 현재 작업 브랜치: `codex/i18n-dimensional-exploration` (이전 단계: `codex/i18n-penguin`, 초기 계획: `feat/i18n-english`)
 - 상태: 진행 중 / 비밀상점 공통 인식·영어 UI 구현, 펭귄 앵커 기반 인식과 영어 캡처 재현 검사 완료. 전체 자산 감사·실기 검증은 남아 있음.
 
 ## 2026-10-24 진행 상황과 우선순위 조정
@@ -12,7 +14,8 @@
 - 영어 모드의 펭귄 탭을 활성화했다. 제공된 영어 캡처 재현 검사는 통과했으나 실제 구매 완료·반복 실행 및 한국어 실화면 비교는 아직 남아 있다.
 - 10월 24일의 UI 보완 커밋과 펭귄 작업을 `codex/i18n-penguin`에 함께 모았다.
 - 언어 버튼은 지원 언어 목록에서 선택하는 메뉴로 변경했다. 현재 한국어·영어를 제공하며 선택 즉시 UI와 체크 표시를 동기화하고 재시작·업데이트 후에도 선택을 복원한다. 목록은 `LANGUAGE_LABELS` 등록 순서로 구성하므로 이후 언어를 추가할 때 선택 UI를 수정할 필요가 없다. 일본어·중국어의 실제 번역·기능 지원은 별도 작업이다.
-- 탐사 우선순위의 표시 문자열·내부 값 분리는 탐사의 영어 지원 단계에서 진행한다.
+- 차원 탐사 1차 작업에서 우선순위 숫자/null 저장과 기존 한글 프리셋 읽기, UI 번역 경로, 필터 아이콘 비교를 구현했다. [차원 탐사 작업 현황과 필요한 영어 화면](exploration-english-progress.md)을 참고한다. 영어 UI의 탐사 탭 제한은 아직 유지한다.
+- 2차 작업에서 추가된 영어 캡처를 사용해 고용 서약서 아이콘, 영입·입장 버튼의 문자 제외, 열린 필터 패널의 외곽·속성 아이콘 판정, 테마 화면 재개와 지도 노드 선택을 적용했다. [캡처 적용 범위와 남은 작업](exploration-english-captures.md)을 참고한다. 노드 상세·전투·결과·이벤트 등 영어 전체 흐름은 아직 검증 전이다.
 
 후속 작업: [비밀상점 버튼 문자 제외 마스크](secret-shop-button-masks.md). 비밀상점 버튼의 중앙 문자 제외 마스크와 공통 매칭 경로를 구현했다. 전체 이미지 감사와 실제 영어 화면 검증은 남아 있다.
 

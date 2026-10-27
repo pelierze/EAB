@@ -2,14 +2,26 @@
 
 import json
 import re
-from difflib import SequenceMatcher
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-from src.image_matcher import read_image
+from src.image_matcher import ImageMatcher, read_image
 from .errors import RecognitionPending
+from .template_masks import apply_exclusions, color_error, matches_fixed_mask
+from .noncombat import menu_stack, active_menu
+
+
+DETAIL_STATES = {
+    'detail_battle': 'battle_detail',
+    'rest_detail': 'rest_detail',
+    'supply_detail': 'supply_detail',
+    'elite_detail': 'elite_detail',
+    'boss_detail': 'boss_detail',
+    'event_detail': 'event_detail',
+    'shop_detail': 'shop_detail',
+}
 
 
 class NodeObserver:
@@ -26,7 +38,7 @@ class NodeObserver:
                 source = source[y:y+h, x:x+w]
                 if source.shape[:2] != (h, w):
                     raise ValueError(f'노드 이미지 영역 오류: {name}')
-            self.templates[name] = source.copy()
+            self.templates[name] = apply_exclusions(source, definition.get('exclude'), name)
         self.blocked = []
         for path in sorted((root / 'images/chaos/node_progression/templates/blocked_choices').glob('*.png')):
             source = read_image(str(path))
@@ -87,13 +99,15 @@ class NodeObserver:
         if x < 0 or y < 0 or x+w > screen.shape[1] or y+h > screen.shape[0] or w < tw or h < th:
             return []
         sample = screen[y:y+h, x:x+w]
-        scores = cv2.matchTemplate(sample, template, cv2.TM_CCOEFF_NORMED)
+        if template.shape[2] == 4 and (h, w) == (th, tw):
+            return [(x, y, tw, th)] if matches_fixed_mask(sample, template, threshold, max_error) else []
+        scores = ImageMatcher.match_template(sample, template)
         found = []
         for _ in range(100):
             _, score, _, (mx, my) = cv2.minMaxLoc(scores)
             if score < threshold:
                 break
-            error = np.abs(sample[my:my+th, mx:mx+tw].astype(float)-template).mean()/255
+            error = color_error(sample[my:my+th, mx:mx+tw], template)
             if error <= max_error:
                 found.append((x+mx, y+my, tw, th))
             scores[max(0,my-th//2):my+th//2+1, max(0,mx-tw//2):mx+tw//2+1] = -1
@@ -103,7 +117,7 @@ class NodeObserver:
         d = self.config['markers'][name]
         return self.matches(screen, self.templates[name], region or d.get('region', [0,0,1280,720]), d['threshold'], d['max_color_error'])
 
-    def scan_rank_menu_heroes(self, screen):
+    def _rank_menu_rows(self, screen):
         results = {}
         if not self.class_templates:
             return results
@@ -123,28 +137,104 @@ class NodeObserver:
 
             if best_class and best_score >= 0.80:
                 cx, cy = best_loc
-                y_digit_start = cy + 35
-                y_digit_end = cy + 61
-                x_digit_start = max(0, cx + 13)
-                x_digit_end = cx + 30
+                if best_class in results:
+                    return {}
+                results[best_class] = dict(row=row_idx, origin=(cx, cy), score=best_score)
+        return results
 
-                digit = self.read_rank_digit(screen[y_digit_start:y_digit_end, x_digit_start:x_digit_end])
-                if digit is None:
-                    digit = self.read_rank_digit(screen[y_digit_start:y_digit_end, max(0, cx - 1):cx + 35], allow_max=True)
+    def scan_rank_menu_heroes(self, screen):
+        results = {}
+        for best_class, info in self._rank_menu_rows(screen).items():
+            cx, cy = info['origin']
+            y_digit_start = cy + 35
+            y_digit_end = cy + 61
+            x_digit_start = max(0, cx + 13)
+            x_digit_end = cx + 30
 
-                results[best_class] = {
-                    'row': row_idx,
-                    'class': best_class,
-                    'score': best_score,
-                    'rank': digit,
-                    'bounds': (397, cy, 140, 27)
-                }
+            digit = self.read_rank_digit(screen[y_digit_start:y_digit_end, x_digit_start:x_digit_end])
+            if digit is None:
+                digit = self.read_rank_digit(screen[y_digit_start:y_digit_end, max(0, cx - 1):cx + 35], allow_max=True)
+
+            results[best_class] = {
+                'row': info['row'],
+                'class': best_class,
+                'score': info['score'],
+                'rank': digit,
+                'bounds': (397, cy, 140, 27)
+            }
         return results
 
     def find(self, screen, name, region=None):
+        if region is None:
+            if name in ('rank_result_before_icon', 'rank_result_after_icon'):
+                return (self.rank_result_controls(screen) or {}).get(name)
+            if name in ('event_rank_reward_button', 'event_reward_continue'):
+                return (self.rank_reward_controls(screen) or {}).get(name)
+            if name == 'defeat':
+                # Both upper crest patches exclude the localized result label.
+                # A single purple decoration does not establish battle defeat.
+                crest = self.all(screen, name)
+                if len(crest) != 1:
+                    return None
+                ornaments = self.all(screen, 'defeat_ornament')
+                if len(ornaments) != 1:
+                    return None
+                x, y, _, _ = crest[0]
+                ox, oy, _, _ = ornaments[0]
+                return crest[0] if abs(ox-x+72) <= 4 and abs(oy-y-98) <= 4 else None
+            if name == 'expedition_summary':
+                return (self.summary_controls(screen) or {}).get(name)
+            if name == 'loot_button':
+                # A shared purple frame alone never authorizes claiming loot.
+                # Require the three-card scene and a single selected card too.
+                if len(self.all(screen, 'loot_reroll')) != 3 or self.selected_loot(screen) is None:
+                    return None
+                matches = self.all(screen, name)
+                if len(matches) != 1:
+                    return None
+                x, y, w, h = matches[0]
+                sample = screen[y:y+h, x:x+w]
+                active_score = float(ImageMatcher.match_template(sample, self.templates[name])[0, 0])
+                dim_score = float(ImageMatcher.match_template(sample, self.templates['loot_button_dim'])[0, 0])
+                # Compare both states at the same location. Similar shared
+                # borders do not establish that the claim action is enabled.
+                return matches[0] if active_score - dim_score >= .02 else None
+            if name in ('loot_reward', 'reward_hero', 'battle_rank_reward'):
+                return self.battle_reward_controls(screen).get(name)
+            if name == 'battle_unresolved_reward':
+                if not self.all(screen, 'victory'):
+                    return None
+                known = self.battle_reward_controls(screen).values()
+                return next((b for b in self.all(screen, 'battle_reward_button') if b not in known), None)
+            if name == 'battle_warning_cancel':
+                return self.battle_unclaimed_cancel(screen)
+            if name.startswith('ticket_class_') and name in self.templates:
+                return self._ticket_icon(screen, name)
+            if name in ('recruit_reward_title', 'recruit_continue'):
+                return (self.recruit_reward_controls(screen) or {}).get(name)
+            if name in ('rest_option_2', 'rest_option_3', 'rest_option_4', 'supply_menu_first'):
+                return self._menu_option_bounds(screen, name)
+            if name in ('supply_loot', 'supply_done'):
+                return (self.supply_controls(screen) or {}).get(name)
+            if name in ('detail_rest', 'rest_done'):
+                return (self.rest_controls(screen) or {}).get(name)
+            if name == 'leave':
+                controls = self.rest_controls(screen)
+                if controls:
+                    return controls['leave']
+                controls = self.supply_controls(screen)
+                if controls:
+                    return controls['leave']
+            if name == 'rank_title':
+                return tuple(self.config['markers'][name]['crop']) if self.is_rank_menu(screen) else None
+            if name == 'rank_button':
+                if self.is_rank_menu(screen) and sum(self._rank_row_selected(screen, i) for i in range(4)) == 1:
+                    matches = self.all(screen, name)
+                    return matches[0] if len(matches) == 1 else None
+                return None
         if name == 'battle_rank_complete':
             # A completed battle reward has its class icon at the card's lower
-            # right. Require the victory heading and the active continue label.
+            # right. Require the victory heading and the active continue control.
             if not self.find(screen, 'victory') or not self.find(screen, 'continue'):
                 return None
             for role in ('knight', 'warrior', 'soul_weaver', 'thief'):
@@ -161,16 +251,322 @@ class NodeObserver:
             matches = self.all(screen, name, region)
             if len(matches) == 1:
                 return matches[0]
-        if 'rank_title' in self.config['markers'] and bool(self.all(screen, 'rank_title')):
-            target_class = self.hero_to_class.get(name, name)
-            if target_class in self.class_templates:
-                scan = self.scan_rank_menu_heroes(screen)
-                if target_class in scan:
-                    return scan[target_class]['bounds']
+            if not matches and region is None:
+                if name == 'exploration_entry' and self.find(screen, 'entry_symbol'):
+                    return self.find(screen, 'entry_action')
+                if name == 'battle_start' and self.find(screen, 'setup_symbol'):
+                    return self.find(screen, 'action_frame')
+                if name == 'enter_node' and self.detail_state(screen):
+                    return self.find(screen, 'action_frame')
+                if name == 'continue' and self.find(screen, 'victory'):
+                    return self.find(screen, 'continue_frame')
+        target_class = self.hero_to_class.get(name, name)
+        if target_class in self.class_templates and self.is_rank_menu(screen):
+            scan = self.scan_rank_menu_heroes(screen)
+            if target_class in scan:
+                return scan[target_class]['bounds']
         return None
+
+    def rest_controls(self, screen):
+        # Both patches avoid the flag, fire, characters, and menu captions.
+        for name in ('rest_static_left', 'rest_static_roof'):
+            if not self.all(screen, name):
+                return None
+        active = self.all(screen, 'detail_rest')
+        if not active and not self.all(screen, 'rest_option_disabled'):
+            return None
+        if not all(self._menu_option_bounds(screen, 'rest_option_' + str(i)) for i in (2, 3, 4)):
+            return None
+        leave = self.all(screen, 'action_frame')
+        if len(leave) != 1:
+            return None
+        done = self.all(screen, 'rest_done')
+        return dict(leave=leave[0], detail_rest=active[0] if len(active) == 1 and not done else None,
+                    rest_done=done[0] if len(done) == 1 else None)
+
+    def noncombat_kind(self, screen):
+        """Recover one unambiguous node identity when entry history is unavailable."""
+        if self.recruit_skip_buttons(screen):
+            return None  # A generic dialog must not expose its underlying node.
+        kinds = []
+        if all(self.all(screen, name) for name in ('rest_static_left', 'rest_static_roof')):
+            kinds.append('rest')
+        if any(self.all(screen, 'supply_chest_'+state) for state in ('open', 'closed')):
+            kinds.append('supply')
+        if all(self.all(screen, name) for name in ('shop_frame', 'shop_display_base')):
+            kinds.append('shop')
+        if self.all(screen, 'event_card_left') and self.all(screen, 'event_card_right'):
+            kinds.append('event')
+        return kinds[0] if len(kinds) == 1 else None
+
+    def noncombat_controls(self, screen, node_kind):
+        """Node intent -> current scene symbols -> fresh control coordinates.
+
+        The caller supplies verified entry history. History alone never permits
+        a click, and these controls never override a separately recognized popup.
+        """
+        if node_kind not in ('rest', 'supply', 'shop', 'event'):
+            return None
+        symbols = []
+        if node_kind == 'rest':
+            for name in ('rest_static_left', 'rest_static_roof'):
+                if not self.all(screen, name):
+                    return None
+                symbols.append(name)
+            names = ['detail_rest', 'rest_option_2', 'rest_option_3', 'rest_option_4']
+        elif node_kind == 'supply':
+            symbols = [name for name in ('supply_chest_closed', 'supply_chest_open') if self.all(screen, name)]
+            if not symbols:
+                return None
+            names = ['supply_menu_first', 'supply_loot']
+        elif node_kind == 'shop':
+            # Static display brackets avoid the vendor's animation and dialogue.
+            if not self.all(screen, 'shop_display_base') or not self.all(screen, 'shop_frame'):
+                return None
+            leave = self.all(screen, 'action_frame')
+            if len(leave) != 1:
+                return None
+            return dict(state='shop', symbols=['shop_display_base', 'shop_frame'], controls={'shop_exit': leave[0]})
+        else:
+            # Event art differs for each encounter. Paired choice-panel corner
+            # ornaments identify the generic scene even for unregistered art.
+            cards = self.event_cards(screen)
+            if not cards or not self.all(screen, 'event_card_left') or not self.all(screen, 'event_card_right'):
+                return None
+            known = self.known_event_candidates(screen)
+            return dict(state='event' if known else 'unknown_event',
+                        symbols=known or ['event_card_left', 'event_card_right'],
+                        controls={'event_cards': cards})
+        rows = [self.config['markers'][name]['region'] for name in names]
+        menus = menu_stack(screen, rows)
+        leave = self.all(screen, 'action_frame')
+        if not menus or len(leave) != 1:
+            return None
+        controls = {'leave': leave[0]}
+        done_name = 'rest_done' if node_kind == 'rest' else 'supply_done'
+        action_name = 'detail_rest' if node_kind == 'rest' else 'supply_loot'
+        index = 0 if node_kind == 'rest' else 1
+        done = self.all(screen, done_name, menus[index])
+        if len(done) > 1:
+            return None
+        controls['leave'] = leave[0] if done else None
+        controls[done_name] = done[0] if done else None
+        inactive = 'rest_option_disabled' if node_kind == 'rest' else 'supply_option_disabled'
+        enabled = active_menu(screen, menus[index], self.templates[action_name], self.templates[inactive])
+        controls[action_name] = menus[index] if enabled and not done else None
+        return dict(state=node_kind, symbols=symbols, menus=menus, exit_bounds=leave[0], controls=controls)
+
+    def _menu_option_bounds(self, screen, name):
+        # Unselected choices can be active or disabled independently.
+        # Only their text-free geometry contributes to scene identification.
+        definition = self.config['markers'][name]
+        x, y, w, h = definition['region']
+        sample = screen[y:y+h, x:x+w]
+        templates = [self.templates[name], self.templates['detail_rest']]
+        if name == 'supply_menu_first':
+            templates.append(self.templates['supply_first_disabled'])
+            templates.append(self.templates['supply_menu_first_variant'])
+        if name == 'rest_option_4':
+            templates.append(self.templates['rest_option_4_active'])
+        for template in templates:
+            score = ImageMatcher.match_template(sample, template, shape_only=True)
+            if float(score[0, 0]) >= definition['threshold']:
+                return (x, y, w, h)
+        return None
+
+    def supply_controls(self, screen):
+        # The lower chest body remains visible with the lid open or closed.
+        if not any(self.all(screen, 'supply_chest_' + state) for state in ('closed', 'open')):
+            return None
+        if not self._menu_option_bounds(screen, 'supply_menu_first'):
+            return None
+        active = self.all(screen, 'supply_loot') or self.all(screen, 'supply_loot_variant')
+        if not active and not self.all(screen, 'supply_option_disabled'):
+            return None
+        leave = self.all(screen, 'action_frame')
+        if len(leave) != 1:
+            return None
+        done = self.all(screen, 'supply_done')
+        return dict(leave=leave[0], supply_loot=active[0] if len(active) == 1 and not done else None,
+                    supply_done=done[0] if len(done) == 1 else None)
+
+    def _ticket_icon(self, screen, name, region=None):
+        definition = self.config['markers'][name]
+        x, y, w, h = region or definition['region']
+        sample = screen[y:y+h, x:x+w]
+        best = None
+        for scale in definition['match_scales']:
+            template = cv2.resize(self.templates[name], None, fx=scale, fy=scale)
+            th, tw = template.shape[:2]
+            if th > h or tw > w:
+                continue
+            _, score, _, (mx, my) = cv2.minMaxLoc(ImageMatcher.match_template(sample, template, shape_only=True))
+            if score >= definition['threshold'] and (best is None or score > best[0]):
+                best = score, (x+mx, y+my, tw, th)
+        return best[1] if best else None
+
+    def battle_reward_controls(self, screen):
+        """Pair small reward icons with their own active, text-masked pills."""
+        if not self.all(screen, 'victory'):
+            return {}
+        pairs = []
+        for button in self.all(screen, 'battle_reward_button'):
+            x, y, w, h = button
+            center = x + w / 2
+            icon_region = (int(center-55), 205, 110, 95)
+            icons = []
+            for name, marker in (('loot_reward', 'battle_loot_icon'),
+                                 ('battle_rank_reward', 'battle_rank_icon')):
+                icons.extend((name, bounds) for bounds in self.all(screen, marker, icon_region))
+            for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage', 'all'):
+                bounds = self._ticket_icon(screen, 'ticket_class_'+role, icon_region)
+                if bounds:
+                    icons.append(('reward_hero', bounds))
+            if len(icons) != 1:
+                continue
+            name, icon = icons[0]
+            ix, iy, iw, ih = icon
+            if abs(ix+iw/2-center) <= 24 and 180 <= y-iy-ih <= 280:
+                pairs.append((name, icon, button))
+        controls = {}
+        for name, icon, button in pairs:
+            # An ambiguous icon/type must not silently overwrite another card.
+            if sum(other_name == name for other_name, _, _ in pairs) != 1:
+                continue
+            if sum(other_icon == icon for _, other_icon, _ in pairs) != 1:
+                continue
+            controls[name] = button
+        return controls
+
+    def battle_unclaimed_cancel(self, screen):
+        buttons = self.recruit_skip_buttons(screen)
+        if not buttons:
+            return None
+        # The dimmed VICTORY heading establishes battle context. Never approve
+        # a generic warning: cancel it and re-scan the remaining reward cards.
+        x, y, w, h = self.config['markers']['victory']['region']
+        scores = ImageMatcher.match_template(screen[y:y+h, x:x+w],
+                                            self.templates['victory'], shape_only=True)
+        if cv2.minMaxLoc(scores)[1] >= .9:
+            return buttons['cancel']
+        return None
+
+    def rank_reward_controls(self, screen):
+        """Verify the rank emblem and card before exposing text-masked buttons."""
+        controls = {}
+        for name in ('event_rank_reward_icon', 'recruit_card_frame', 'event_reward_continue'):
+            matches = self.all(screen, name)
+            if len(matches) != 1:
+                return None
+            controls[name] = matches[0]
+        ix, iy, iw, ih = controls['event_rank_reward_icon']
+        cx, cy, cw, ch = controls['recruit_card_frame']
+        bx, by, bw, bh = controls['event_reward_continue']
+        if not (cx < ix and ix+iw < cx+cw and cy < iy and iy+ih < cy+ch
+                and abs(cx+cw/2-bx-bw/2) <= 8 and 65 <= by-cy-ch <= 85):
+            return None
+        buttons = self.all(screen, 'event_rank_reward_button')
+        if len(buttons) == 1:
+            x, y, w, h = buttons[0]
+            if cx < x and x+w < cx+cw and iy+ih < y and y+h < cy+ch:
+                controls['event_rank_reward_button'] = buttons[0]
+        return controls
+
+    def recruit_reward_controls(self, screen):
+        controls = {}
+        for name in ('recruit_card_frame', 'recruit_reward_title', 'recruit_continue'):
+            matches = self.all(screen, name)
+            if len(matches) != 1:
+                return None
+            controls[name] = matches[0]
+        roles = [role for role in ('knight', 'warrior', 'thief', 'soul_weaver', 'ranger', 'mage', 'all')
+                 if self._ticket_icon(screen, 'ticket_class_' + role)]
+        if len(roles) > 1:
+            return None
+        if not roles and not self.all(screen, 'recruit_title_legacy'):
+            return None
+        controls['role'] = roles[0] if roles else 'legacy'
+        return controls
+
+    def recruit_skip_buttons(self, screen, region=None):
+        # Frames alone never authorize Confirm; callers must establish context.
+        confirm = self.all(screen, 'recruit_skip_confirm_frame', region) if region else self.all(screen, 'recruit_skip_confirm_frame')
+        cancel = self.all(screen, 'recruit_skip_cancel_frame', region) if region else self.all(screen, 'recruit_skip_cancel_frame')
+        if len(confirm) == len(cancel) == 1:
+            cx, cy, cw, ch = confirm[0]
+            bx, by, bw, bh = cancel[0]
+            if abs((cx+cw/2) - (bx+bw/2) - 215) <= 4 and abs(cy-by) <= 3:
+                return dict(confirm=confirm[0], cancel=cancel[0])
+        return None
+
+    def event_choice_warning_controls(self, screen):
+        """Textless pair; usable only immediately after a general event choice."""
+        return self.recruit_skip_buttons(screen, [375, 320, 550, 325])
+
+    def event_warning_controls(self, screen):
+        """Full-width modal borders plus a paired, text-masked button row.
+
+        This only identifies a warning for cancellation, never permission to
+        confirm it. Title/body text and the vertical button position may vary.
+        """
+        buttons = self.event_choice_warning_controls(screen)
+        if not buttons:
+            return None
+        _, y, _, h = buttons['cancel']
+        gray = cv2.cvtColor(screen[100:650, :, :3], cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 10, 30)
+        coverage = (edges[:, 30:1250] > 0).mean(axis=1)
+        rows = np.flatnonzero(coverage >= .8) + 100
+        top = rows[(rows >= 100) & (rows <= y-80)]
+        bottom = rows[(rows >= y+h+5) & (rows <= y+h+65)]
+        if not len(top) or not len(bottom):
+            return None
+        top, bottom = int(top[-1]), int(bottom[0])
+        if not 220 <= bottom-top <= 500:
+            return None
+        return dict(buttons, panel=(0, top, 1280, bottom-top+1))
+
+    def is_rank_menu(self, screen):
+        # Geometry + exploration footer + distinct party class icons; no OCR.
+        # Departures can leave fewer than four heroes in the party.
+        return bool(self.all(screen, 'rank_title') and self.all(screen, 'map_footer')
+                    and self._rank_menu_rows(screen))
+
+    @staticmethod
+    def _rank_row_selected(screen, row):
+        y = 80 + 105 * row
+        regions = ((365, y-2, 630, y+12), (365, y+78, 630, y+94),
+                   (337, y+15, 359, y+75))
+        for i, (x1, y1, x2, y2) in enumerate(regions):
+            hsv = cv2.cvtColor(screen[y1:y2, x1:x2], cv2.COLOR_BGR2HSV)
+            gold = cv2.inRange(hsv, np.array([10, 25, 150]), np.array([40, 255, 255]))
+            if (gold > 0).any(axis=0 if i < 2 else 1).mean() < .75:
+                return False
+        return True
+
+    def rank_hero_selected(self, screen, hero):
+        role = self.hero_to_class.get(hero, hero)
+        info = self._rank_menu_rows(screen).get(role)
+        return bool(info and self._rank_row_selected(screen, info['row']))
+
+    def detail_state(self, screen):
+        """Require exactly one kind of icon in the right-hand detail header."""
+        found = []
+        for marker, state in DETAIL_STATES.items():
+            matches = self.all(screen, marker)
+            if len(matches) > 1:
+                return None
+            if matches:
+                found.append(state)
+        return found[0] if len(found) == 1 else None
 
     def levelup_controls(self, screen):
         """Pair the title with a moving down arrow; return a stable tap area."""
+        frame = self.find(screen, 'level_frame')
+        arrows = self.all(screen, 'level_close') if frame else []
+        if frame and len(arrows) == 1:
+            return {'levelup': frame, 'level_close_arrow': arrows[0],
+                    'level_close': tuple(self.config['levelup_close_bounds'])}
         names = ('levelup', 'level_close')
         for scale in (1., .95, 1.05, .9, 1.1):
             controls = {}
@@ -201,10 +597,16 @@ class NodeObserver:
 
     def forbidden(self, screen):
         found = []
+        # Shop icons are smaller than the loot-card references. Search that
+        # footprint only inside a verified display, without widening all scans.
+        shop_display = bool(self.all(screen, 'shop_frame') and self.all(screen, 'shop_display_base'))
         for name, template in self.blocked:
-            for scale in (1., .85, .9, .8, 1.1):
+            searches = [(scale, [0, 0, 1280, 720]) for scale in (1., .85, .9, .8, 1.1)]
+            if shop_display:
+                searches.append((64/max(template.shape[:2]), [380, 80, 780, 520]))
+            for scale, region in searches:
                 scaled = template if scale == 1 else cv2.resize(template, None, fx=scale, fy=scale)
-                for bounds in self.matches(screen, scaled, [0,0,1280,720], .88, .18):
+                for bounds in self.matches(screen, scaled, region, .88, .18):
                     x,y,w,h = bounds
                     if not any(old_name == name and abs(ox+ow/2-x-w/2)<max(w,ow)/2
                                and abs(oy+oh/2-y-h/2)<max(h,oh)/2 for old_name,(ox,oy,ow,oh) in found):
@@ -272,32 +674,50 @@ class NodeObserver:
         return cards[0] if len(cards)==1 else None
 
     def loot_consume_plus(self, screen):
+        return bool(self.loot_consume_pluses(screen))
+
+    def loot_consume_pluses(self, screen):
         x, y, w, h = self.config['event_loot_consume_plus_region']
         sample = screen[y:y+h, x:x+w]
         if sample.shape[:2] != (h, w):
-            return False
+            return []
         hsv = cv2.cvtColor(sample, cv2.COLOR_BGR2HSV)
         mask = ((hsv[:, :, 1] < 80) & (hsv[:, :, 2] >= 190)).astype(np.uint8)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        centers = []
         for contour in contours:
             cx, cy, cw, ch = cv2.boundingRect(contour)
             if not (24 <= cw <= 40 and 24 <= ch <= 40 and abs(cw-ch) <= 4):
-                continue
-            if abs(cx+cw/2-w/2) > 5 or abs(cy+ch/2-h/2) > 5:
                 continue
             cross = mask[cy:cy+ch, cx:cx+cw]
             horizontal = cross[ch//2-2:ch//2+3].any(axis=0).mean()
             vertical = cross[:, cw//2-2:cw//2+3].any(axis=1).mean()
             if horizontal >= .85 and vertical >= .85 and cross.mean() <= .35:
-                return True
-        return False
+                centers.append((int(x+cx+cw/2), int(y+cy+ch/2)))
+        return sorted(centers)
+
+    def loot_consume_slots(self, screen):
+        """Empty crosses or filled-slot remove symbols, across the lower tray."""
+        filled = [(x+6, y+6, 84, 84, True) for x, y, _, _ in
+                  self.all(screen, 'event_loot_consume_selected_slot')]
+        slots = list(filled)
+        for cx, cy in self.loot_consume_pluses(screen):
+            if not any(abs(x+42-cx) <= 5 and abs(y+42-cy) <= 5 for x, y, _, _, _ in filled):
+                slots.append((cx-42, cy-42, 84, 84, False))
+        slots.sort()
+        if not 1 <= len(slots) <= 5:
+            return []
+        x, y, w, h = self.config['event_loot_consume_plus_region']
+        if any(sx < x or sy < y or sx+sw > x+w or sy+sh > y+h for sx, sy, sw, sh, _ in slots):
+            return []
+        if max(s[1] for s in slots)-min(s[1] for s in slots) > 4:
+            return []
+        if any(a[0]+a[2]+4 > b[0] for a, b in zip(slots, slots[1:])):
+            return []
+        return slots
 
     def is_loot_consume(self, screen):
-        # A plus identifies the empty slot. Selection replaces it with an item
-        # and its remove control; inventory geometry is required in both cases.
-        slot = (self.loot_consume_plus(screen)
-                or self.find(screen, 'event_loot_consume_selected_slot'))
-        return bool(slot and self.loot_consume_choices(screen))
+        return bool(self.loot_consume_slots(screen) and self.loot_consume_choices(screen))
 
     def loot_consume_choices(self, screen):
         sub = screen[145:470, 650:1140]
@@ -316,9 +736,13 @@ class NodeObserver:
         return centers
 
     def loot_consume_target(self, screen):
+        targets = self.loot_consume_targets(screen)
+        return targets[0] if targets else None
+
+    def loot_consume_targets(self, screen):
         items = self.loot_consume_choices(screen)
         if not items:
-            return None
+            return []
         blocked = self.forbidden(screen)
         # Inventory thumbnails may be smaller than the acquisition cards.
         for name, template in self.blocked:
@@ -329,42 +753,62 @@ class NodeObserver:
         banned = [point for point in items if any(
             abs(point[0]-(x+w/2)) <= 42 and abs(point[1]-(y+h/2)) <= 42
             for _, (x,y,w,h) in blocked)]
-        return (banned or items)[0]
+        return banned + [point for point in items if point not in banned]
 
     def loot_consume_selected(self, screen, item_icon):
-        """Require the chosen icon in the sacrifice slot AND a 1/1 counter."""
-        matched = False
+        return self.loot_consume_selection_matches(screen, [item_icon], require_full=True)
+
+    def loot_consume_icon_in_slot(self, screen, item_icon, slot):
+        x, y, w, h, _ = slot
         for scale in (.8, .9, 1., 1.1, 1.2):
             sample = cv2.resize(item_icon, None, fx=scale, fy=scale)
-            if self.matches(screen, sample, [855,516,84,84], .80, .20):
-                matched = True
-                break
-        if not matched:
+            if self.matches(screen, sample, [x, y, w, h], .80, .20):
+                return True
+        return False
+
+    def loot_consume_selection_matches(self, screen, icons, require_full=False):
+        slots = self.loot_consume_slots(screen)
+        filled = [slot for slot in slots if slot[4]]
+        if not slots or len(filled) != len(icons) or (require_full and len(filled) != len(slots)):
             return False
-        if self.ocr is None:
-            from rapidocr_onnxruntime import RapidOCR
-            self.ocr = RapidOCR(intra_op_num_threads=2, inter_op_num_threads=2)
-        rows, _ = self.ocr(cv2.resize(screen[650:686,575:718], None, fx=3, fy=3),
-                           use_det=False, use_cls=False)
-        return bool(rows and any(score >= .85 and re.search(r'(?<!\d)1\s*/\s*1(?!\d)', text)
-                                 for text, score in rows))
+        matches = [[i for i, slot in enumerate(filled) if self.loot_consume_icon_in_slot(screen, icon, slot)]
+                   for icon in icons]
+        def assign(index, used):
+            if index == len(matches):
+                return True
+            return any(assign(index+1, used | {i}) for i in matches[index] if i not in used)
+        return assign(0, set())
+
+    def loot_consume_confirm(self, screen):
+        slots = self.loot_consume_slots(screen)
+        if not slots or not all(slot[4] for slot in slots):
+            return None
+        if not self.all(screen, 'consume_confirm_active'):
+            return None
+        definition = self.config['markers']['consume_confirm_active']
+        x, y, w, h = definition['crop']
+        sample = screen[y:y+h, x:x+w]
+        active = float(ImageMatcher.match_template(sample, self.templates['consume_confirm_active'])[0, 0])
+        dim = float(ImageMatcher.match_template(sample, self.templates['consume_confirm_dim'])[0, 0])
+        return tuple(self.config['event_loot_consume_bounds']) if active-dim >= .02 else None
 
     def classify(self, screen):
+        if self.battle_unclaimed_cancel(screen): return 'battle_unclaimed_reward'
         if self.find(screen, 'shop_purchase_dialog'): return 'shop_purchase_confirm'
         if self.find(screen, 'defeat'): return 'defeat'
-        if self.find(screen, 'hero_departure_title') and self.find(screen, 'hero_departure_button'): return 'hero_departure'
         if self.find(screen, 'expedition_summary') and self.find(screen, 'summary_close'): return 'expedition_summary'
         if self.find(screen, 'exploration_entry'): return 'exploration_entry'
         if self.find(screen, 'shop_exit_dialog') and self.find(screen, 'story_confirm'): return 'shop_exit_confirm'
         if self.find(screen, 'unclaimed_dialog'): return 'unclaimed_reward'
-        if self.find(screen, 'event_rank_reward_icon') and self.find(screen, 'event_reward_continue'): return 'rank_reward'
-        if self.find(screen, 'recruit_reward_title') and self.find(screen, 'recruit_continue'): return 'recruit_reward'
+        if self.rank_reward_controls(screen): return 'rank_reward'
+        if self.recruit_reward_controls(screen): return 'recruit_reward'
         if self.find(screen, 'story_dialog'): return 'story_confirm'
+        if self.event_warning_controls(screen): return 'event_warning'
         if self.find(screen, 'story_confirm'): return 'event_warning'
         if self.levelup_controls(screen): return 'levelup'
         if self.is_rank_result(screen): return 'rank_result'
-        # Rank and loot results share the close icon. Wait for readable rank
-        # text instead of treating a transient OCR miss as a loot transition.
+        # Rank and loot results share the close icon. Partial rank geometry
+        # must not authorize a loot close during a transition.
         if self.find(screen, 'rank_result_arrow'): return None
         if self.find(screen, 'event_loot_close'): return 'event_loot_popup'
         if self.is_loot_consume(screen): return 'event_loot_consume'
@@ -373,7 +817,8 @@ class NodeObserver:
             if self.find(screen, 'battle_rank_complete'): return 'battle_rank_complete'
             return 'victory'
         if self.find(screen,'shop_frame') and self.find(screen,'shop_exit'): return 'shop'
-        if self.find(screen,'leave') and (self.find(screen,'supply_loot') or self.find(screen,'supply_done')): return 'supply'
+        if self.rest_controls(screen): return 'rest'
+        if self.supply_controls(screen): return 'supply'
         if self.find(screen, 'rank_title'): return 'rank_menu'
         if self.find(screen, 'skip'): return 'story'
         if self.event_result_marker(screen) and self.find(screen, 'event_advance') and not self.event_cards(screen): return 'event_result'
@@ -383,15 +828,15 @@ class NodeObserver:
             if self.find(screen, 'event_advance') and not self.event_cards(screen):
                 return 'unknown_event_result'
             return 'event'
-        if self.find(screen, 'leave'): return 'rest'
         if self.find(screen, 'battle_start'): return 'battle_setup'
-        if self.find(screen, 'enter_node') and self.find(screen, 'detail_battle'): return 'battle_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'rest_detail'): return 'rest_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'supply_detail'): return 'supply_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'elite_detail'): return 'elite_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'boss_detail'): return 'boss_detail'
-        if self.find(screen, 'enter_node') and self.find(screen, 'event_detail'): return 'event_detail'
-        if self.find(screen, 'enter_node'): return 'node_detail'
+        if self.find(screen, 'enter_node'):
+            return self.detail_state(screen) or 'node_detail'
+        if self.detail_state(screen):
+            return None
+        # An unrecognized detail pane can retain the map footer and arrows.
+        # Do not select another map node while that pane's action is visible.
+        if self.find(screen, 'action_frame') and self.find(screen, 'map_footer'):
+            return None
         if self.find(screen, 'map_footer') and self.arrows(screen): return 'map'
         if self.find(screen, 'battle_ui'): return 'battle'
         return None
@@ -411,36 +856,41 @@ class NodeObserver:
                 return False
         return True
 
-    def hero_departure_candidates(self, screen):
-        if not (self.find(screen, 'hero_departure_title')
-                and self.find(screen, 'hero_departure_button')):
+    def event_hero_candidates(self, screen):
+        """Find each row by class icon and the rank mark beneath it, never names."""
+        if not self.all(screen, 'rank_title') or not self.all(screen, 'map_footer'):
             return []
-        corners = self.all(screen, 'hero_departure_card')
+        if self.event_choice_warning_controls(screen):
+            return []  # Never expose the list underneath a confirmation dialog.
         cards = []
         for y in (85, 190, 295, 400):
-            bounds = (350, y, 290, 80)
-            # The same gold border replaces the blue corner on a selected row.
-            if (any(abs(x-353) <= 3 and abs(cy-(y+1)) <= 3 for x, cy, _, _ in corners)
-                    or self.hero_departure_highlight(screen, bounds)):
-                cards.append(bounds)
+            marks = self.all(screen, 'event_hero_rank_mark', [345, y+40, 55, 40])
+            if len(marks) != 1:
+                continue
+            mx, my, _, _ = marks[0]
+            sample = screen[y-10:y+70, 350:410]
+            classes = []
+            for name, template in self.class_templates.items():
+                _, score, _, (x, cy) = cv2.minMaxLoc(ImageMatcher.match_template(sample, template))
+                if score >= .8 and abs(x+350-mx) <= 20 and 20 <= my-(y-10+cy) <= 65:
+                    classes.append(name)
+            if len(classes) == 1:
+                cards.append((350, y, 290, 80))
         return cards
 
-    def hero_departure_selected(self, screen, bounds, portrait):
-        if not (self.find(screen, 'hero_departure_title')
-                and self.hero_departure_highlight(screen, bounds)):
-            return None
-        button = self.find(screen, 'hero_departure_button')
-        if not button:
-            return None
-        x, y, w, h = button
-        label = cv2.cvtColor(screen[y:y+h, x:x+w], cv2.COLOR_BGR2GRAY)
-        if np.count_nonzero(label >= 200) < 40:
+    def event_hero_selected(self, screen, bounds, portrait):
+        if bounds not in self.event_hero_candidates(screen) or not self.hero_departure_highlight(screen, bounds):
             return None
         _, cy, _, _ = bounds
-        # A reordered party must not authorize departing the old row's hero.
         if not self.matches(screen, portrait, [510, cy+6, 120, 65], .90, .15):
             return None
-        return button
+        active = self.all(screen, 'rank_button')
+        dim = self.all(screen, 'event_hero_action_dim')
+        if len(active) == 1 and not dim:
+            return ('active', active[0])
+        if len(dim) == 1 and not active:
+            return ('disabled',)
+        return None
 
     def event_intro_panel(self, screen):
         """Recognize the compact narration panel, never its words or artwork."""
@@ -459,6 +909,29 @@ class NodeObserver:
         return ((hsv[:, :, 0] >= 105) & (hsv[:, :, 0] <= 135)
                 & (hsv[:, :, 1] >= 15) & (hsv[:, :, 1] <= 100)
                 & (hsv[:, :, 2] >= 150))
+
+    @staticmethod
+    def event_result_page_changed(before, after):
+        """Compare visual caption strokes, without OCR or an exact pixel hash.
+
+        The illustration and moving advance arrow are outside this region.
+        Small isolated particles and a couple of pixels of rendering drift do
+        not acknowledge a click as a new result page.
+        """
+        def strokes(screen):
+            hsv = cv2.cvtColor(screen[455:550, 260:1020, :3], cv2.COLOR_BGR2HSV)
+            mask = ((hsv[:, :, 1] < 100) & (hsv[:, :, 2] > 170)).astype(np.uint8)*255
+            mask = (cv2.resize(mask, None, fx=.5, fy=.5, interpolation=cv2.INTER_AREA) >= 128).astype(np.uint8)
+            count, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+            keep = np.zeros(count, np.uint8)
+            keep[1:] = stats[1:, cv2.CC_STAT_AREA] >= 3
+            return keep[labels]
+        a, b = strokes(before), strokes(after)
+        kernel = np.ones((3, 3), np.uint8)
+        different = int(np.count_nonzero(a & ~cv2.dilate(b, kernel))
+                        + np.count_nonzero(b & ~cv2.dilate(a, kernel)))
+        total = int(a.sum()+b.sum())
+        return different >= 30 and different/max(1, total) >= .10
 
     def event_result_marker(self, screen):
         names = list(dict.fromkeys(self.config.get('event_result_markers', []) + [e['result_marker'] for e in self.config.get('events', []) if e.get('result_marker')]))
@@ -503,6 +976,15 @@ class NodeObserver:
         # Bottom corners remain visible when a magnifier replaces the top icon.
         left = sorted((x,y-100,w,h) for x,y,w,h in self.all(screen,'event_card_left'))
         right = sorted(self.all(screen,'event_card_right'))
+        # Mirror the left-grid fallback below: wing/glow effects can obscure
+        # bottom-left corners while all top-right ornaments remain visible.
+        if 0 < len(left) < len(right) and len(right) in (2, 3):
+            gaps = [b[0]-a[0] for a, b in zip(right, right[1:])]
+            aligned = max(r[1] for r in right)-min(r[1] for r in right) <= 3
+            paired = all(sum(330 <= rx-x <= 345 and abs(ry-y) <= 3
+                             for rx, ry, _, _ in right) == 1 for x, y, _, _ in left)
+            if aligned and all(378 <= gap <= 382 for gap in gaps) and paired:
+                return [(rx-332, ry+4, 362, 131) for rx, ry, _, _ in right]
         if len(left) in (1, 2, 3) and len(right) == len(left):
             cards = []
             for (x,y,_,_),(rx,ry,_,_) in zip(left,right):
@@ -544,7 +1026,7 @@ class NodeObserver:
         return available
 
     def rank(self, screen, name):
-        if 'rank_title' in self.config['markers'] and bool(self.all(screen, 'rank_title')):
+        if self.is_rank_menu(screen):
             target_class = self.hero_to_class.get(name, name)
             if target_class in self.class_templates:
                 scan = self.scan_rank_menu_heroes(screen)
@@ -562,24 +1044,28 @@ class NodeObserver:
             return digit_wide
         return None
 
-    @staticmethod
-    def rank_up_text_matches(text, confidence):
-        # The glowing text overlaps each hero's artwork. Allow one imperfect
-        # letter, but only together with the separate rank transition arrow.
-        normalized = re.sub(r'[^A-Z]', '', text.upper())
-        return confidence >= .55 and 5 <= len(normalized) <= 7 and (
-            SequenceMatcher(None, normalized, 'RANKUP').ratio() >= .8)
-
     def is_rank_result(self, screen):
-        if not self.find(screen, 'rank_result_arrow'):
-            return False
-        x, y, w, h = self.config['rank_result_text_region']
-        if self.ocr is None:
-            from rapidocr_onnxruntime import RapidOCR
-            self.ocr = RapidOCR(intra_op_num_threads=2, inter_op_num_threads=2)
-        rows, _ = self.ocr(cv2.resize(screen[y:y+h, x:x+w], None, fx=2, fy=2),
-                           use_det=False, use_cls=False)
-        return bool(rows and len(rows) == 1 and self.rank_up_text_matches(*rows[0]))
+        return self.rank_result_controls(screen) is not None
+
+    def rank_result_controls(self, screen):
+        """Find mark → arrow → mark across a shared horizontal band."""
+        arrows = self.all(screen, 'rank_result_arrow')
+        if len(arrows) != 1:
+            return None
+        marks = sorted(self.all(screen, 'rank_result_mark'))
+        if len(marks) != 2:
+            return None
+        controls = dict(rank_result_before_icon=marks[0], rank_result_after_icon=marks[1],
+                        rank_result_arrow=arrows[0])
+        lx, ly, lw, lh = controls['rank_result_before_icon']
+        rx, ry, rw, rh = controls['rank_result_after_icon']
+        ax, ay, aw, ah = controls['rank_result_arrow']
+        if not (lx+lw < ax and ax+aw < rx
+                and abs(ly+lh/2-ry-rh/2) <= 4
+                and abs(ly+lh/2-ay-ah/2) <= 5):
+            return None
+        controls['rank_close'] = tuple(self.config['rank_result_close_bounds'])
+        return controls
 
     def shop_currency_mask(self, screen):
         """Extract bright neutral digit strokes without reading their value."""
@@ -616,7 +1102,8 @@ class NodeObserver:
         raise RecognitionPending('상점 가격 또는 보유 파편 재확인')
 
     def shop_investment_offer(self, screen):
-        if self.classify(screen) != 'shop': return None
+        if self.classify(screen) != 'shop' and not self.noncombat_controls(screen, 'shop'):
+            return None
         if self.find(screen, 'shop_insufficient_notice'): return ('skip',)
         product = self.find(screen, 'shop_future_investment')
         if not product:
@@ -649,6 +1136,17 @@ class NodeObserver:
         red = ((hsv[:,:,0] <= 10) | (hsv[:,:,0] >= 170)) & (hsv[:,:,1] >= 150) & (hsv[:,:,2] >= 140)
         # Only inspect the target's price digits, never neighbouring products.
         return int(red.sum()) >= max(8, int(w*h*.015))
+
+    def summary_controls(self, screen):
+        """Recognize the statistics icon row and close symbol, never the title."""
+        controls = {}
+        for name in ('expedition_summary', 'summary_nodes_icon', 'summary_fragments_icon',
+                     'summary_loot_icon', 'summary_close'):
+            found = self.all(screen, name)
+            if len(found) != 1:
+                return None
+            controls[name] = found[0]
+        return controls
 
     def summary_boss_count(self, screen):
         if self.classify(screen) != 'expedition_summary':

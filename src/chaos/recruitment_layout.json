@@ -38,12 +38,20 @@
       "file": "templates/themes/new_supply_open.png"
     },
     "confirm_theme": {
-      "file": "templates/themes/select_theme_button.png",
+      "file": "templates/controls/exploration_action.png",
       "region": [
         900,
         600,
         380,
         120
+      ],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
       ]
     },
     "knight": {
@@ -68,6 +76,14 @@
         490,
         216,
         48
+      ],
+      "exclude": [
+        [
+          22,
+          7,
+          172,
+          34
+        ]
       ]
     },
     "knight_header": {
@@ -81,7 +97,7 @@
       "threshold": 0.9
     },
     "filter": {
-      "file": "templates/controls/hero_filter.png",
+      "file": "templates/controls/filter_symbol.png",
       "region": [
         665,
         0,
@@ -90,18 +106,20 @@
       ]
     },
     "filter_panel": {
-      "file": "raw/knight_filter_menu.png",
-      "crop": [
-        84,
-        84,
-        230,
-        27
-      ],
+      "file": "templates/controls/filter_panel_frame.png",
       "region": [
         65,
         65,
-        275,
-        65
+        870,
+        335
+      ],
+      "exclude": [
+        [
+          12,
+          12,
+          846,
+          311
+        ]
       ]
     },
     "filter_element_label": {
@@ -139,12 +157,15 @@
       "max_color_error": 0.06
     },
     "rose": {
-      "file": "templates/heroes/knight_Shadow_Rose.png",
+      "file": "templates/controls/rose_portrait.png",
       "region": [
         330,
         70,
         950,
         535
+      ],
+      "alternate_files": [
+        "templates/controls/rose_english.png"
       ]
     },
     "rose_selected": {
@@ -163,20 +184,22 @@
       ]
     },
     "recruit_active": {
-      "file": "raw/knight_hero_selected_menu.png",
-      "crop": [
-        946,
-        637,
-        273,
-        48
-      ],
+      "file": "templates/controls/exploration_action.png",
       "region": [
         930,
         615,
         320,
         90
       ],
-      "max_color_error": 0.055
+      "max_color_error": 0.055,
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
+      ]
     },
     "completed": {
       "file": "raw/knight_select_finish.png",
@@ -240,6 +263,12 @@
         70,
         950,
         535
+      ],
+      "crop": [
+        48,
+        0,
+        84,
+        45
       ]
     },
     "wukong_selected": {
@@ -679,6 +708,32 @@
         52
       ],
       "threshold": 0.9
+    },
+    "start_frame": {
+      "file": "templates/controls/entry_action.png",
+      "region": [
+        900,
+        600,
+        380,
+        120
+      ],
+      "exclude": [
+        [
+          30,
+          8,
+          276,
+          56
+        ]
+      ]
+    },
+    "entry_symbol": {
+      "file": "templates/controls/entry_symbol.png",
+      "region": [
+        950,
+        480,
+        90,
+        80
+      ]
     }
   },
   "button_offset": [
@@ -817,5 +872,11 @@
     ],
     "duration_ms": 350,
     "settle_seconds": 0.5
-  }
+  },
+  "filter_element_row": [
+    495,
+    110,
+    345,
+    60
+  ]
 }

@@ -32,58 +32,58 @@ class RankResultTests(unittest.TestCase):
         frame[420:590,310:575] = 0
         self.assertEqual(self.observer.classify(frame), 'rank_result')
 
-    def test_text_tolerates_one_character_error_and_spacing(self):
-        for text in ('RANK UP', 'RANKUP', 'RAN K UP', 'RANXUP', 'RANKP'):
-            self.assertTrue(self.observer.rank_up_text_matches(text, .6), text)
-        for text, confidence in [('RANK', .99), ('LEVELUP', .99), ('RANKUP', .3), ('', .99)]:
-            self.assertFalse(self.observer.rank_up_text_matches(text, confidence))
+    def test_glowing_rank_text_is_not_required(self):
+        frame = self.frame()
+        frame[330:420, 310:575] = 0
+        with patch.object(self.observer, 'ocr') as ocr:
+            self.assertTrue(self.observer.is_rank_result(frame))
+            ocr.assert_not_called()
 
-    def test_arrow_and_text_are_both_required(self):
+    def test_arrow_and_rank_symbols_are_required(self):
         frame = self.frame()
         frame[195:265,805:895] = 0
         with patch.object(self.observer, 'ocr') as ocr:
             self.assertFalse(self.observer.is_rank_result(frame))
             ocr.assert_not_called()
-        with patch.object(self.observer, 'ocr', Mock(return_value=([['LEVEL UP', .99]], None))):
-            self.assertFalse(self.observer.is_rank_result(self.frame()))
+        frame = self.frame()
+        frame[209:253, 882:927] = 0
+        self.assertFalse(self.observer.is_rank_result(frame))
 
     def test_other_rewards_cannot_authorize_rank_close(self):
         for name in ('event_loot_popup_live.png', 'event_rank_reward_live.png', 'loot_cards_live.png'):
             self.assertIsNone(self.observer.find(self.frame(name), 'rank_close'))
 
-    def test_latest_rest_result_waits_when_rank_text_is_unreadable(self):
+    def test_latest_rest_result_ignores_unreadable_rank_text(self):
         frame = self.frame('rest_shadow_rose_rankup_local_live.png')
         self.assertEqual(self.observer.classify(frame), 'rank_result')
         self.assertIsNotNone(self.observer.find(frame, 'event_loot_close'))
         for rows in (None, [['LEVEL UP', .99]], [['RANK UP', .3]]):
             with self.subTest(rows=rows), patch.object(
-                    self.observer, 'ocr', Mock(return_value=(rows, None))):
-                self.assertIsNone(self.observer.classify(frame))
-                self.assertIsNone(self.observer.find(frame, 'rank_close'))
+                    self.observer, 'ocr', Mock(return_value=(rows, None))) as ocr:
+                self.assertEqual(self.observer.classify(frame), 'rank_result')
+                self.assertIsNotNone(self.observer.find(frame, 'rank_close'))
+                ocr.assert_not_called()
 
     def test_actual_loot_popup_still_classifies_with_unreadable_rank_text(self):
         with patch.object(self.observer, 'ocr', Mock(return_value=(None, None))):
             self.assertEqual(self.observer.classify(self.frame('event_loot_popup_live.png')),
                              'event_loot_popup')
 
-    def test_transient_ocr_miss_waits_then_sends_rank_close(self):
+    def test_rank_close_does_not_call_ocr(self):
         frame = self.frame('rest_shadow_rose_rankup_local_live.png')
-        reads = [0]
-        def ocr(*args, **kwargs):
-            reads[0] += 1
-            return ([['LEVEL UP' if reads[0] <= 3 else 'RANK UP', .99]], None)
         with tempfile.TemporaryDirectory() as tmp:
             bot = NodeProgressionBot(Mock(), ROOT, tmp, self.observer)
             bot._capture = lambda: frame
             taps = []
             bot._tap = lambda bounds: taps.append(tuple(bounds))
             classify = self.observer.classify
-            with patch.object(self.observer, 'ocr', side_effect=ocr), \
+            with patch.object(self.observer, 'ocr', side_effect=AssertionError('text OCR must not run')) as ocr, \
                  patch.object(self.observer, 'classify', side_effect=lambda s: 'rest' if taps else classify(s)), \
                  patch.object(self.observer, 'forbidden', return_value=[]):
                 self.assertEqual(bot._dismiss_popup('결과 닫기', 'rank_result', 'rank_close',
                                                    {'rest', 'event_loot_popup'}), 'rest')
             self.assertEqual(taps, [tuple(self.observer.config['rank_result_close_bounds'])])
+            ocr.assert_not_called()
 
     def test_rankup_flow_uses_common_result_without_card_digit_read(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -100,6 +100,8 @@ class RankResultTests(unittest.TestCase):
             with patch.object(self.observer, 'classify', side_effect=lambda s: 'rank_menu' if s is menu else original_classify(s)), \
                  patch.object(self.observer, 'find', side_effect=lambda s,n: (10,20,30,40) if s is menu else original_find(s,n)), \
                  patch.object(self.observer, 'forbidden', return_value=[]), \
+                   patch.object(self.observer, 'rank_hero_selected', return_value=True), \
+                   patch.dict(self.observer.config, timeout_seconds=3, recognition_attempts=1), \
                  patch.object(self.observer, 'read_rank_digit') as digit:
                 bot._rankup()
                 digit.assert_not_called()
@@ -181,14 +183,20 @@ class BattleRankCompletionTests(unittest.TestCase):
         self.assertEqual(self.observer.classify(screen), 'battle_rank_complete')
         self.assertEqual(self.observer.find(screen, 'continue'), (625, 645, 75, 27))
 
-    def test_class_icon_victory_and_explore_label_are_all_required(self):
-        for bounds in ((704, 532, 48, 48), (480, 15, 350, 75), (625, 645, 75, 27)):
+    def test_class_icon_victory_and_continue_control_are_all_required(self):
+        for bounds in ((704, 532, 48, 48), (480, 15, 350, 75), (473, 626, 334, 70)):
             screen = self.frame()
             x, y, w, h = bounds
             screen[y:y+h, x:x+w] = 0
             with self.subTest(bounds=bounds):
                 self.assertIsNone(self.observer.find(screen, 'battle_rank_complete'))
                 self.assertNotEqual(self.observer.classify(screen), 'battle_rank_complete')
+
+    def test_continue_lettering_is_not_required_when_the_frame_is_verified(self):
+        screen = self.frame()
+        screen[645:672, 625:700] = 0
+        self.assertIsNotNone(self.observer.find(screen, 'battle_rank_complete'))
+        self.assertEqual(self.observer.classify(screen), 'battle_rank_complete')
 
     def test_other_rewards_do_not_complete_rankup(self):
         for name in ('battle/victory_live.png', 'battle/victory_rank_reward_live.png',

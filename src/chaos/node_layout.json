@@ -28,8 +28,607 @@
     "event"
   ],
   "markers": {
-    "enter": {
-      "file": "images/chaos/raw/enter_chaos_button.png",
+    "recruit_title_legacy": {
+      "file": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
+      "crop": [
+        595,
+        458,
+        95,
+        40
+      ],
+      "region": [
+        575,
+        445,
+        135,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055
+    },
+    "recruit_card_frame": {
+      "file": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
+      "crop": [
+        514,
+        114,
+        252,
+        426
+      ],
+      "region": [
+        514,
+        114,
+        252,
+        426
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          14,
+          14,
+          224,
+          398
+        ]
+      ]
+    },
+    "ticket_class_knight": {
+      "file": "images/chaos/hero_selection/raw/Screenshot_2026.09.24_10.44.15.754.png",
+      "crop": [
+        180,
+        180,
+        80,
+        80
+      ],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    "ticket_class_warrior": {
+      "file": "images/chaos/hero_selection/raw/Screenshot_2026.09.24_10.44.15.754.png",
+      "crop": [
+        460,
+        180,
+        80,
+        80
+      ],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    "ticket_class_thief": {
+      "file": "images/chaos/hero_selection/raw/Screenshot_2026.09.24_10.44.15.754.png",
+      "crop": [
+        1020,
+        180,
+        80,
+        80
+      ],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    "ticket_class_soul_weaver": {
+      "file": "images/chaos/hero_selection/raw/Screenshot_2026.09.24_10.44.15.754.png",
+      "crop": [
+        740,
+        180,
+        80,
+        80
+      ],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    "ticket_class_ranger": {
+      "file": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
+      "crop": [
+        600,
+        160,
+        80,
+        80
+      ],
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "match_scales": [
+        0.9,
+        0.95,
+        1,
+        1.05
+      ]
+    },
+    "ticket_class_mage": {
+      "file": "images/chaos/node_progression/templates/recruitment/mage_filter_symbol.png",
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.15,
+      "match_scales": [
+        2.25,
+        2.375,
+        2.5,
+        2.625
+      ]
+    },
+    "recruit_skip_confirm_frame": {
+      "file": "images/chaos/node_progression/raw/recruit_skip_confirm_local_live.png",
+      "crop": [
+        649,
+        430,
+        198,
+        60
+      ],
+      "region": [
+        635,
+        415,
+        225,
+        90
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "exclude": [
+        [
+          15,
+          10,
+          168,
+          40
+        ]
+      ]
+    },
+    "recruit_skip_cancel_frame": {
+      "file": "images/chaos/node_progression/raw/recruit_skip_confirm_local_live.png",
+      "crop": [
+        434,
+        430,
+        198,
+        60
+      ],
+      "region": [
+        420,
+        415,
+        225,
+        90
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "exclude": [
+        [
+          15,
+          10,
+          168,
+          40
+        ]
+      ]
+    },
+    "supply_first_disabled": {
+      "file": "images/chaos/node_progression/raw/supply_done_live.png",
+      "crop": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "supply_chest_closed": {
+      "file": "images/chaos/node_progression/raw/supply_menu_local_live.png",
+      "crop": [
+        590,
+        515,
+        120,
+        35
+      ],
+      "region": [
+        575,
+        505,
+        155,
+        60
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055
+    },
+    "supply_chest_open": {
+      "file": "images/chaos/node_progression/raw/supply_done_live.png",
+      "crop": [
+        590,
+        515,
+        120,
+        35
+      ],
+      "region": [
+        575,
+        505,
+        155,
+        60
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055
+    },
+    "supply_menu_first": {
+      "file": "images/chaos/node_progression/raw/supply_menu_local_live.png",
+      "crop": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "supply_option_disabled": {
+      "file": "images/chaos/node_progression/raw/supply_done_live.png",
+      "crop": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "rest_static_left": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        250,
+        235,
+        90,
+        65
+      ],
+      "region": [
+        250,
+        235,
+        90,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "rest_static_roof": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        700,
+        230,
+        80,
+        50
+      ],
+      "region": [
+        700,
+        230,
+        80,
+        50
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "rest_option_disabled": {
+      "file": "images/chaos/node_progression/raw/rest_completed_live.png",
+      "crop": [
+        905,
+        148,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        148,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ]
+    },
+    "rest_option_2": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ]
+    },
+    "rest_option_3": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ]
+    },
+    "rest_option_4": {
+      "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
+      "crop": [
+        905,
+        478,
+        330,
+        94
+      ],
+      "region": [
+        905,
+        478,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ]
+    },
+    "entry_action": {
+      "file": "images/chaos/hero_selection/templates/controls/entry_action.png",
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "region": [
+        900,
+        600,
+        380,
+        120
+      ],
+      "exclude": [
+        [
+          30,
+          8,
+          276,
+          56
+        ]
+      ]
+    },
+    "entry_symbol": {
+      "file": "images/chaos/hero_selection/templates/controls/entry_symbol.png",
+      "region": [
+        950,
+        480,
+        90,
+        80
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "setup_symbol": {
+      "file": "images/chaos/hero_selection/templates/controls/setup_symbol.png",
+      "region": [
+        130,
+        630,
+        85,
+        75
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "detail_symbol": {
+      "file": "images/chaos/hero_selection/templates/controls/detail_symbol.png",
+      "region": [
+        1200,
+        85,
+        70,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "continue_frame": {
+      "file": "images/chaos/hero_selection/templates/controls/continue_frame.png",
+      "region": [
+        460,
+        615,
+        360,
+        90
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          30,
+          8,
+          274,
+          52
+        ]
+      ]
+    },
+    "level_frame": {
+      "file": "images/chaos/hero_selection/templates/controls/level_frame.png",
+      "region": [
+        382,
+        168,
+        518,
+        263
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          140,
+          45,
+          240,
+          140
+        ]
+      ]
+    },
+    "action_frame": {
+      "file": "images/chaos/hero_selection/templates/controls/exploration_action.png",
       "threshold": 0.9,
       "max_color_error": 0.055,
       "region": [
@@ -37,6 +636,33 @@
         620,
         320,
         80
+      ],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
+      ]
+    },
+    "enter": {
+      "file": "images/chaos/hero_selection/templates/controls/exploration_action.png",
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "region": [
+        930,
+        620,
+        320,
+        80
+      ],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
       ]
     },
     "enter_node": {
@@ -128,33 +754,47 @@
       "threshold": 0.9,
       "max_color_error": 0.055,
       "crop": [
-        942,
-        100,
-        94,
-        26
+        1210,
+        96,
+        45,
+        40
       ],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ]
     },
     "detail_rest": {
       "file": "images/chaos/node_progression/raw/rest_menu_local_live.png",
-      "threshold": 0.9,
-      "max_color_error": 0.055,
       "crop": [
-        987,
-        184,
-        37,
-        26
+        905,
+        148,
+        330,
+        94
       ],
       "region": [
-        920,
-        170,
-        290,
-        45
+        905,
+        148,
+        330,
+        94
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
       ]
     },
     "rest_done": {
@@ -176,19 +816,27 @@
     },
     "rank_title": {
       "file": "images/chaos/node_progression/raw/rest_rank_menu_live.png",
-      "threshold": 0.9,
-      "max_color_error": 0.055,
       "crop": [
-        66,
-        17,
-        150,
-        34
+        0,
+        65,
+        322,
+        540
       ],
       "region": [
-        50,
-        5,
-        240,
-        60
+        0,
+        65,
+        322,
+        540
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          12,
+          12,
+          298,
+          516
+        ]
       ]
     },
     "wukong": {
@@ -379,20 +1027,22 @@
       ]
     },
     "rank_button": {
-      "file": "images/chaos/node_progression/raw/rest_wukong_selected_live.png",
+      "file": "images/chaos/hero_selection/templates/controls/exploration_action.png",
       "threshold": 0.9,
       "max_color_error": 0.055,
-      "crop": [
-        1036,
-        646,
-        109,
-        29
-      ],
       "region": [
         930,
         620,
         320,
         80
+      ],
+      "exclude": [
+        [
+          18,
+          6,
+          264,
+          52
+        ]
       ]
     },
     "levelup": {
@@ -774,16 +1424,16 @@
     "rest_detail": {
       "file": "images/chaos/node_progression/raw/rest_detail_live.png",
       "crop": [
-        943,
-        100,
-        60,
-        28
+        1210,
+        96,
+        45,
+        40
       ],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.055
@@ -791,16 +1441,16 @@
     "supply_detail": {
       "file": "images/chaos/node_progression/raw/supply_detail_live.png",
       "crop": [
-        943,
-        100,
-        55,
-        28
+        1210,
+        96,
+        45,
+        40
       ],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.06
@@ -808,19 +1458,33 @@
     "supply_loot": {
       "file": "images/chaos/node_progression/raw/supply_menu_local_live.png",
       "crop": [
-        930,
-        402,
-        55,
-        28
+        905,
+        368,
+        330,
+        94
       ],
       "region": [
-        920,
-        380,
-        270,
-        75
+        905,
+        368,
+        330,
+        94
       ],
-      "threshold": 0.85,
-      "max_color_error": 0.1
+      "threshold": 0.9,
+      "max_color_error": 0.055,
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ]
     },
     "supply_done": {
       "file": "images/chaos/raw/Screenshot_2026.09.24_09.29.50.037.png",
@@ -859,36 +1523,52 @@
     "loot_button": {
       "file": "images/chaos/node_progression/raw/loot_selected_live.png",
       "crop": [
-        592,
-        646,
-        102,
-        29
+        473,
+        626,
+        334,
+        70
       ],
       "region": [
-        480,
-        620,
-        330,
-        80
+        460,
+        615,
+        360,
+        90
       ],
       "threshold": 0.88,
-      "max_color_error": 0.08
+      "max_color_error": 0.08,
+      "exclude": [
+        [
+          28,
+          8,
+          278,
+          54
+        ]
+      ]
     },
     "loot_button_dim": {
       "file": "images/chaos/node_progression/raw/loot_cards_live.png",
       "crop": [
-        592,
-        646,
-        102,
-        29
+        473,
+        626,
+        334,
+        70
       ],
       "region": [
-        480,
-        620,
-        330,
-        80
+        460,
+        615,
+        360,
+        90
       ],
       "threshold": 0.9,
-      "max_color_error": 0.06
+      "max_color_error": 0.06,
+      "exclude": [
+        [
+          28,
+          8,
+          278,
+          54
+        ]
+      ]
     },
     "loot_selected_edge": {
       "file": "images/chaos/node_progression/raw/loot_selected_live.png",
@@ -906,23 +1586,6 @@
       ],
       "threshold": 0.9,
       "max_color_error": 0.12
-    },
-    "loot_reward": {
-      "file": "images/chaos/raw/Screenshot_2026.09.24_09.31.37.239.png",
-      "crop": [
-        727,
-        517,
-        98,
-        27
-      ],
-      "region": [
-        210,
-        495,
-        850,
-        75
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.06
     },
     "shop_npc": {
       "file": "images/chaos/node_progression/raw/shop/shop_full.png",
@@ -975,23 +1638,6 @@
       "threshold": 0.9,
       "max_color_error": 0.06
     },
-    "reward_hero": {
-      "file": "images/chaos/raw/Screenshot_2026.09.24_09.52.22.437.png",
-      "crop": [
-        867,
-        517,
-        83,
-        27
-      ],
-      "region": [
-        210,
-        495,
-        850,
-        75
-      ],
-      "threshold": 0.9,
-      "max_color_error": 0.06
-    },
     "arrow_boss": {
       "file": "images/chaos/node_progression/raw/boss_map_live.png",
       "crop": [
@@ -1012,16 +1658,16 @@
     "elite_detail": {
       "file": "images/chaos/node_progression/raw/elite_detail_live.png",
       "crop": [
-        943,
-        100,
-        100,
-        28
+        1210,
+        96,
+        45,
+        40
       ],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.06
@@ -1029,16 +1675,16 @@
     "boss_detail": {
       "file": "images/chaos/node_progression/raw/boss_detail_live.png",
       "crop": [
-        943,
-        100,
-        100,
-        28
+        1210,
+        96,
+        45,
+        40
       ],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.9,
       "max_color_error": 0.06
@@ -1046,16 +1692,16 @@
     "event_detail": {
       "file": "images/chaos/node_progression/raw/event_detail_live.png",
       "crop": [
-        940,
-        98,
-        65,
-        30
+        1210,
+        96,
+        45,
+        40
       ],
       "region": [
-        920,
+        1200,
         85,
-        280,
-        70
+        70,
+        65
       ],
       "threshold": 0.92,
       "max_color_error": 0.07
@@ -1196,26 +1842,20 @@
       "threshold": 0.92,
       "max_color_error": 0.07
     },
-    "hero_departure_title": {
-      "file": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
-      "crop": [69, 18, 148, 31],
-      "region": [60, 12, 170, 45],
-      "threshold": 0.92,
-      "max_color_error": 0.10
-    },
-    "hero_departure_button": {
-      "file": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
-      "crop": [1034, 646, 107, 29],
-      "region": [1020, 637, 135, 46],
+    "event_hero_rank_mark": {
+      "file": "images/chaos/node_progression/raw/rest_rank_menu_live.png",
+      "crop": [361, 135, 20, 22],
+      "region": [345, 120, 55, 370],
       "threshold": 0.88,
-      "max_color_error": 0.30
-    },
-    "hero_departure_card": {
-      "file": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
-      "crop": [353, 86, 20, 12],
-      "region": [335, 75, 50, 440],
-      "threshold": 0.90,
       "max_color_error": 0.15
+    },
+    "event_hero_action_dim": {
+      "file": "images/chaos/node_progression/raw/event_hero_departure_local_live.png",
+      "crop": [938, 628, 300, 64],
+      "region": [938, 628, 300, 64],
+      "exclude": [[18, 6, 264, 52]],
+      "threshold": 0.9,
+      "max_color_error": 0.09
     },
     "event_intro_panel": {
       "file": "images/chaos/node_progression/raw/event_intro_issue17.png",
@@ -1312,36 +1952,43 @@
     "defeat": {
       "file": "images/chaos/node_progression/raw/battle_defeat_live.png",
       "crop": [
-        497,
-        282,
-        295,
-        47
+        550,
+        52,
+        184,
+        216
       ],
       "region": [
-        460,
-        250,
-        360,
-        105
+        538,
+        40,
+        208,
+        240
       ],
+      "threshold": 0.9,
+      "max_color_error": 0.15
+    },
+    "defeat_ornament": {
+      "file": "images/chaos/node_progression/raw/battle_defeat_live.png",
+      "crop": [478, 150, 76, 112],
+      "region": [466, 138, 100, 136],
       "threshold": 0.9,
       "max_color_error": 0.15
     },
     "expedition_summary": {
       "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
       "crop": [
-        571,
-        35,
-        145,
-        40
+        732,
+        150,
+        80,
+        94
       ],
       "region": [
-        550,
-        20,
-        180,
-        80
+        724,
+        142,
+        96,
+        110
       ],
       "threshold": 0.9,
-      "max_color_error": 0.15
+      "max_color_error": 0.12
     },
     "summary_close": {
       "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
@@ -1663,36 +2310,52 @@
     "recruit_reward_title": {
       "file": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
       "crop": [
-        595,
-        458,
-        95,
-        40
+        535,
+        454,
+        212,
+        55
       ],
       "region": [
-        575,
+        525,
         445,
-        135,
-        65
+        232,
+        75
       ],
       "threshold": 0.9,
-      "max_color_error": 0.055
+      "max_color_error": 0.055,
+      "exclude": [
+        [
+          18,
+          8,
+          176,
+          38
+        ]
+      ]
     },
     "recruit_continue": {
       "file": "images/chaos/node_progression/raw/event_recruit_reward_live.png",
       "crop": [
-        580,
-        632,
-        124,
-        34
+        473,
+        615,
+        334,
+        75
       ],
       "region": [
-        550,
-        620,
-        184,
-        60
+        460,
+        605,
+        360,
+        95
       ],
       "threshold": 0.9,
-      "max_color_error": 0.055
+      "max_color_error": 0.055,
+      "exclude": [
+        [
+          28,
+          8,
+          278,
+          58
+        ]
+      ]
     },
     "event_blue_flower": {
       "file": "images/chaos/node_progression/raw/event_blue_flower_live.png",
@@ -2563,36 +3226,18 @@
     },
     "event_rank_reward_button": {
       "file": "images/chaos/node_progression/raw/event_rank_reward_live.png",
-      "crop": [
-        578,
-        465,
-        126,
-        31
-      ],
-      "region": [
-        540,
-        450,
-        205,
-        60
-      ],
-      "threshold": 0.92,
+      "crop": [535, 454, 210, 54],
+      "region": [535, 454, 210, 54],
+      "exclude": [[18, 8, 174, 38]],
+      "threshold": 0.9,
       "max_color_error": 0.055
     },
     "event_reward_continue": {
       "file": "images/chaos/node_progression/raw/event_rank_reward_live.png",
-      "crop": [
-        578,
-        633,
-        130,
-        32
-      ],
-      "region": [
-        545,
-        615,
-        195,
-        70
-      ],
-      "threshold": 0.92,
+      "crop": [475, 614, 330, 77],
+      "region": [475, 614, 330, 77],
+      "exclude": [[28, 14, 274, 48]],
+      "threshold": 0.9,
       "max_color_error": 0.055
     },
     "event_bone_throne": {
@@ -2629,6 +3274,13 @@
       "threshold": 0.92,
       "max_color_error": 0.055
     },
+    "rank_result_mark": {
+      "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
+      "crop": [893, 220, 21, 24],
+      "region": [710, 205, 320, 50],
+      "threshold": 0.88,
+      "max_color_error": 0.12
+    },
     "rank_result_arrow": {
       "file": "images/chaos/node_progression/raw/rank_result_event_live.png",
       "crop": [
@@ -2638,10 +3290,10 @@
         24
       ],
       "region": [
-        805,
-        195,
-        90,
-        70
+        710,
+        205,
+        320,
+        50
       ],
       "threshold": 0.85,
       "max_color_error": 0.15
@@ -3105,23 +3757,6 @@
       "threshold": 0.9,
       "max_color_error": 0.12
     },
-    "battle_rank_reward": {
-      "file": "images/chaos/node_progression/raw/battle/victory_rank_reward_live.png",
-      "crop": [
-        588,
-        516,
-        109,
-        30
-      ],
-      "region": [
-        240,
-        480,
-        800,
-        100
-      ],
-      "threshold": 0.92,
-      "max_color_error": 0.055
-    },
     "event_rusted_bars": {
       "file": "images/chaos/node_progression/raw/event_rusted_bars_live.png",
       "crop": [
@@ -3165,13 +3800,29 @@
         28
       ],
       "region": [
-        840,
-        502,
-        44,
-        44
+        650,
+        500,
+        490,
+        110
       ],
       "threshold": 0.9,
       "max_color_error": 0.1
+    },
+    "consume_confirm_active": {
+      "file": "images/chaos/node_progression/raw/event_loot_consume_leaf_selected_live.png",
+      "crop": [472, 636, 336, 68],
+      "region": [472, 636, 336, 68],
+      "exclude": [[32, 8, 272, 48]],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "consume_confirm_dim": {
+      "file": "images/chaos/node_progression/raw/event_loot_consume_leaf_live.png",
+      "crop": [472, 636, 336, 68],
+      "region": [472, 636, 336, 68],
+      "exclude": [[32, 8, 272, 48]],
+      "threshold": 0.9,
+      "max_color_error": 0.09
     },
     "battle_rank_complete_knight": {
       "file": "images/chaos/hero_selection/raw/knight_select_finish.png",
@@ -3257,6 +3908,224 @@
       ],
       "threshold": 0.92,
       "max_color_error": 0.055
+    },
+    "battle_loot_icon": {
+      "file": "images/chaos/node_progression/templates/battle/loot_icon.png",
+      "crop": [1, 5, 73, 60],
+      "region": [
+        240,
+        205,
+        800,
+        95
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "battle_reward_button": {
+      "file": "images/chaos/node_progression/templates/battle/reward_button.png",
+      "region": [
+        220,
+        495,
+        850,
+        80
+      ],
+      "exclude": [
+        [
+          18,
+          8,
+          176,
+          38
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "battle_rank_icon": {
+      "file": "images/chaos/node_progression/raw/battle/victory_rank_reward_live.png",
+      "crop": [
+        600,
+        215,
+        80,
+        80
+      ],
+      "region": [
+        240,
+        205,
+        800,
+        95
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "supply_menu_first_variant": {
+      "file": "images/chaos/node_progression/templates/supply/menu_first.png",
+      "region": [
+        905,
+        258,
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055
+    },
+    "supply_loot_variant": {
+      "file": "images/chaos/node_progression/templates/supply/loot_active.png",
+      "region": [
+        905,
+        368,
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055
+    },
+    "ticket_class_all": {
+      "file": "images/chaos/node_progression/templates/recruitment/all_ticket_symbol.png",
+      "region": [
+        585,
+        145,
+        115,
+        110
+      ],
+      "match_scales": [
+        0.95,
+        1,
+        1.05
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "rest_option_4_active": {
+      "file": "images/chaos/node_progression/templates/rest/recovery_active.png",
+      "region": [
+        905,
+        478,
+        330,
+        94
+      ],
+      "exclude": [
+        [
+          18,
+          14,
+          294,
+          70
+        ],
+        [
+          310,
+          30,
+          20,
+          36
+        ]
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09
+    },
+    "shop_display_base": {
+      "file": "images/chaos/node_progression/raw/shop/shop_full.png",
+      "crop": [
+        381,
+        570,
+        18,
+        38
+      ],
+      "region": [
+        375,
+        560,
+        40,
+        55
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.06
+    },
+    "shop_detail": {
+      "file": "images/chaos/node_progression/templates/nodes/shop_detail_icon.png",
+      "region": [
+        1200,
+        85,
+        70,
+        65
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.06
+    },
+    "summary_nodes_icon": {
+      "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        530,
+        156,
+        80,
+        80
+      ],
+      "region": [
+        522,
+        148,
+        96,
+        96
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12
+    },
+    "summary_fragments_icon": {
+      "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        933,
+        158,
+        68,
+        72
+      ],
+      "region": [
+        925,
+        150,
+        84,
+        88
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12
+    },
+    "summary_loot_icon": {
+      "file": "images/chaos/node_progression/raw/expedition_summary_live.png",
+      "crop": [
+        1130,
+        156,
+        80,
+        80
+      ],
+      "region": [
+        1122,
+        148,
+        96,
+        96
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.12
     }
   },
   "loot_cards": [
@@ -4760,12 +5629,6 @@
     29,
     29
   ],
-  "rank_result_text_region": [
-    335,
-    340,
-    210,
-    80
-  ],
   "rank_result_close_bounds": [
     582,
     679,
@@ -4825,9 +5688,9 @@
     ]
   },
   "event_loot_consume_plus_region": [
-    868,
-    528,
-    55,
-    55
+    650,
+    510,
+    490,
+    100
   ]
 }

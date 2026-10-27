@@ -6,8 +6,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from src.image_matcher import read_image
+from src.image_matcher import ImageMatcher, read_image
 from .theme_selection import ThemeSelectionDetector
+from .template_masks import apply_exclusions, color_error, matches_fixed_mask
 
 
 class RecruitmentObserver:
@@ -33,9 +34,12 @@ class RecruitmentObserver:
         self.role_icon_markers = {role['header'] for role in self.config['classes'].values()}
         self.portrait_markers = {hero["portrait"] for hero in self.config["heroes"].values()}
         sources = {}
-        needed = {"start", "unlock", "confirm_theme", "recruit_card", "filter", "filter_panel", "filter_element_label", "recruit_active", "completed"}
+        needed = {"start", "unlock", "confirm_theme", "recruit_card", "filter", "filter_panel", "recruit_active", "completed"}
+        needed.update(('start_frame', 'entry_symbol'))
         for element in ("dark", "fire", "ice", "forest", "light"):
             needed.add(element + "_2")
+            if element + '_1' in self.config['markers']:
+                needed.add(element + '_1')
         for hero in self.heroes:
             role = self.config["classes"][hero["class"]]
             needed.update((role["anchor"], role["header"], role["completed_icon"], hero["portrait"], hero["selected"], hero["completed_name"], hero["element"] + "_1"))
@@ -56,7 +60,7 @@ class RecruitmentObserver:
                 if min(x, y) < 0 or min(w, h) <= 0 or x + w > source.shape[1] or y + h > source.shape[0]:
                     raise ValueError(f"잘못된 원본 이미지 영역: {name}")
                 source = source[y:y + h, x:x + w]
-            self.templates[name] = source.copy()
+            self.templates[name] = apply_exclusions(source, definition.get('exclude'), name)
             if name in self.portrait_markers:
                 variants = [self.templates[name]]
                 for filename in definition.get("alternate_files", []):
@@ -78,12 +82,27 @@ class RecruitmentObserver:
             raise RuntimeError("자동 탐사는 1280×720 화면에서 실행해 주세요.")
 
     def find(self, screen, name, region=None):
-        if name == 'filter_panel' and region is None:
-            # Current menus use the compact element label; older captures still
-            # require the original set-label template below.
-            label = self.find(screen, 'filter_element_label')
-            if label is not None:
-                return label
+        if name == 'start':
+            legacy = self._find_template(screen, name, region)
+            if legacy:
+                return legacy
+            if self._find_template(screen, 'entry_symbol'):
+                return self._find_template(screen, 'start_frame')
+            return None
+        bounds = self._find_template(screen, name, region)
+        if name != 'filter_panel' or bounds is None:
+            return bounds
+        # The border alone could belong to another dialog. Require distinct
+        # element symbols in the panel's element row as an independent anchor.
+        row = self.config['filter_element_row']
+        seen = 0
+        for element in ('fire', 'forest', 'light', 'dark'):
+            if any(self._find_template(screen, element + suffix, row) is not None
+                   for suffix in ('_1', '_2')):
+                seen += 1
+        return bounds if seen >= 3 else None
+
+    def _find_template(self, screen, name, region=None):
         if name not in self.templates:
             return None
         definition = self.config["markers"][name]
@@ -96,8 +115,11 @@ class RecruitmentObserver:
         if h < th or w < tw:
             return None
         sample = screen[y:y + h, x:x + w]
-        result = cv2.matchTemplate(sample, template, cv2.TM_CCOEFF_NORMED)
         threshold = definition.get("threshold", 0.90)
+        if template.shape[2] == 4 and (h, w) == (th, tw):
+            return ((x, y, tw, th) if matches_fixed_mask(
+                sample, template, threshold, definition.get('max_color_error', .09)) else None)
+        result = ImageMatcher.match_template(sample, template)
         if name in self.role_icon_markers:
             # List icons identify the role, not a click target. Repeated icons
             # are expected; background colors must not reject the same symbol.
@@ -133,7 +155,7 @@ class RecruitmentObserver:
         if score < threshold:
             return None
         matched = sample[my:my + th, mx:mx + tw]
-        error = float(np.abs(matched.astype(np.float32) - template).mean() / 255)
+        error = color_error(matched, template)
         if error > definition.get("max_color_error", 0.09):
             return None
         # Another independent hit makes the click target ambiguous.

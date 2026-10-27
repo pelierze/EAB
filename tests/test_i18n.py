@@ -99,7 +99,7 @@ class TestI18n(unittest.TestCase):
         self.assertTrue(i18n.is_feature_supported("event", "ko"))
 
         self.assertTrue(i18n.is_feature_supported("secret_shop", "en"))
-        self.assertFalse(i18n.is_feature_supported("dimensional_exploration", "en"))
+        self.assertTrue(i18n.is_feature_supported("dimensional_exploration", "en"))
         self.assertTrue(i18n.is_feature_supported("penguin", "en"))
         self.assertFalse(i18n.is_feature_supported("event", "en"))
 

@@ -27,18 +27,18 @@ class RestRankLabelTests(unittest.TestCase):
         self.assertIsNone(self.observer.find(screen, 'detail_rest'))
         self.assertIsNotNone(self.observer.find(screen, 'rest_done'))
 
-    def test_other_text_on_rest_screen_does_not_authorize_rankup(self):
+    def test_rankup_caption_is_not_required_when_active_frame_is_verified(self):
         screen = read_image(str(RAW / 'rest_menu_local_live.png'))
         screen[184:210, 987:1024] = 0
         self.assertEqual(self.observer.classify(screen), 'rest')
-        self.assertIsNone(self.observer.find(screen, 'detail_rest'))
+        self.assertIsNotNone(self.observer.find(screen, 'detail_rest'))
 
     def test_detail_screen_does_not_look_like_rankup_option(self):
         screen = read_image(str(RAW / 'rest_detail_live.png'))
         self.assertIsNone(self.observer.find(screen, 'detail_rest'))
 
-    def test_label_crop_and_source_are_packaged(self):
-        self.assertEqual(self.observer.templates['detail_rest'].shape[:2], (26, 37))
+    def test_masked_option_frame_and_source_are_packaged(self):
+        self.assertEqual(self.observer.templates['detail_rest'].shape, (94, 330, 4))
         self.assertIn('images/chaos/node_progression/raw/rest_menu_local_live.png', used_images(ROOT))
 
 

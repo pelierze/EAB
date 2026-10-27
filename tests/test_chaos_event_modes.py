@@ -82,7 +82,7 @@ class EventModesTest(unittest.TestCase):
             with patch('src.chaos.exploration.random.choice', side_effect=lambda choices: choices[0]):
                 self.assertEqual(bot._event(), 'unknown_event_result')
             self.assertEqual(bot._event_result(), 'event')
-            self.assertEqual(taps, [(268,556,362,131), tuple(observer.config['event_advance_bounds'])])
+            self.assertEqual(taps, [(268,556,362,131), observer.find(result, 'event_advance')])
 
     def test_retained_marker_without_advance_does_not_authorize_result(self):
         frame = self.screen('event_library_book_result_live.png').copy()
@@ -140,15 +140,16 @@ class EventModesTest(unittest.TestCase):
         self.assertEqual(choices[0], (704, 192))
 
     def test_handle_loot_consume_taps_item_and_confirm(self):
-        frame = self.screen('event_loot_consume_live.png')
+        frame = self.screen('event_loot_consume_leaf_live.png')
+        selected = self.screen('event_loot_consume_leaf_selected_live.png')
         result_frame = self.screen('event_abandoned_pack_result_live.png')
         index = [0]
-        adb = Mock(capture_frame=lambda: frame if index[0] < 2 else result_frame)
+        adb = Mock(capture_frame=lambda: frame if index[0] == 0 else selected if index[0] == 1 else result_frame)
         def tap(*args, **kwargs):
             index[0] += 1
             return True
         adb.tap.side_effect = tap
-        with tempfile.TemporaryDirectory() as tmp, patch.object(self.observer, 'loot_consume_selected', side_effect=lambda *args: index[0] == 1):
+        with tempfile.TemporaryDirectory() as tmp:
             bot = NodeProgressionBot(adb, ROOT, tmp, self.observer)
             state = bot._handle_loot_consume()
             self.assertEqual(state, 'event_result')
@@ -213,7 +214,7 @@ class EventModesTest(unittest.TestCase):
             bot._unknown_event()
             bot._tap.assert_called_once()
             self.assertFalse(hasattr(bot, 'event_reader'))
-            bot._event_transition.assert_called_once_with(bot._event_signature(self.screen()))
+            bot._event_transition.assert_called_once_with(bot._event_signature(self.screen()), choice_warning=True)
 
     def test_registered_event_uses_common_random_handler(self):
         with tempfile.TemporaryDirectory() as tmp:

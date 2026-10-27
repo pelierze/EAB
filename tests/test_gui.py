@@ -5,11 +5,19 @@ import tkinter as tk
 from tkinter import ttk
 
 from src.gui import SecretShopGUI, SessionView
+from src import i18n
 
 
 class ChaosSessionLifecycleTest(unittest.TestCase):
+    def setUp(self):
+        i18n.set_language("ko", persist=False)
+        messageboxes = patch("src.gui.messagebox.showerror")
+        self.messageboxes = messageboxes.start()
+        self.addCleanup(messageboxes.stop)
+
     def test_stop_keeps_session_busy_until_worker_finishes(self):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.current_mode = "chaos"
         view.is_running = True
@@ -39,6 +47,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
 
     def test_chaos_start_rejects_a_worker_that_has_not_exited(self):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = Mock()
@@ -50,6 +59,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
     @patch("src.gui.ExplorationBot")
     def test_chaos_start_passes_configured_rank_priority(self, mock_exploration_bot):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = None
@@ -75,10 +85,10 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
             "thief": Mock(current=Mock(return_value=0)),
         }
         view.chaos_rank_priority_combos = {
-            "knight": Mock(get=Mock(return_value="3순위")),
-            "warrior": Mock(get=Mock(return_value="2순위")),
-            "soul_weaver": Mock(get=Mock(return_value="제외")),
-            "thief": Mock(get=Mock(return_value="1순위")),
+            "knight": Mock(current=Mock(return_value=2)),
+            "warrior": Mock(current=Mock(return_value=1)),
+            "soul_weaver": Mock(current=Mock(return_value=4)),
+            "thief": Mock(current=Mock(return_value=0)),
         }
         view._start_chaos_bot()
         self.assertTrue(view.is_running)
@@ -91,6 +101,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
     @patch("src.gui.ExplorationBot")
     def test_chaos_start_passes_configured_target_clears(self, mock_exploration_bot):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = None
@@ -114,6 +125,7 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
     @patch("src.gui.ExplorationBot")
     def test_chaos_start_passes_cost_fallback_option(self, mock_exploration_bot):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = None
@@ -163,10 +175,10 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
         view = object.__new__(SessionView)
         # Setup: warrior is 1st, thief is 2nd, knight is 3rd, soul_weaver is 제외
         combos = {
-            "warrior": Mock(get=Mock(return_value="1순위"), set=Mock()),
-            "thief": Mock(get=Mock(return_value="1순위"), set=Mock()), # user just selected 1순위 on thief
-            "knight": Mock(get=Mock(return_value="3순위"), set=Mock()),
-            "soul_weaver": Mock(get=Mock(return_value="제외"), set=Mock()),
+            "warrior": Mock(current=Mock(return_value=0)),
+            "thief": Mock(current=Mock(return_value=0)), # user just selected 1순위 on thief
+            "knight": Mock(current=Mock(return_value=2)),
+            "soul_weaver": Mock(current=Mock(return_value=4)),
         }
         view.chaos_rank_priority_combos = combos
 
@@ -176,16 +188,16 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
         # warrior was the existing 1st priority; unassigned priorities among other classes are:
         # taken by others (excluding warrior): thief (1순위), knight (3순위), soul_weaver (제외)
         # highest available: 2순위
-        combos["warrior"].set.assert_called_once_with("2순위")
+        combos["warrior"].current.assert_any_call(1)
 
     def test_on_chaos_rank_priority_changed_selects_lowest_unassigned_when_needed(self):
         view = object.__new__(SessionView)
         # Setup: warrior is 1st, thief is 2nd, knight is 3rd, soul_weaver becomes 1st
         combos = {
-            "warrior": Mock(get=Mock(return_value="1순위"), set=Mock()),
-            "thief": Mock(get=Mock(return_value="2순위"), set=Mock()),
-            "knight": Mock(get=Mock(return_value="3순위"), set=Mock()),
-            "soul_weaver": Mock(get=Mock(return_value="1순위"), set=Mock()), # user selected 1순위
+            "warrior": Mock(current=Mock(return_value=0)),
+            "thief": Mock(current=Mock(return_value=1)),
+            "knight": Mock(current=Mock(return_value=2)),
+            "soul_weaver": Mock(current=Mock(return_value=0)), # user selected 1순위
         }
         view.chaos_rank_priority_combos = combos
 
@@ -193,12 +205,13 @@ class ChaosSessionLifecycleTest(unittest.TestCase):
 
         # taken by others (excluding warrior): soul_weaver (1순위), thief (2순위), knight (3순위)
         # highest available: 4순위
-        combos["warrior"].set.assert_called_once_with("4순위")
+        combos["warrior"].current.assert_any_call(3)
 
     @patch("tkinter.messagebox.showerror")
     @patch("src.gui.ExplorationBot")
     def test_chaos_start_rejects_invalid_target_clears(self, mock_exploration_bot, mock_showerror):
         view = object.__new__(SessionView)
+        view.debug_mode_var = Mock(get=Mock(return_value=False))
         view.name = "test"
         view.is_running = False
         view.bot_thread = None
