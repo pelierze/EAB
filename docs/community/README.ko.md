@@ -12,8 +12,8 @@
 | --- | --- | --- |
 | 1 | [비밀상점](images/01-secret-shop.png) | Secret Shop: leave the item list open, then start Secret Shop in EAB. Korean screenshot; English game screens are also supported. |
 | 2 | [펭귄 구매 목록](images/02-penguins.png) | Penguins: open Forest of Souls → Growth Altar and leave this list visible. EAB handles the Penguin Nest purchase popup. |
-| 3 | [탐사 시작](images/03-exploration-start.png) | Dimensional Exploration: choose your difficulty and leave Start Exploration visible. English support is still in development. |
-| 4 | [탐사 진행 중 지도](images/04-exploration-map.png) | Already exploring? You can also start from the node map. English support is still in development. |
+| 3 | [탐사 시작](images/03-exploration-start.png) | Dimensional Exploration: choose your difficulty and leave Start Exploration visible. English exploration is supported in v1.7.0 and later. |
+| 4 | [탐사 진행 중 지도](images/04-exploration-map.png) | Already exploring? You can also start from the node map. English exploration is supported in v1.7.0 and later. |
 
 이미지는 기존 인게임 원본을 그대로 복사했습니다. 앱 UI나 가상의 화면을 제작한 것이 아닙니다. 표시된 재화 보유량과 상품 구성은 촬영 당시의 예시입니다.
 
@@ -28,7 +28,7 @@
 
 ## 게시 직전 반영할 항목
 
-**영어 탐사의 배포 상태는 게시 시점에 맞춰 수정해야 합니다.** 현재 개발 코드에서는 영어 탐사 탭이 활성화되어 있지만, 전체 영어 완주 확인은 완료로 기록되어 있지 않습니다. v1.6.0 배포 안내는 한국어 전용으로 기재되어 있어 영어 초안에도 두 상태를 구분했습니다. 새 릴리즈로 지원이 확정되면 제목과 언어 지원 문단을 해당 버전에 맞춰 갱신하세요.
+영어 초안과 캡션은 v1.7.0의 영어 탐사 지원을 기준으로 갱신했습니다. 게시 시 다운로드 링크와 릴리즈 버전이 일치하는지 확인하세요.
 
 게시할 서브레딧이 지정되지 않아 특정 게시판 규칙에 맞는지 확인하지 않았습니다. 게시 위치를 정한 뒤 자동화 도구 소개와 자기 프로젝트 홍보 관련 규칙에 맞춰 게시 형식·플레어를 정하세요.
 

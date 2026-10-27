@@ -1,4 +1,4 @@
-# EAB: an open-source Epic Seven tool for Secret Shop refreshes and Penguin purchases, with English support
+# EAB: an open-source Epic Seven tool for Secret Shop, Penguins, and Dimensional Exploration
 
 Hi everyone! I'm working on **Epic7 Assist Bot (EAB)**, a Windows desktop tool for automating some of Epic Seven's repetitive tasks. The project was previously called SecretShopBot-E7, and I've been working on making it easier to use in English.
 
@@ -11,7 +11,7 @@ It works with the **STOVE PC client** or an **Android emulator through ADB**. Th
 - **Secret Shop:** refreshes the shop and buys Covenant Bookmarks and Mystic Medals. Friendship Points are optional. You can set a refresh count or a Skystone budget.
 - **Free Refresh Only:** checks the shop every 15 minutes without spending Skystones on refreshes. Purchases still cost their normal currency, and this mode keeps running until you stop it.
 - **Penguins:** repeats Penguin Nest purchases using Stigma. Set the number of purchase cycles; each cycle is one purchase repetition, not one Penguin.
-- **Dimensional Exploration:** handles recruitment, node movement, battles, and results, with hero choices and rank-up priorities. **English support for this feature is still in development; see the language notes below.**
+- **Dimensional Exploration:** handles recruitment, node movement, battles, and results, with hero choices and rank-up priorities. Available with English and Korean game screens in v1.7.0 and later.
 
 ## Where to start in the game
 
@@ -41,7 +41,7 @@ Choose your difficulty in the game and leave the hub open with **Start Explorati
 
 ![Dimensional Exploration node map, an alternative starting point for an existing run](images/04-exploration-map.png)
 
-For an existing run, the **node map** is also a supported starting point. The English screenshots show the intended starting locations; they do not mean English exploration is available in every downloadable release.
+For an existing run, the **node map** is also a supported starting point. English exploration is available in v1.7.0 and later. Use Pause to take a break, wait for pause confirmation, and return to the ongoing exploration screen before resuming.
 
 Exploration event choices are selected randomly from eligible detected buttons. EAB does not read the choice descriptions or choose the best outcome, so unfavorable choices are possible.
 
@@ -60,7 +60,7 @@ The app interface can be switched between **English and Korean**. This does not 
 
 **Secret Shop and Penguin purchases support English and Korean game screens.** Some runtime logs and diagnostic messages may still appear in Korean.
 
-**English Dimensional Exploration is a work in progress.** The development version has its English tab enabled, but a complete English run has not yet been verified. The v1.6.0 release documentation lists exploration as Korean-only. Check the release notes of the version you download before trying it on an English game client.
+**Dimensional Exploration supports English and Korean game screens in v1.7.0 and later.** It uses icons and screen layout rather than reading game text. Unrecognized screens can still cause the bot to stop; attach the entire error report folder when reporting a problem.
 
 There are currently **no supported event runs** in the separate Event tab.
 

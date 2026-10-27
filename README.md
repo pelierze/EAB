@@ -16,15 +16,15 @@ Open the **Language** menu at the top of the app and select **English** or **한
 | --- | --- | --- |
 | Secret Shop | Available | Available |
 | Penguin purchases | Available | Available |
-| Dimensional Exploration | Not yet available | Available |
+| Dimensional Exploration | Available | Available |
 | Event tab | Disabled | No events currently supported |
 
-Secret Shop and Penguin purchases use the same recognition logic for Korean and English game screens. Dimensional Exploration does not currently support English game screens. Some runtime logs and diagnostic messages remain in Korean even when the app uses English.
+Secret Shop, Penguin purchases, and Dimensional Exploration support Korean and English game screens. Exploration uses icons and screen layout rather than reading game text. Some runtime logs and diagnostic messages remain in Korean even when the app uses English.
 
 ## Download and run
 
 1. Open the [latest release](https://github.com/pelierze/EAB/releases/latest).
-2. Under **Assets**, download `EAB-v<version>.zip`, such as `EAB-v1.6.0.zip`. Use the release ZIP rather than GitHub's **Source code** downloads.
+2. Under **Assets**, download `EAB-v<version>.zip`, such as `EAB-v1.7.0.zip`. Use the release ZIP rather than GitHub's **Source code** downloads.
 3. Extract the entire archive to a folder.
 4. Run **EAB.exe** inside that folder. Keep the other files and the `_internal` folder alongside it; do not move the executable on its own.
 
@@ -82,12 +82,14 @@ The bot selects the Stigma purchase control for the Penguin Nest, chooses the ma
 
 ### Dimensional Exploration
 
-This feature is currently available through the **Korean interface** and targets Korean game screens. Switching the interface to English disables its tab.
+This feature supports both Korean and English interfaces and game screens.
 
 1. In the game, select the desired difficulty and open the exploration starting screen. You can also start from the node map if a run is already in progress.
 2. In EAB's exploration tab, select a hero for each class and set the rank-up priorities.
 3. Enter the target number of completed runs and review the shop and unrecognized-event options.
 4. Start exploration, or use its stop control to end the run.
+
+To take a break for another in-game task, click **Pause** and wait until the app confirms it has paused. Return the game to the ongoing exploration screen before clicking **Resume**. The bot checks the current screen before continuing. This keeps the current session in memory; it does not pause the game or preserve a resumable session after closing the app.
 
 The bot handles recruitment, node movement, battles, and results, then repeats until it reaches the target run count. It uses the difficulty already selected in the game.
 
