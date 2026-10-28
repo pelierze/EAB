@@ -768,7 +768,7 @@ class SecretShopBot:
                     self._shop_debug.evidence('initial_item_not_found', screen[max(0, y):y+h, max(0, x):x+w])
                 logger.debug("구입 전 동일 상품 위치를 재확인하지 못했습니다: %s", item_name)
                 return None
-            button_threshold = min(self.thresholds.get("purchase_button", .92), 0.88)
+            button_threshold = min(self.thresholds.get("purchase_button", .92), 0.82)
             result = observer.find_button(screen, current_item,
                                            button_threshold,
                                            int(self.macro_layout.get("purchase_line_y_tolerance", 50)))

@@ -172,14 +172,14 @@ class ShopPurchaseObserver:
         return best
 
     @debug_timed('recognition')
-    def find_button(self, screen, item_bounds, threshold=.88, y_tolerance=50):
+    def find_button(self, screen, item_bounds, threshold=.82, y_tolerance=50):
         x, y, w, h = item_bounds
         center_y = y + h / 2
         left, top = x+w, max(0, int(center_y-y_tolerance-27))
         bottom = min(screen.shape[0], int(center_y+y_tolerance+27))
         region = screen[top:bottom, left:]
         candidates = []
-        cand_threshold = min(threshold, 0.88)
+        cand_threshold = min(threshold, 0.82)
         for template in self.templates:
             th, tw = template.shape[:2]
             if region.shape[0] < th or region.shape[1] < tw:

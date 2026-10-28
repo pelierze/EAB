@@ -246,10 +246,18 @@ class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
         self.assertEqual(bot.adb.taps, [])
         self.assertEqual(bot.stats['mystic_medal_bought'], 0)
 
-    def test_find_button_recognizes_disabled_button_at_088_threshold(self):
+    def test_find_button_default_threshold_accepts_masked_disabled_button_above_082(self):
+        screen = self.scene(sold=True)
+        # Verify default threshold (0.82) finds the sold button
+        result = self.observer.find_button(screen, self.item)
+        self.assertIsNotNone(result)
+        bounds, state = result
+        self.assertEqual(state, 'sold')
+
+    def test_find_button_recognizes_disabled_button_at_082_threshold(self):
         screen = self.scene(sold=True)
         # Verify find_button finds the sold button with threshold 0.88
-        result = self.observer.find_button(screen, self.item, threshold=0.88)
+        result = self.observer.find_button(screen, self.item, threshold=0.82)
         self.assertIsNotNone(result)
         bounds, state = result
         self.assertEqual(state, 'sold')

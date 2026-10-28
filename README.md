@@ -24,7 +24,7 @@ Secret Shop, Penguin purchases, and Dimensional Exploration support Korean and E
 ## Download and run
 
 1. Open the [latest release](https://github.com/pelierze/EAB/releases/latest).
-2. Under **Assets**, download `EAB-v<version>.zip`, such as `EAB-v1.7.0.zip`. Use the release ZIP rather than GitHub's **Source code** downloads.
+2. Under **Assets**, download `EAB-v<version>.zip`, such as `EAB-v1.7.1.zip`. Use the release ZIP rather than GitHub's **Source code** downloads.
 3. Extract the entire archive to a folder.
 4. Run **EAB.exe** inside that folder. Keep the other files and the `_internal` folder alongside it; do not move the executable on its own.
 
