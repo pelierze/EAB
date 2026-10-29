@@ -688,14 +688,17 @@ class SecretShopBot:
             # Reuse the pre-click baseline and each existing verification capture.
             # Only an inconclusive result consumes another attempt/capture.
             attempts = max(1, int(verification_count))
-            for verify_attempt in range(attempts):
+            # A purchase notification may temporarily cover the same product.
+            # Allow three read-only rechecks, even with one configured check.
+            maximum = attempts + 3
+            for verify_attempt in range(maximum):
                 if self.user_action == 'stop':
                     return False
                 if self._shop_debug is not None:
                     self._shop_debug.phase = 'verify'
                     self._shop_debug.count('verification_attempts')
                     self._shop_debug.count('verification_retries', int(verify_attempt > 0))
-                    self._shop_debug.record('verification_attempt', attempt=verify_attempt + 1, maximum=attempts)
+                    self._shop_debug.record('verification_attempt', attempt=verify_attempt + 1, maximum=maximum)
                 if self._verify_purchase_complete():
                     if self._shop_debug is not None:
                         self._shop_debug.count('purchases')
@@ -709,6 +712,12 @@ class SecretShopBot:
                     return True
                 if verify_attempt < attempts - 1:
                     self._sleep(self._timing("verify_interval", 0.3))
+                elif getattr(self, '_purchase_item_obscured', False) and verify_attempt < maximum - 1:
+                    logger.info('구매 후 동일 상품 이미지 미확인 — 재구매 없이 1초 대기 후 재확인 (%s/3)',
+                                verify_attempt - attempts + 2)
+                    self._sleep(1.0)
+                else:
+                    break
             logger.warning("⚠️ 구매 완료를 확인하지 못했습니다. 골드 부족, 화면 전환 또는 수량 인식을 확인하세요.")
             self._tap(self.screen_width // 4, self.screen_height // 2,
                          delay=self._timing("close_popup_delay", 0.3))
@@ -946,6 +955,7 @@ class SecretShopBot:
     @debug_timed('verification')
     def _verify_purchase_complete(self) -> bool:
         """Confirm the same product's 1/1 -> 0/1 transition on this capture."""
+        self._purchase_item_obscured = False
         if self._purchase_baseline is None or self.user_action == 'stop':
             return False
         if not self._capture_screenshot("구매 완료 검증"):
@@ -956,7 +966,10 @@ class SecretShopBot:
             if self._shop_debug is not None:
                 self._shop_debug.record('purchase_check', result=False, reason='screen_unreadable')
             return False
-        return self._get_purchase_observer().purchase_complete(screen, self._purchase_baseline, threshold=0.92)
+        observer = self._get_purchase_observer()
+        complete = observer.purchase_complete(screen, self._purchase_baseline, threshold=0.92)
+        self._purchase_item_obscured = observer.item_anchor_missing
+        return complete
 
     def _scroll_down(self):
         """화면을 위로 스크롤 (두 번째 페이지로 이동)"""

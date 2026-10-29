@@ -203,6 +203,77 @@ class ShopPurchaseObserverTests(ShopPurchaseFixtures, unittest.TestCase):
 
 
 class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
+    def obscured(self):
+        screen = self.scene(sold=True)
+        x,y,w,h = self.item
+        screen[y:y+h,x:x+w] = 0
+        return screen
+
+    @patch('src.secret_shop_bot.time.sleep')
+    def test_overlay_waits_even_with_one_check_and_never_buys_again(self, sleep):
+        bot = self.make_bot([self.scene(), self.modal(), self.modal(),
+                             self.obscured(), self.obscured(), self.scene(sold=True)])
+        self.assertTrue(bot._purchase_item('mystic_medal', self.item, 1))
+        self.assertEqual(bot.adb.captures, 6)
+        self.assertEqual(bot.stats['mystic_medal_bought'], 1)
+        self.assertEqual(len(bot.adb.taps), 3)
+        self.assertEqual(sum(c.args == (1.0,) for c in sleep.call_args_list), 2)
+
+    @patch('src.secret_shop_bot.time.sleep')
+    def test_persistent_missing_item_is_bounded_and_never_counted_as_purchase(self, sleep):
+        bot = self.make_bot([self.scene(), self.modal(), self.modal()] + [self.obscured()]*4)
+        self.assertFalse(bot._purchase_item('mystic_medal', self.item, 1))
+        self.assertEqual(bot.adb.captures, 7)
+        self.assertEqual(bot.stats['mystic_medal_bought'], 0)
+        self.assertEqual(len(bot.adb.taps), 3)
+        self.assertEqual(sum(c.args == (1.0,) for c in sleep.call_args_list), 3)
+
+    @patch('src.secret_shop_bot.time.sleep')
+    def test_visible_unsold_item_does_not_receive_extra_overlay_retries(self, sleep):
+        bot = self.make_bot([self.scene(), self.modal(), self.modal(), self.scene()])
+        self.assertFalse(bot._purchase_item('mystic_medal', self.item, 1))
+        self.assertEqual(bot.adb.captures, 4)
+        self.assertEqual(sum(c.args == (1.0,) for c in sleep.call_args_list), 0)
+
+    @patch('src.secret_shop_bot.time.sleep')
+    def test_capture_failure_after_overlay_does_not_reuse_retry_reason(self, sleep):
+        bot = self.make_bot([self.scene(), self.modal(), self.modal(), self.obscured(), None])
+        self.assertFalse(bot._purchase_item('mystic_medal', self.item, 1))
+        self.assertEqual(bot.adb.captures, 5)
+        self.assertFalse(bot._purchase_item_obscured)
+        self.assertEqual(len(bot.adb.taps), 3)
+
+    @patch('src.secret_shop_bot.time.sleep')
+    def test_stop_during_overlay_wait_prevents_capture_and_input(self, sleep):
+        bot = self.make_bot([self.scene(), self.modal(), self.modal(), self.obscured()])
+        def stop_on_extra_wait(seconds):
+            if seconds == 1.0:
+                bot.set_user_action('stop')
+        sleep.side_effect = stop_on_extra_wait
+        self.assertFalse(bot._purchase_item('mystic_medal', self.item, 1))
+        self.assertEqual(bot.adb.captures, 4)
+        self.assertEqual(len(bot.adb.taps), 2)
+
+    @patch('src.secret_shop_bot.time.sleep')
+    def test_issue27_overlays_wait_for_restored_artwork_before_counting(self, sleep):
+        self.item = (567,106,69,61)
+        self.button = (1062,138,183,53)
+        self.icon = read_image(ROOT/'images/items/covenant_bookmark.png')
+        for filename in ('issue27_overlay_a.png', 'issue27_overlay_b.png'):
+            with self.subTest(filename=filename):
+                overlay = read_image(ROOT/'tests/fixtures/shop_purchase'/filename)
+                # No post-notification capture was supplied. Restore only the
+                # occluded icon to model the same row after the notification.
+                clear = overlay.copy()
+                self.put(clear, self.icon, 567,106)
+                initial = clear.copy()
+                self.put(initial, self.active, 1062,138)
+                bot = self.make_bot([initial, self.modal(), self.modal(), overlay, clear])
+                self.assertTrue(bot._purchase_item('covenant_bookmark', self.item, 1))
+                self.assertEqual(bot.adb.captures, 5)
+                self.assertEqual(bot.stats['covenant_bookmark_bought'], 1)
+                self.assertEqual(len(bot.adb.taps), 3)
+
     def make_bot(self, frames):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)

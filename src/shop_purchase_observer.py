@@ -29,6 +29,7 @@ class ShopPurchaseObserver:
             raise ValueError('활성·비활성 구입 버튼 이미지 크기가 다릅니다.')
         self.templates = (active, disabled)
         self.ocr = None
+        self.item_anchor_missing = False
         self.glyphs = [self._glyphs(image[:, :, :3]) for image in self.templates]
         if any(glyphs is None for glyphs in self.glyphs):
             raise ValueError('구입 버튼 수량 영역을 읽을 수 없습니다.')
@@ -217,10 +218,12 @@ class ShopPurchaseObserver:
 
     @debug_timed('recognition')
     def purchase_complete(self, screen, before, threshold=.92):
+        self.item_anchor_missing = False
         item = self.locate_item(screen, before.item_image, before.item_bounds,
                                 threshold=threshold, stable_inner=True,
                                 diagnostics=self._shop_debug)
         if item is None:
+            self.item_anchor_missing = True
             if self._shop_debug is not None:
                 self._shop_debug.record('purchase_check', result=False, reason='same_item_not_found', same_item=False)
                 x, y, w, h = before.item_bounds
