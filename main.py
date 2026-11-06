@@ -37,6 +37,18 @@ sys.path.insert(0, str(project_root))
 
 def main():
     """메인 함수"""
+    if len(sys.argv) == 5 and sys.argv[1] == '--cleanup-update':
+        from update_cleanup import cleanup
+        try:
+            target = Path(sys.argv[3]).resolve()
+            if getattr(sys, 'frozen', False) and target != Path(sys.executable).resolve().parent:
+                raise ValueError('Cleanup must use the installed application directory')
+            result = cleanup(sys.argv[2], target, int(sys.argv[4]))
+        except Exception:
+            from src.runtime_diagnostics import diagnostic_logger
+            diagnostic_logger('updater').exception('Update cleanup failed; staging was retained')
+            result = 1
+        raise SystemExit(result)
     from src.runtime_diagnostics import diagnostic_logger
     startup_logger = diagnostic_logger('startup')
     # 항상 작업 디렉토리를 프로젝트 루트로 고정

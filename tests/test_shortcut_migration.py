@@ -1,6 +1,4 @@
-import base64
 import ctypes
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -8,7 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from shortcut_migration import SCRIPT, StartupInfo, invoked_shortcut, migrate_shortcut
+from shortcut_migration import StartupInfo, invoked_shortcut, migrate_shortcut
+from windows_shortcuts import read_shortcut, write_shortcut
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,35 +26,13 @@ class ShortcutTest(unittest.TestCase):
         self.legacy = self.root / 'SecretShopBot-E7.exe'
         self.legacy.touch()
 
-    def powershell(self, script, **config):
-        payload = base64.b64encode(json.dumps(config, ensure_ascii=False).encode()).decode()
-        script = "$c = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + payload + "')) | ConvertFrom-Json\n" + script
-        encoded = base64.b64encode(script.encode('utf-16le')).decode()
-        executable = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
-        result = subprocess.run([str(executable), '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden',
-                                 '-EncodedCommand', encoded], capture_output=True, encoding='utf-8', errors='replace',
-                                timeout=20, creationflags=subprocess.CREATE_NO_WINDOW)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        return result.stdout
-
     def link(self, name, target=None, arguments='--admin "공백 있는 값"'):
         path = self.desktop / name
-        self.powershell("""$ErrorActionPreference = 'Stop'
-$s = New-Object -ComObject WScript.Shell
-$l = $s.CreateShortcut($c.link)
-$l.TargetPath = $c.target
-$l.WorkingDirectory = $c.directory
-$l.Arguments = $c.arguments
-$l.Save()
-""", link=str(path), target=str(target or self.legacy), directory=str(self.root), arguments=arguments)
+        write_shortcut(path, target or self.legacy, arguments, self.root)
         return path
 
     def properties(self, path):
-        return json.loads(self.powershell("""[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
-$s = New-Object -ComObject WScript.Shell
-$l = $s.CreateShortcut($c.link)
-@{target=$l.TargetPath; arguments=$l.Arguments; directory=$l.WorkingDirectory} | ConvertTo-Json -Compress
-""", link=str(path)))
+        return read_shortcut(path)
 
     def test_replaces_only_invoked_link_and_preserves_arguments(self):
         old = self.link('기존 봇.lnk')
@@ -79,6 +56,26 @@ $l = $s.CreateShortcut($c.link)
         self.assertEqual(Path(result['shortcut']), existing)
         self.assertEqual(existing.read_bytes(), before)
         self.assertFalse(old.exists())
+
+    def test_migration_does_not_launch_a_shell_process(self):
+        old = self.link('old.lnk')
+        with patch('shortcut_migration.subprocess.run') as run, \
+             patch('shortcut_migration.subprocess.Popen') as launch:
+            result = migrate_shortcut(self.target, [], old, desktop=self.desktop)
+        self.assertTrue(Path(result['shortcut']).is_file())
+        run.assert_not_called()
+        launch.assert_not_called()
+
+    def test_changed_old_link_is_preserved_after_new_link_creation(self):
+        old = self.link('old.lnk')
+        write = __import__('shortcut_migration').write_shortcut
+        def create_then_change(*args):
+            write(*args)
+            write(old, self.target, '--changed', self.root)
+        with patch('shortcut_migration.write_shortcut', side_effect=create_then_change):
+            result = migrate_shortcut(self.target, [], old, desktop=self.desktop)
+        self.assertFalse(result['removed_old'])
+        self.assertTrue(old.exists())
 
     def test_name_collision_does_not_overwrite_another_installation(self):
         unrelated = self.root / 'Other.exe'
@@ -115,7 +112,7 @@ $l = $s.CreateShortcut($c.link)
             migrate_shortcut(self.target, [], old, desktop=self.desktop)
         self.assertEqual(old.read_bytes(), before)
         self.target.touch()
-        with patch('shortcut_migration.SCRIPT', SCRIPT.replace('$shortcut.Save()', "throw 'write failed'")), \
+        with patch('shortcut_migration.write_shortcut', side_effect=RuntimeError('write failed')), \
                 self.assertRaises(RuntimeError):
             migrate_shortcut(self.target, [], old, desktop=self.desktop)
         self.assertEqual(old.read_bytes(), before)

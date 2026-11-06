@@ -38,11 +38,12 @@ a = Analysis(
     datas=datas,
     hiddenimports=[
         'cv2', 'numpy', 'PIL', 'tkinter', 'rapidocr_onnxruntime',
-    ] + collect_submodules('src.backend') + collect_submodules('src.core') + collect_submodules('src.display') + collect_submodules('src.finder'),
+    ] + collect_submodules('src.backend') + collect_submodules('src.core', filter=lambda name: name != 'src.core.process_guard') + collect_submodules('src.display') + collect_submodules('src.finder'),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
+        'src.core.process_guard',
         'pure-python-adb',
         'pytest',
         'torch',

@@ -1,6 +1,5 @@
 """Standalone stdlib-only updater; copied outside the installation before launch."""
 import ctypes
-import base64
 import json
 import os
 from pathlib import Path
@@ -160,44 +159,19 @@ def apply_update(target, package, workspace, launcher=start_app, health=await_st
 
 
 def schedule_cleanup(workspace, target):
-    """Delete only this successful staging folder after this worker exits."""
-    workspace, target = Path(workspace).resolve(), Path(target).resolve()
-    if (not workspace.name.startswith('.e7-update-')
-            or workspace.parent != target.parent
-            or workspace == target
-            or target.is_relative_to(workspace)):
-        raise ValueError('Invalid cleanup workspace')
-    result = json.loads((workspace / 'result.json').read_text(encoding='utf-8'))
-    if result.get('ok') is not True:
-        raise ValueError('Only successful updates can be cleaned up')
-    # The running updater cannot delete its own EXE on Windows. Use the system
-    # PowerShell from outside staging, and wait for the worker before removing it.
-    literal = "'" + str(workspace).replace("'", "''") + "'"
-    script = f"""
-$ErrorActionPreference = 'Stop'
-$stagingPath = {literal}
-$worker = Get-Process -Id {os.getpid()} -ErrorAction SilentlyContinue
-if ($worker -and -not $worker.WaitForExit(180000)) {{ exit 1 }}
-if (-not (Test-Path -LiteralPath $stagingPath)) {{ exit 0 }}
-try {{
-    $outcome = Get-Content -LiteralPath (Join-Path $stagingPath 'result.json') -Raw | ConvertFrom-Json
-    if ($outcome.ok -ne $true) {{ exit 1 }}
-}} catch {{ exit 1 }}
-for ($attempt = 0; $attempt -lt 30; $attempt++) {{
-    try {{
-        Remove-Item -LiteralPath $stagingPath -Recurse -Force
-        exit 0
-    }} catch {{ Start-Sleep -Seconds 1 }}
-}}
-exit 1
-"""
-    encoded = base64.b64encode(script.encode('utf-16le')).decode('ascii')
-    powershell = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
-    return subprocess.Popen(
-        [str(powershell), '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden',
-         '-EncodedCommand', encoded], cwd=str(target),
-        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    """Use the installed app's explicit cleanup mode instead of a scripting host."""
+    from update_cleanup import validate_workspace
+    workspace = validate_workspace(workspace, target)
+    target = Path(target).resolve()
+    if getattr(sys, 'frozen', False):
+        args = [str(resolve_app_executable(target)), '--cleanup-update', str(workspace), str(target), str(os.getpid())]
+    else:
+        args = [sys.executable, str(Path(__file__).with_name('update_cleanup.py')),
+                str(workspace), str(target), str(os.getpid())]
+    return subprocess.Popen(args, cwd=str(target),
+                            env={**os.environ, 'PYINSTALLER_RESET_ENVIRONMENT': '1'},
+                            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def main():

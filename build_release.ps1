@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "v1.7.2",
+    [string]$Version = "v1.7.3",
     [string]$PythonExecutable = "python",
     [string]$ReleaseDirectory = "release",
     [switch]$SkipDependencyInstall
@@ -98,6 +98,7 @@ New-Item -ItemType Directory -Path $ReleaseRoot -Force | Out-Null
 Write-Host "Building Windows app with PyInstaller..."
 & $PythonExecutable -m PyInstaller `
     --noconfirm `
+    --clean `
     --distpath $DistRoot `
     --workpath $BuildRoot `
     EAB.spec

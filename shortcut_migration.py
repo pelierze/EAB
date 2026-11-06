@@ -1,11 +1,13 @@
 """Replace only the invoked legacy shortcut, using Windows' startup metadata."""
-import base64
+import hashlib
 import ctypes
 from ctypes import wintypes
-import json
+import uuid
 import os
 from pathlib import Path
 import subprocess
+
+from windows_shortcuts import read_shortcut, write_shortcut, desktop_folder
 
 
 class StartupInfo(ctypes.Structure):
@@ -35,106 +37,60 @@ def invoked_shortcut():
     return None
 
 
-SCRIPT = r'''
-$ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
-$shell = New-Object -ComObject WScript.Shell
-$target = [IO.Path]::GetFullPath($config.target)
-if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { throw 'EAB.exe is missing' }
-$legacy = Join-Path ([IO.Path]::GetDirectoryName($target)) 'SecretShopBot-E7.exe'
-function Same-Path($a, $b) {
-    if (-not $a -or -not $b) { return $false }
-    try {
-        return [String]::Equals([IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($a)),
-                                [IO.Path]::GetFullPath($b), [StringComparison]::OrdinalIgnoreCase)
-    } catch { return $false }
-}
-function Link-Hash($path) {
-    $hash = [Security.Cryptography.SHA256]::Create()
-    try { return [Convert]::ToBase64String($hash.ComputeHash([IO.File]::ReadAllBytes($path))) }
-    finally { $hash.Dispose() }
-}
-$oldPath = $null
-$oldHash = $null
-$arguments = $config.arguments
-$destination = $config.desktop
-if (-not $destination) { $destination = $shell.SpecialFolders.Item('Desktop') }
-if ($config.invoked -and [IO.Path]::IsPathRooted($config.invoked) -and
-    [IO.Path]::GetExtension($config.invoked) -ieq '.lnk' -and
-    (Test-Path -LiteralPath $config.invoked -PathType Leaf)) {
-    $old = $shell.CreateShortcut($config.invoked)
-    if (Same-Path $old.TargetPath $legacy) {
-        $oldPath = [IO.Path]::GetFullPath($config.invoked)
-        $oldHash = Link-Hash $oldPath
-        $arguments = $old.Arguments
-        $destination = [IO.Path]::GetDirectoryName($oldPath)
-    }
-}
-if (-not $destination -or -not (Test-Path -LiteralPath $destination -PathType Container)) {
-    throw 'Shortcut destination is unavailable'
-}
-$newPath = $null
-for ($index = 1; $index -le 100; $index++) {
-    $name = if ($index -eq 1) { 'EAB.lnk' } else { "EAB ($index).lnk" }
-    $candidate = Join-Path $destination $name
-    if (Test-Path -LiteralPath $candidate) {
-        $existing = $shell.CreateShortcut($candidate)
-        if ((Same-Path $existing.TargetPath $target) -and $existing.Arguments -ceq $arguments -and
-            (Same-Path $existing.WorkingDirectory ([IO.Path]::GetDirectoryName($target)))) {
-            $newPath = $candidate
-            break
-        }
-        continue
-    }
-    $temporary = Join-Path $destination ('.eab-' + [Guid]::NewGuid().ToString('N') + '.lnk')
-    try {
-        $shortcut = $shell.CreateShortcut($temporary)
-        $shortcut.TargetPath = $target
-        $shortcut.Arguments = $arguments
-        $shortcut.WorkingDirectory = [IO.Path]::GetDirectoryName($target)
-        $shortcut.IconLocation = $target + ',0'
-        $shortcut.Description = 'Epic7 Assist Bot'
-        $shortcut.Save()
-        [IO.File]::Move($temporary, $candidate)
-        $newPath = $candidate
-    } finally {
-        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
-    }
-    break
-}
-if (-not $newPath) { throw 'No available EAB shortcut name' }
-$verified = $shell.CreateShortcut($newPath)
-if (-not (Same-Path $verified.TargetPath $target) -or $verified.Arguments -cne $arguments) {
-    throw 'EAB shortcut verification failed'
-}
-$removed = $false
-if ($oldPath -and -not (Same-Path $oldPath $newPath) -and
-    (Test-Path -LiteralPath $oldPath -PathType Leaf)) {
-    $current = $shell.CreateShortcut($oldPath)
-    if ((Same-Path $current.TargetPath $legacy) -and
-        (Link-Hash $oldPath) -ceq $oldHash) {
-        Remove-Item -LiteralPath $oldPath -Force
-        $removed = $true
-    }
-}
-@{ shortcut = $newPath; removed_old = $removed } | ConvertTo-Json -Compress
-'''
+def _same_path(left, right):
+    if not left or not right:
+        return False
+    return os.path.normcase(os.path.abspath(os.path.expandvars(str(left)))) == os.path.normcase(os.path.abspath(str(right)))
 
 
 def migrate_shortcut(target, arguments, invoked=None, desktop=None):
-    """Explicit desktop override is for isolated tests; launchers use Windows' desktop."""
-    config = {'target': str(Path(target).resolve()),
-              'arguments': subprocess.list2cmdline(arguments),
-              'invoked': str(invoked) if invoked is not None else None,
-              'desktop': str(desktop) if desktop is not None else None}
-    data = base64.b64encode(json.dumps(config, ensure_ascii=False).encode('utf-8')).decode('ascii')
-    script = "$config = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + data + "')) | ConvertFrom-Json\n" + SCRIPT
-    encoded = base64.b64encode(script.encode('utf-16le')).decode('ascii')
-    powershell = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
-    result = subprocess.run([str(powershell), '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden',
-                             '-EncodedCommand', encoded], stdin=subprocess.DEVNULL, capture_output=True,
-                            encoding='utf-8', errors='replace', timeout=20,
-                            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-    if result.returncode:
-        raise RuntimeError('바로가기 전환 실패: ' + result.stderr.strip())
-    return json.loads(result.stdout)
+    """Migrate only the verified invoked link, using Windows Shell Link APIs."""
+    target = Path(target).resolve()
+    if not target.is_file():
+        raise RuntimeError('EAB.exe is missing')
+    legacy = target.parent / 'SecretShopBot-E7.exe'
+    destination = Path(desktop if desktop is not None else desktop_folder())
+    arguments = subprocess.list2cmdline(arguments)
+    old_path = old_hash = None
+    if invoked is not None:
+        candidate = Path(invoked)
+        if candidate.is_absolute() and candidate.suffix.lower() == '.lnk' and candidate.is_file():
+            old = read_shortcut(candidate)
+            if _same_path(old['target'], legacy):
+                old_path = candidate.resolve()
+                old_hash = hashlib.sha256(old_path.read_bytes()).digest()
+                arguments = old['arguments']
+                destination = old_path.parent
+    if not destination.is_dir():
+        raise RuntimeError('Shortcut destination is unavailable')
+    new_path = None
+    for index in range(1, 101):
+        candidate = destination / ('EAB.lnk' if index == 1 else f'EAB ({index}).lnk')
+        if candidate.exists():
+            existing = read_shortcut(candidate)
+            if (_same_path(existing['target'], target) and existing['arguments'] == arguments
+                    and _same_path(existing['directory'], target.parent)):
+                new_path = candidate
+                break
+            continue
+        temporary = destination / ('.eab-' + uuid.uuid4().hex + '.lnk')
+        try:
+            write_shortcut(temporary, target, arguments, target.parent)
+            temporary.rename(candidate)
+            new_path = candidate
+        finally:
+            temporary.unlink(missing_ok=True)
+        break
+    if new_path is None:
+        raise RuntimeError('No available EAB shortcut name')
+    verified = read_shortcut(new_path)
+    if not _same_path(verified['target'], target) or verified['arguments'] != arguments:
+        raise RuntimeError('EAB shortcut verification failed')
+    removed = False
+    if old_path and old_path != new_path and old_path.is_file():
+        current = read_shortcut(old_path)
+        if (_same_path(current['target'], legacy)
+                and hashlib.sha256(old_path.read_bytes()).digest() == old_hash):
+            old_path.unlink()
+            removed = True
+    return {'shortcut': str(new_path), 'removed_old': removed}
