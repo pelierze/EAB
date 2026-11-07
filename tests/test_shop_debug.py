@@ -95,7 +95,7 @@ class ShopDebugTests(ShopPurchaseFixtures, unittest.TestCase):
         records = self.records(bot)
         summary = next(r for r in records if r['event'] == 'cycle_end')
         self.assertEqual(summary['status'], 'failed')
-        self.assertEqual(summary['metrics']['capture_failures'], 1)
+        self.assertEqual(summary['metrics']['capture_failures'], 4)
         other = self.make_bot()
         other._scan_shop_page = Mock(side_effect=ValueError('expected failure'))
         with self.assertRaisesRegex(ValueError, 'expected failure'):
@@ -195,7 +195,7 @@ class ShopDebugTests(ShopPurchaseFixtures, unittest.TestCase):
         bot = self.make_bot([screen])
         self.assertFalse(bot._purchase_item('mystic_medal', self.item, 3))
         self.assertEqual(bot.adb.taps, [])
-        self.assertEqual(bot.adb.captures, 1)
+        self.assertEqual(bot.adb.captures, 4)
         self.assertTrue(any(r['event'] == 'purchase_check' and r['reason'] == 'same_item_not_found'
                             for r in self.records(bot)))
 

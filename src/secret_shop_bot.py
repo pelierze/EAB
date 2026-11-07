@@ -617,6 +617,20 @@ class SecretShopBot:
         
         # 1단계: 아이템과 같은 라인의 오른쪽에 있는 구입 버튼 찾기 및 클릭
         purchase_btn = self._find_purchase_button_on_item_line(item_location, item_name)
+        recheck_attempts = max(0, int(self.timings.get("purchase_button_recheck_attempts", 3)))
+        recheck_interval = self._timing("purchase_button_recheck_interval", 0.5)
+        for recheck_attempt in range(recheck_attempts):
+            if purchase_btn is not None or self.user_action == 'stop':
+                break
+            logger.info(
+                "구매 직후 화면 전환 가능성 — 추가 입력 없이 구입 버튼 재확인 (%s/%s)",
+                recheck_attempt + 1,
+                recheck_attempts,
+            )
+            self._sleep(recheck_interval)
+            if self.user_action == 'stop':
+                return False
+            purchase_btn = self._find_purchase_button_on_item_line(item_location, item_name)
         if purchase_btn is False:
             # 비활성화된 버튼 (이미 구매한 아이템) - 조용히 건너뛰기
             logger.debug("비활성화된 버튼이므로 구매 건너뜀")

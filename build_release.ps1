@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "v1.7.3",
+    [string]$Version = "v1.7.4",
     [string]$PythonExecutable = "python",
     [string]$ReleaseDirectory = "release",
     [switch]$SkipDependencyInstall

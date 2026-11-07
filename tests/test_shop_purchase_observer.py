@@ -210,6 +210,35 @@ class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
         return screen
 
     @patch('src.secret_shop_bot.time.sleep')
+    def test_issue28_rechecks_button_after_purchase_effect_clears(self, sleep):
+        obscured_button = self.scene()
+        x, y, w, h = self.button
+        obscured_button[y:y+h, x:x+w] = 0
+        bot = self.make_bot([
+            obscured_button,
+            self.scene(),
+            self.modal(),
+            self.modal(),
+            self.scene(sold=True),
+        ])
+
+        self.assertTrue(bot._purchase_item('mystic_medal', self.item, 1))
+        self.assertEqual(bot.adb.captures, 5)
+        self.assertEqual(bot.stats['mystic_medal_bought'], 1)
+        self.assertEqual(len(bot.adb.taps), 3)
+        self.assertEqual(sum(call.args == (0.5,) for call in sleep.call_args_list), 3)
+
+    @patch('src.secret_shop_bot.time.sleep')
+    def test_purchase_button_recheck_is_bounded_without_extra_input(self, sleep):
+        missing = np.zeros((720, 1280, 3), dtype=np.uint8)
+        bot = self.make_bot([missing] * 4)
+
+        self.assertFalse(bot._purchase_item('mystic_medal', self.item, 1))
+        self.assertEqual(bot.adb.captures, 4)
+        self.assertEqual(bot.adb.taps, [])
+        self.assertEqual(sum(call.args == (0.5,) for call in sleep.call_args_list), 3)
+
+    @patch('src.secret_shop_bot.time.sleep')
     def test_overlay_waits_even_with_one_check_and_never_buys_again(self, sleep):
         bot = self.make_bot([self.scene(), self.modal(), self.modal(),
                              self.obscured(), self.obscured(), self.scene(sold=True)])

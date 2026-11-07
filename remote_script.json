@@ -108,6 +108,8 @@
       "after_purchase_tap": 0.5,
       "buy_button_wait_attempts": 4,
       "buy_button_wait_interval": 0.5,
+      "purchase_button_recheck_attempts": 3,
+      "purchase_button_recheck_interval": 0.5,
       "verify_interval": 0.3,
       "close_popup_delay": 0.3
     },

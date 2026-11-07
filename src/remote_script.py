@@ -243,6 +243,7 @@ def validate_macro(macro: Dict[str, Any]) -> Dict[str, Any]:
             "refresh_retry": (0.0, 10.0),
             "after_purchase_tap": (0.0, 5.0),
             "buy_button_wait_interval": (0.1, 5.0),
+            "purchase_button_recheck_interval": (0.1, 5.0),
             "verify_interval": (0.0, 5.0),
             "close_popup_delay": (0.0, 5.0),
         }
@@ -252,6 +253,10 @@ def validate_macro(macro: Dict[str, Any]) -> Dict[str, Any]:
         if "buy_button_wait_attempts" in timings:
             validated["timings"]["buy_button_wait_attempts"] = clamp_int(
                 timings["buy_button_wait_attempts"], 1, 20
+            )
+        if "purchase_button_recheck_attempts" in timings:
+            validated["timings"]["purchase_button_recheck_attempts"] = clamp_int(
+                timings["purchase_button_recheck_attempts"], 0, 10
             )
 
     thresholds = macro.get("thresholds", {})
