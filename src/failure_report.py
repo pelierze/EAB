@@ -68,6 +68,13 @@ def save_failure_report(log_root, log_file, result, bot, session, mode, controll
             except Exception as exc:
                 metadata['screenshot_errors'].append(str(exc))
         metadata['screenshot_saved'] = saved
+        from .chaos.debug import ExplorationEvidence
+        history = getattr(active, 'diagnostic_history', None)
+        if isinstance(history, ExplorationEvidence):
+            try:
+                metadata['history'] = history.export(folder / 'history')
+            except Exception as exc:
+                metadata.setdefault('diagnostic_errors', []).append(str(exc))
         scrolls = getattr(active, 'scroll_diagnostics', None)
         if isinstance(scrolls, list) and scrolls:
             metadata['scroll_diagnostics'] = []

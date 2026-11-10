@@ -1046,20 +1046,22 @@
       ]
     },
     "levelup": {
-      "file": "images/chaos/node_progression/raw/battle/victory_levelup_live.png",
-      "threshold": 0.85,
-      "max_color_error": 0.1,
-      "crop": [
-        605,
-        128,
-        70,
-        28
-      ],
+      "file": "images/chaos/hero_selection/templates/controls/level_frame.png",
       "region": [
-        580,
-        110,
-        130,
-        65
+        382,
+        168,
+        518,
+        263
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.09,
+      "exclude": [
+        [
+          140,
+          45,
+          240,
+          140
+        ]
       ]
     },
     "level_close": {
@@ -1141,54 +1143,105 @@
         65
       ]
     },
-    "skip": {
-      "file": "images/chaos/node_progression/templates/story/skip_buttom.png",
-      "threshold": 0.9,
-      "max_color_error": 0.045,
-      "region": [
-        1130,
-        0,
-        150,
-        75
-      ]
-    },
-    "story_dialog": {
-      "file": "images/chaos/node_progression/raw/story/Screenshot_2026.09.24_13.49.26.082.png",
-      "threshold": 0.9,
-      "max_color_error": 0.05,
+    "story_replay": {
+      "file": "images/chaos/node_progression/raw/story/Screenshot_2026.09.24_13.49.22.466.png",
       "crop": [
-        501,
-        309,
-        278,
-        28
+        978,
+        18,
+        45,
+        42
       ],
       "region": [
-        480,
-        290,
-        330,
-        65
-      ]
+        968,
+        10,
+        65,
+        58
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.07
+    },
+    "story_history": {
+      "file": "images/chaos/node_progression/raw/story/Screenshot_2026.09.24_13.49.22.466.png",
+      "crop": [
+        1045,
+        19,
+        38,
+        39
+      ],
+      "region": [
+        1035,
+        9,
+        58,
+        59
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.07
+    },
+    "skip": {
+      "file": "images/chaos/node_progression/raw/story/Screenshot_2026.09.24_13.49.22.466.png",
+      "crop": [
+        1236,
+        23,
+        20,
+        30
+      ],
+      "region": [
+        1228,
+        12,
+        40,
+        48
+      ],
+      "threshold": 0.9,
+      "max_color_error": 0.055
     },
     "story_confirm": {
-      "file": "images/chaos/node_progression/templates/story/confirm_buttom.png",
+      "file": "images/chaos/node_progression/raw/recruit_skip_confirm_local_live.png",
+      "crop": [
+        649,
+        430,
+        198,
+        60
+      ],
+      "region": [
+        635,
+        415,
+        225,
+        90
+      ],
       "threshold": 0.9,
       "max_color_error": 0.055,
-      "region": [
-        680,
-        420,
-        150,
-        120
+      "exclude": [
+        [
+          15,
+          10,
+          168,
+          40
+        ]
       ]
     },
     "story_cancel": {
-      "file": "images/chaos/node_progression/templates/story/cancel_button.png",
+      "file": "images/chaos/node_progression/raw/recruit_skip_confirm_local_live.png",
+      "crop": [
+        434,
+        430,
+        198,
+        60
+      ],
+      "region": [
+        420,
+        415,
+        225,
+        90
+      ],
       "threshold": 0.9,
       "max_color_error": 0.055,
-      "region": [
-        470,
-        420,
-        150,
-        120
+      "exclude": [
+        [
+          15,
+          10,
+          168,
+          40
+        ]
       ]
     },
     "node_rest": {

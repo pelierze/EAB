@@ -4,6 +4,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 import time
+from collections import deque
 
 import cv2
 
@@ -11,6 +12,55 @@ from src.image_matcher import ImageMatcher
 from .template_masks import color_error
 
 logger = logging.getLogger(__name__)
+
+
+class ExplorationEvidence:
+    """Keep existing frames in RAM; encode only when an error report is saved."""
+
+    def __init__(self):
+        self.recent = deque(maxlen=12)
+        self.transitions = deque(maxlen=8)
+        self.last_sample = float('-inf')
+        self.last_state = None
+        self.sequence = 0
+
+    def remember(self, screen, *, phase=None, state=None, pending=False, label=None):
+        now = time.monotonic()
+        important = label is not None or (state is not None and state != self.last_state)
+        if state is not None:
+            self.last_state = state
+        if not important and now - self.last_sample < 1:
+            return
+        self.sequence += 1
+        record = dict(sequence=self.sequence, time=time.time(), monotonic=now,
+                      phase=phase, state=state, skip_confirmation_pending=bool(pending),
+                      label=label, frame=screen.copy())
+        if important:
+            self.transitions.append(record)
+        else:
+            self.recent.append(record)
+            self.last_sample = now
+
+    def export(self, directory):
+        directory = Path(directory)
+        directory.mkdir(parents=True, exist_ok=True)
+        records = sorted([*self.recent, *self.transitions], key=lambda r: r['sequence'])
+        manifest = []
+        for index, record in enumerate(records, 1):
+            entry = {k: v for k, v in record.items() if k != 'frame'}
+            try:
+                ok, encoded = cv2.imencode('.png', record['frame'])
+                if not ok:
+                    raise OSError('PNG encoding failed')
+                filename = f'{index:02d}.png'
+                encoded.tofile(str(directory / filename))
+                entry['file'] = filename
+            except Exception as exc:
+                entry['error'] = str(exc)
+            manifest.append(entry)
+        (directory / 'frames.json').write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
+        return dict(directory=directory.name, frames=len(manifest), manifest='frames.json')
 
 
 class _DiagnosticHandler(RotatingFileHandler):

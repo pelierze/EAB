@@ -166,6 +166,22 @@ class NodeObserver:
 
     def find(self, screen, name, region=None):
         if region is None:
+            if name in ('story_confirm', 'story_cancel'):
+                return (self.recruit_skip_buttons(screen) or {}).get(
+                    'confirm' if name == 'story_confirm' else 'cancel')
+            if name == 'skip':
+                # The arrow alone occurs on other screens. Require both
+                # neighboring playback symbols; none of these patches has text.
+                arrows = self.all(screen, 'skip')
+                replay = self.all(screen, 'story_replay')
+                history = self.all(screen, 'story_history')
+                if len(arrows) == len(replay) == len(history) == 1:
+                    ax, ay, _, _ = arrows[0]
+                    rx, ry, _, _ = replay[0]
+                    hx, hy, _, _ = history[0]
+                    if 245 <= ax-rx <= 275 and 55 <= hx-rx <= 80 and max(ay, ry, hy)-min(ay, ry, hy) <= 12:
+                        return arrows[0]
+                return None
             if name in ('rank_result_before_icon', 'rank_result_after_icon'):
                 return (self.rank_result_controls(screen) or {}).get(name)
             if name in ('event_rank_reward_button', 'event_reward_continue'):
@@ -561,38 +577,26 @@ class NodeObserver:
         return found[0] if len(found) == 1 else None
 
     def levelup_controls(self, screen):
-        """Pair the title with a moving down arrow; return a stable tap area."""
-        frame = self.find(screen, 'level_frame')
-        arrows = self.all(screen, 'level_close') if frame else []
-        if frame and len(arrows) == 1:
-            return {'levelup': frame, 'level_close_arrow': arrows[0],
-                    'level_close': tuple(self.config['levelup_close_bounds'])}
-        names = ('levelup', 'level_close')
+        """Pair the text-masked circular ornament with a moving down arrow."""
+        definition = self.config['markers']['level_frame']
+        x, y, w, h = definition['region']
         for scale in (1., .95, 1.05, .9, 1.1):
-            controls = {}
-            for name in names:
-                definition = self.config['markers'][name]
-                template = self.templates[name]
-                if scale != 1:
-                    template = cv2.resize(template, None, fx=scale, fy=scale)
-                x, y, w, h = definition['region']
-                margin = 20 if scale != 1 else 0
-                bounds = self.matches(screen, template,
-                    [x-margin, y-margin, w+2*margin, h+2*margin],
-                    definition['threshold'], definition['max_color_error'])
-                if len(bounds) != 1:
-                    break
-                controls[name] = bounds[0]
-            if len(controls) == 2:
-                tx, ty, tw, th = controls['levelup']
-                cx, cy, cw, ch = controls['level_close']
-                if abs(tx+tw/2-cx-cw/2) <= 40 and 490 <= cy+ch/2-ty-th/2 <= 565:
-                    # Animation changes the arrow position every frame. The
-                    # popup close area stays fixed, so stable-frame checks and
-                    # the final pre-tap observation must use that area instead.
-                    controls['level_close_arrow'] = controls['level_close']
-                    controls['level_close'] = tuple(self.config['levelup_close_bounds'])
-                    return controls
+            frame = self.templates['level_frame']
+            if scale != 1:
+                frame = cv2.resize(frame, None, fx=scale, fy=scale)
+            fh, fw = frame.shape[:2]
+            region = [int(x+w/2-fw/2), int(y+h/2-fh/2), fw, fh]
+            frames = self.matches(screen, frame, region, definition['threshold'], definition['max_color_error'])
+            if len(frames) != 1:
+                continue
+            arrow = self.templates['level_close']
+            if scale != 1:
+                arrow = cv2.resize(arrow, None, fx=scale, fy=scale)
+            control = self.config['markers']['level_close']
+            arrows = self.matches(screen, arrow, control['region'], control['threshold'], control['max_color_error'])
+            if len(arrows) == 1:
+                return {'levelup': frames[0], 'level_close_arrow': arrows[0],
+                        'level_close': tuple(self.config['levelup_close_bounds'])}
         return None
 
     def forbidden(self, screen):
@@ -802,7 +806,6 @@ class NodeObserver:
         if self.find(screen, 'unclaimed_dialog'): return 'unclaimed_reward'
         if self.rank_reward_controls(screen): return 'rank_reward'
         if self.recruit_reward_controls(screen): return 'recruit_reward'
-        if self.find(screen, 'story_dialog'): return 'story_confirm'
         if self.event_warning_controls(screen): return 'event_warning'
         if self.find(screen, 'story_confirm'): return 'event_warning'
         if self.levelup_controls(screen): return 'levelup'

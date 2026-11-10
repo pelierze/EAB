@@ -77,8 +77,8 @@ class NodeImagesTest(unittest.TestCase):
     def test_overlay_priority_blocks_background_buttons(self):
         for file, state in [('battle/victory_levelup_live.png','levelup'),
                             ('rest_wukong_rankup_live.png','rank_result'),
-                            ('story/Screenshot_2026.09.24_13.49.26.082.png','story_confirm'),
-                            ('story/Screenshot_2026.09.24_13.49.37.999.png','story_confirm')]:
+                            ('story/Screenshot_2026.09.24_13.49.26.082.png','event_warning'),
+                            ('story/Screenshot_2026.09.24_13.49.37.999.png','event_warning')]:
             self.assertEqual(self.observer.classify(self.screen(file)),state)
 
     def test_event_requires_reviewed_party_preserving_outcome(self):

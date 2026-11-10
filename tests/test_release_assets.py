@@ -8,6 +8,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseAssetsTests(unittest.TestCase):
+    def test_story_uses_visual_references_without_packaging_issue30_capture(self):
+        images = set(used_images(ROOT))
+        self.assertIn('images/chaos/node_progression/raw/story/Screenshot_2026.09.24_13.49.22.466.png', images)
+        for name in ('skip_buttom.png', 'confirm_buttom.png', 'cancel_button.png'):
+            self.assertNotIn('images/chaos/node_progression/templates/story/' + name, images)
+        self.assertFalse(any('issue30' in name for name in images))
+
     def test_destina_skin_is_packaged_without_issue_screenshot(self):
         images = set(used_images(ROOT))
         self.assertIn('images/chaos/hero_selection/templates/heroes/soul_Weaver_destina.png', images)

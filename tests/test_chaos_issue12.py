@@ -23,14 +23,15 @@ class Issue12Tests(unittest.TestCase):
     def resized_popup(self, scale):
         screen = np.zeros((720, 1280, 3), dtype=np.uint8)
         for name in ('levelup', 'level_close'):
-            x, y, w, h = self.observer.config['markers'][name]['crop']
-            template = cv2.resize(self.observer.templates[name], None, fx=scale, fy=scale)
+            definition = self.observer.config['markers'][name]
+            x, y, w, h = definition.get('crop', definition['region'])
+            template = cv2.resize(self.observer.templates[name][:, :, :3], None, fx=scale, fy=scale)
             th, tw = template.shape[:2]
             left, top = int(x+w/2-tw/2), int(y+h/2-th/2)
             screen[top:top+th, left:left+tw] = template
         return screen
 
-    def test_resized_title_and_close_are_recognized_together(self):
+    def test_resized_ornament_and_close_are_recognized_together(self):
         for scale in (.9, 1.1):
             with self.subTest(scale=scale):
                 screen = self.resized_popup(scale)
@@ -39,9 +40,9 @@ class Issue12Tests(unittest.TestCase):
                 self.assertAlmostEqual(x+w/2, 640, delta=2)
                 self.assertAlmostEqual(y+h/2, 638, delta=2)
 
-    def test_close_without_levelup_title_never_authorizes_click(self):
+    def test_close_without_levelup_ornament_never_authorizes_click(self):
         screen = self.resized_popup(1.1)
-        screen[90:195] = 0
+        screen[150:450, 350:930] = 0
         self.assertIsNone(self.observer.find(screen, 'level_close'))
         self.assertNotEqual(self.observer.classify(screen), 'levelup')
 
@@ -84,7 +85,7 @@ class Issue12Tests(unittest.TestCase):
                 bot._guarded_tap('레벨업 팝업 닫기', 'levelup', 'level_close', exiting=True)
             bot._tap.assert_called_once_with((582, 624, 116, 28))
 
-    def test_title_without_arrow_does_not_authorize_close(self):
+    def test_ornament_without_arrow_does_not_authorize_close(self):
         screen = self.resized_popup(1.)
         screen[635:700, 590:690] = 0
         self.assertIsNone(self.observer.find(screen, 'level_close'))
@@ -128,7 +129,7 @@ class Issue12Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             bot = NodeProgressionBot(Mock(), ROOT, directory, Mock())
             bot._capture = Mock(return_value='frame')
-            bot._classify = Mock(return_value=None)
+            bot._classify = Mock(side_effect=['supply', 'supply', 'event_loot_popup', 'event_loot_popup'])
             bot.observer.find.side_effect = lambda frame, name: (1, 2, 3, 4) if name == 'supply_loot' else None
             bot._wait = Mock(return_value=('btn', 1, 2, 3, 4))
             bot._tap = Mock()

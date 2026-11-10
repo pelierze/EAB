@@ -16,6 +16,7 @@ from .node_observer import DETAIL_STATES, NodeObserver
 from .errors import RecognitionPending
 from .pause import ExplorationPause, ResumeExploration
 from .event_flow import run_event_flow, EVENT_STATES, TERMINALS
+from .debug import ExplorationEvidence
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,9 @@ EVENT_FOLLOWUPS = {'event_hero_menu', 'hero_departure', 'event_intro', 'map', 'b
     'recruit_reward', 'unclaimed_reward', 'battle_unclaimed_reward', 'event_warning', 'levelup', 'victory', 'battle_rank_complete'} | TERMINALS
 REWARD_POPUPS = {'rank_result': 'rank_close', 'event_loot_popup': 'event_loot_close', 'levelup': 'level_close'}
 POPUP_FOLLOWUPS = EVENT_FOLLOWUPS | {'rest', 'supply', 'shop'}
+STORY_FOLLOWUPS = {'map', 'battle_setup', 'battle', 'story', 'levelup', 'victory',
+    'battle_rank_complete', 'rank_reward', 'recruit_reward', 'loot', 'rank_result',
+    'event_loot_popup', 'event', 'unknown_event', 'event_result', 'unknown_event_result'} | TERMINALS
 
 HERO_NAMES = {
     'wukong': '오공',
@@ -59,6 +63,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
         self.diagnostic_capture = diagnostic_capture
         self.rank_priority = list(rank_priority) if rank_priority else ['wukong', 'jenua']
         self.last_screen = None
+        self.diagnostic_history = ExplorationEvidence()
         self.event_context = False
         self._event_intro_pending = False
         self.report_root = Path(runtime_dir) / 'unknown_events'
@@ -91,6 +96,7 @@ class NodeProgressionBot(KnightRecruitmentBot):
         self._check_stop()
         self.observer.validate_screen(screen)
         self.last_screen = screen
+        self._remember_evidence(screen)
         if self.diagnostic_capture:
             cv2.imencode('.png',screen)[1].tofile(str(self.screen_path))
         return screen
@@ -116,6 +122,8 @@ class NodeProgressionBot(KnightRecruitmentBot):
                     raise _Stopped()
 
     def _record(self, label):
+        if label == 'before_input' and self.last_screen is not None:
+            self._remember_evidence(self.last_screen, label=label)
         if label == 'failed':
             self._save_failure_diagnostic('failure', self.stats.get('phase'))
         if self.diagnostic_capture: super()._record(label)
@@ -125,6 +133,16 @@ class NodeProgressionBot(KnightRecruitmentBot):
                     'stage': 'unrecognized_event', 'reason': self.stats.get('reason','')})
             self._report('failed', self.last_screen, {'phase': self.stats.get('phase'),
                 'reason': self.stats.get('reason'), 'registered_event': self.pending_event_id})
+
+    def _remember_evidence(self, screen, state=None, label=None):
+        history = getattr(self, 'diagnostic_history', None)
+        if not isinstance(history, ExplorationEvidence):
+            return
+        try:
+            history.remember(screen, phase=self.stats.get('phase'), state=state,
+                pending=getattr(self, '_story_skip_confirmation_pending', False), label=label)
+        except Exception:
+            logger.warning('탐사 화면 이력 보관 실패', exc_info=True)
 
     def _save_failure_diagnostic(self, label, phase=None):
         trace = getattr(self, 'debug_recorder', None)
@@ -139,7 +157,8 @@ class NodeProgressionBot(KnightRecruitmentBot):
             if not success:
                 raise OSError('진단 화면 인코딩 실패')
             encoded.tofile(str(path.with_suffix('.png')))
-            markers = ('levelup', 'level_close', 'victory', 'continue', 'defeat', 'defeat_ornament', 'supply_loot',
+            markers = ('skip', 'story_replay', 'story_history', 'story_confirm', 'story_cancel',
+                       'levelup', 'level_close', 'victory', 'continue', 'defeat', 'defeat_ornament', 'supply_loot',
                        'expedition_summary', 'summary_nodes_icon', 'summary_fragments_icon',
                        'summary_loot_icon', 'summary_close',
                        'event_rank_reward_icon', 'event_rank_reward_button', 'event_reward_continue',
@@ -162,9 +181,11 @@ class NodeProgressionBot(KnightRecruitmentBot):
                        'recruit_continue', 'recruit_skip_confirm_frame', 'recruit_skip_cancel_frame',
                        'ticket_class_knight', 'ticket_class_warrior', 'ticket_class_thief',
                        'ticket_class_soul_weaver', 'ticket_class_ranger', 'ticket_class_mage', 'ticket_class_all')
-            metadata = {'phase': phase, 'reason': self.stats.get('reason'), 'markers': {}}
+            metadata = {'phase': phase, 'reason': self.stats.get('reason'), 'markers': {},
+                        'story_skip_confirmation_pending': getattr(self, '_story_skip_confirmation_pending', False)}
             try:
                 metadata['state'] = self.observer.classify(self.last_screen)
+                metadata['context_state'] = self._classify(self.last_screen)
                 metadata['verified_node'] = getattr(self, '_verified_noncombat_node', None)
                 metadata['noncombat_scene'] = self.observer.noncombat_controls(
                     self.last_screen, metadata['verified_node'])
@@ -218,6 +239,8 @@ class NodeProgressionBot(KnightRecruitmentBot):
 
     def _classify(self, screen):
         state = self._classify_observed(screen)
+        if isinstance(screen, np.ndarray):
+            self._remember_evidence(screen, state=state)
         trace = getattr(self, 'debug_recorder', None)
         if trace:
             trace.event('state', phase=self.stats.get('phase'), state=state,
@@ -345,14 +368,20 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 return
             self._check_stop()
             logger.warning('%s: 클릭 직전 화면 변경, 입력 없이 재확인', phase)
+        if followups:
+            # The final pre-input frame may already be the destination. Let it
+            # stabilize even when the source-check retry budget is exhausted.
+            return self._state(phase + ' 입력 취소 후 후속 화면 확인', followups)
         raise RecognitionTimeout('클릭 직전 화면 변경이 반복되어 중지했습니다.')
 
-    def _dismiss_popup(self, phase, state, marker, allowed, max_retries=2, wait_seconds=3):
+    def _dismiss_popup(self, phase, state, marker, allowed, max_retries=2, wait_seconds=3, after_input=None):
         """Retry only a freshly recognized close control, never a prior click."""
         allowed = allowed - {state}
         next_state = self._guarded_tap(phase, state, marker, exiting=True, followups=allowed)
         if next_state in allowed:
             return next_state
+        if after_input:
+            after_input()
         sent_at = time.monotonic()
         retries = 0
         changed_before_retry = 0
@@ -393,30 +422,33 @@ class NodeProgressionBot(KnightRecruitmentBot):
             retries += 1
             logger.warning('%s: 결과창과 닫기 버튼 재확인, 닫기 재입력 %d/%d', phase, retries, max_retries)
             self._tap(value)
+            if after_input:
+                after_input()
             sent_at = time.monotonic()
 
     def _story(self, state):
-        self._story_skip_confirmation_pending = False
         try:
+            if state == 'story_confirm' and not getattr(self, '_story_skip_confirmation_pending', False):
+                raise RecognitionTimeout('스토리 스킵 입력 이력이 없어 확인 입력을 보류합니다.')
+            allowed = set(STORY_FOLLOWUPS)
+            verified_node = getattr(self, '_verified_noncombat_node', None)
+            if verified_node in ('rest', 'supply', 'shop'):
+                allowed.add(verified_node)
+            if self.event_context:
+                allowed |= EVENT_FOLLOWUPS - {'story_confirm', 'event_warning', 'unclaimed_reward', 'battle_unclaimed_reward'}
             if state == 'story':
-                self._guarded_tap('스토리 건너뛰기', 'story', 'skip')
-                self._story_skip_confirmation_pending = True
-                allowed = EVENT_FOLLOWUPS - {'story'} if self.event_context else {'story_confirm'}
-                state = self._state('스토리 건너뛰기 후 화면 확인', allowed)
+                self._story_skip_confirmation_pending = False
+                def skipped():
+                    self._story_skip_confirmation_pending = True
+                    if isinstance(getattr(self, 'last_screen', None), np.ndarray):
+                        self._remember_evidence(self.last_screen, label='skip_sent')
+                state = self._dismiss_popup('스토리 건너뛰기', 'story', 'skip',
+                    allowed | {'story_confirm'}, after_input=skipped,
+                    wait_seconds=self.observer.config.get('story_retry_seconds', 3))
                 if state != 'story_confirm':
                     return state
-            self._guarded_tap('스토리 건너뛰기 확인', 'story_confirm', 'story_confirm')
-            def closed(screen):
-                # Missing text alone does not mean the dialog closed. Require
-                # its buttons to disappear and a recognized destination.
-                kind = self._classify(screen)
-                if (kind is not None and kind not in ('story_confirm', 'event_warning')
-                        and not self.observer.find(screen, 'story_confirm')
-                        and not self.observer.find(screen, 'story_cancel')
-                        and not self.observer.find(screen, 'story_dialog')):
-                    return ('closed',)
-                return None
-            self._wait('스토리 팝업 닫힘', closed)
+            return self._dismiss_popup('스토리 건너뛰기 확인', 'story_confirm', 'story_confirm', allowed,
+                wait_seconds=self.observer.config.get('story_retry_seconds', 3))
         finally:
             self._story_skip_confirmation_pending = False
 
@@ -457,7 +489,11 @@ class NodeProgressionBot(KnightRecruitmentBot):
                 self.stats['auto_verified'] = True
                 return
             if state in ('story', 'story_confirm'):
-                self._story(state)
+                next_state = self._story(state)
+                if next_state != 'battle':
+                    # Reward/terminal/setup screens belong to the dispatcher,
+                    # including destinations reached while preparing a skip.
+                    return next_state
                 last_progress = time.monotonic()
                 reference = None
                 continue

@@ -99,12 +99,12 @@ class EventTraversalTest(unittest.TestCase):
     def test_skip_story_can_lead_directly_to_reward_without_confirmation(self):
         bot = object.__new__(NodeProgressionBot)
         bot.event_context = True
-        bot._guarded_tap = Mock()
-        bot._state = Mock(return_value='rank_reward')
-        bot._wait = Mock()
+        bot.observer = Mock(config={})
+        bot._dismiss_popup = Mock(return_value='rank_reward')
         self.assertEqual(bot._story('story'), 'rank_reward')
-        bot._guarded_tap.assert_called_once_with('스토리 건너뛰기', 'story', 'skip')
-        bot._wait.assert_not_called()
+        bot._dismiss_popup.assert_called_once()
+        self.assertIn('rank_reward', bot._dismiss_popup.call_args.args[3])
+        self.assertFalse(bot._story_skip_confirmation_pending)
 
     def test_resumed_battle_defers_reward_popup_to_common_dispatch(self):
         for reward in ('rank_result', 'event_loot_popup'):
