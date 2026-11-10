@@ -94,8 +94,9 @@ class RecruitTicketTests(unittest.TestCase):
 
     def test_textless_confirmation_is_local_to_skip_handler(self):
         screen = self.masked_dialog()
-        self.assertIsNone(self.observer.find(screen, 'story_confirm'))
-        self.assertIsNone(self.observer.find(screen, 'story_cancel'))
+        self.assertEqual(self.observer.find(screen, 'story_confirm'), (649, 430, 198, 60))
+        self.assertEqual(self.observer.find(screen, 'story_cancel'), (434, 430, 198, 60))
+        self.assertEqual(self.observer.classify(screen), 'event_warning')
         self.assertIsNotNone(self.observer.recruit_skip_buttons(screen))
         screen[415:505, 420:645] = 0
         self.assertIsNone(self.observer.recruit_skip_buttons(screen))

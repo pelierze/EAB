@@ -150,7 +150,17 @@ class NoncombatCoordinatesTests(unittest.TestCase):
         dialog[440:480, 664:832] = 0
         bot = self.bot('shop')
         self.assertNotEqual(bot._classify(dialog), 'shop_exit_confirm')
-        self.assertIsNone(bot._find_control(dialog, 'story_confirm'))
+        # Borders remain observable after captions change; authorization is
+        # enforced by the expected state, not by a failed text match.
+        self.assertEqual(bot._find_control(dialog, 'story_confirm'), (649, 430, 198, 60))
+        bot._tap = Mock()
+        def unverified(phase, ready):
+            self.assertIsNone(ready(dialog))
+            raise RecognitionTimeout('unverified exit')
+        bot._wait = unverified
+        with self.assertRaises(RecognitionTimeout):
+            bot._guarded_tap('test', 'shop_exit_confirm', 'story_confirm', exiting=True)
+        bot._tap.assert_not_called()
         bot._shop_exit_confirmation_pending = True
         self.assertEqual(bot._classify(dialog), 'shop_exit_confirm')
         bot._wait = lambda phase, ready: ready(dialog)

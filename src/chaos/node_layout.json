@@ -2122,23 +2122,6 @@
       "threshold": 0.95,
       "max_color_error": 0.04
     },
-    "shop_exit_dialog": {
-      "file": "images/chaos/node_progression/raw/shop_exit_confirm_live.png",
-      "crop": [
-        499,
-        297,
-        282,
-        48
-      ],
-      "region": [
-        490,
-        288,
-        300,
-        68
-      ],
-      "threshold": 0.95,
-      "max_color_error": 0.04
-    },
     "event_abandoned_pack": {
       "file": "images/chaos/node_progression/raw/event_abandoned_pack_live.png",
       "crop": [

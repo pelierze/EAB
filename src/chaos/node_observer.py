@@ -802,7 +802,6 @@ class NodeObserver:
         if self.find(screen, 'defeat'): return 'defeat'
         if self.find(screen, 'expedition_summary') and self.find(screen, 'summary_close'): return 'expedition_summary'
         if self.find(screen, 'exploration_entry'): return 'exploration_entry'
-        if self.find(screen, 'shop_exit_dialog') and self.find(screen, 'story_confirm'): return 'shop_exit_confirm'
         if self.find(screen, 'unclaimed_dialog'): return 'unclaimed_reward'
         if self.rank_reward_controls(screen): return 'rank_reward'
         if self.recruit_reward_controls(screen): return 'recruit_reward'
