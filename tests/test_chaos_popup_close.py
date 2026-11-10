@@ -181,6 +181,19 @@ class PopupCloseTests(unittest.TestCase):
             self.bot._dismiss_popup('닫기', 'event_loot_popup', 'event_loot_close', {'rank_result', 'map'})
         self.assertEqual(self.taps, [])
 
+    def test_timeout_recovery_accepts_allowed_screen_observed_right_after_timeout(self):
+        original_wait = self.bot._wait
+        calls = [0]
+        def wait_timeout_then_recover(phase, predicate):
+            calls[0] += 1
+            if calls[0] == 2:
+                self.screen = 'map'
+                raise RecognitionTimeout('outcome timeout right before destination appeared')
+            return original_wait(phase, predicate)
+        self.bot._wait = wait_timeout_then_recover
+        self.assertEqual(self.close(), 'map')
+        self.assertEqual(self.taps, [self.bounds])
+
 
 if __name__ == '__main__':
     unittest.main()

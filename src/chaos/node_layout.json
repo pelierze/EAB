@@ -1175,7 +1175,7 @@
         59
       ],
       "threshold": 0.9,
-      "max_color_error": 0.07
+      "max_color_error": 0.4
     },
     "skip": {
       "file": "images/chaos/node_progression/raw/story/Screenshot_2026.09.24_13.49.22.466.png",
@@ -1192,7 +1192,7 @@
         48
       ],
       "threshold": 0.9,
-      "max_color_error": 0.055
+      "max_color_error": 0.4
     },
     "story_confirm": {
       "file": "images/chaos/node_progression/raw/recruit_skip_confirm_local_live.png",

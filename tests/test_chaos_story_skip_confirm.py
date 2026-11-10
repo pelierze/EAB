@@ -200,6 +200,24 @@ class StorySkipConfirmTests(unittest.TestCase):
         frame = self.story.copy()
         frame[10:65, 968:1095] = 0
         self.assertIsNone(self.observer.find(frame, 'skip'))
+        history_only = self.story.copy()
+        history_only[10:65, 1228:1268] = 0
+        self.assertIsNone(self.observer.find(history_only, 'skip'))
+
+    def test_issue31_bright_and_autoplay_stories_skip_to_victory(self):
+        with np.load(ROOT/'tests/fixtures/exploration/story_issue31_20261110.npz', allow_pickle=False) as data:
+            bright_story = data['bright_story']
+            autoplay_story = data['autoplay_story']
+            victory = data['victory']
+        for name, frame in (('bright_story', bright_story), ('autoplay_story', autoplay_story)):
+            with self.subTest(frame=name):
+                self.assertEqual(self.observer.classify(frame), 'story')
+                self.assertIsNotNone(self.observer.find(frame, 'skip'))
+                bot = self.bot()
+                taps = self.replay(bot, [frame, self.dialog, victory])
+                self.assertEqual(bot._story('story'), 'victory')
+                self.assertEqual(len(taps), 2)
+                self.assertFalse(bot._story_skip_confirmation_pending)
 
     def test_battle_hands_story_destinations_back_to_dispatch_without_counting(self):
         for destination in ('levelup', 'battle_setup', 'exploration_entry', 'map', 'story'):

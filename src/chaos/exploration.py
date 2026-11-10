@@ -402,6 +402,9 @@ class NodeProgressionBot(KnightRecruitmentBot):
             except RecognitionTimeout as exc:
                 screen = self._capture()
                 observed = self._classify(screen)
+                if observed in allowed:
+                    logger.info('%s: 시간 초과 직후 기대 화면 확인 (%s), 안정화 확인 진행', phase, observed)
+                    return self._state(phase + ' 시간 초과 후 화면 확인', allowed)
                 logger.warning('%s: 후속 화면 확인 실패, 현재 화면=%s, 기대 화면=%s',
                                phase, observed or '미인식', ', '.join(sorted(allowed)))
                 if observed == state and self._find_control(screen, marker):

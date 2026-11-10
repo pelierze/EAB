@@ -170,16 +170,15 @@ class NodeObserver:
                 return (self.recruit_skip_buttons(screen) or {}).get(
                     'confirm' if name == 'story_confirm' else 'cancel')
             if name == 'skip':
-                # The arrow alone occurs on other screens. Require both
-                # neighboring playback symbols; none of these patches has text.
+                # The arrow alone occurs on other screens. Require the static
+                # neighboring history icon; auto-play rotates story_replay, and
+                # neither icon contains localized text.
                 arrows = self.all(screen, 'skip')
-                replay = self.all(screen, 'story_replay')
                 history = self.all(screen, 'story_history')
-                if len(arrows) == len(replay) == len(history) == 1:
+                if len(arrows) == len(history) == 1:
                     ax, ay, _, _ = arrows[0]
-                    rx, ry, _, _ = replay[0]
                     hx, hy, _, _ = history[0]
-                    if 245 <= ax-rx <= 275 and 55 <= hx-rx <= 80 and max(ay, ry, hy)-min(ay, ry, hy) <= 12:
+                    if 175 <= ax-hx <= 210 and abs(ay-hy) <= 12:
                         return arrows[0]
                 return None
             if name in ('rank_result_before_icon', 'rank_result_after_icon'):
