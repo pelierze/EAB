@@ -155,7 +155,8 @@ class StorySkipConfirmTests(unittest.TestCase):
         for x1, x2 in ((430, 635), (645, 850)):
             frame = self.dialog.copy()
             frame[420:500, x1:x2] = 0
-            self.assertNotEqual(bot._classify(frame), 'story_confirm')
+            self.assertEqual(bot._classify(frame), 'event_warning')
+            self.assertIsNone(self.observer.find(frame, 'story_confirm'))
         self.assertIsNone(bot._classify(np.zeros((720, 1280, 3), np.uint8)))
         self.assertEqual(bot._classify(self.levelup), 'levelup')
 

@@ -807,7 +807,9 @@ class NodeObserver:
         if self.rank_reward_controls(screen): return 'rank_reward'
         if self.recruit_reward_controls(screen): return 'recruit_reward'
         if self.event_warning_controls(screen): return 'event_warning'
-        if self.find(screen, 'story_confirm'): return 'event_warning'
+        # A partially visible modal must still block the background screen.
+        # A single border never grants access to either dialog action.
+        if self.all(screen, 'story_confirm') or self.all(screen, 'story_cancel'): return 'event_warning'
         if self.levelup_controls(screen): return 'levelup'
         if self.is_rank_result(screen): return 'rank_result'
         # Rank and loot results share the close icon. Partial rank geometry
