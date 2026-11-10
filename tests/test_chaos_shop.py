@@ -231,6 +231,8 @@ class ShopTests(unittest.TestCase):
         import itertools
         with tempfile.TemporaryDirectory() as tmp:
             bot = NodeProgressionBot(Mock(), ROOT, tmp, self.observer)
+            # This handler runs only after our verified shop exit input.
+            bot._shop_exit_confirmation_pending = True
             frames = [read_image(str(RAW/'shop_exit_confirm_live.png')), read_image(str(RAW/'boss_map_live.png'))]
             current = [0]
             taps = []
