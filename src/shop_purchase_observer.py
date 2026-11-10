@@ -216,6 +216,36 @@ class ShopPurchaseObserver:
                                 self.counter_mask(screen[by:by+bh, bx:bx+bw]),
                                 screen[by:by+bh, bx:bx+bw].copy() if self._shop_debug is not None else None)
 
+    def _exact_counter_transition(self, screen, before, trigger):
+        """Fallback to the recorded row only when visual re-identification fails."""
+        bx, by, bw, bh = before.button_bounds
+        if min(bx, by) < 0 or bx+bw > screen.shape[1] or by+bh > screen.shape[0]:
+            return False
+        button = screen[by:by+bh, bx:bx+bw]
+        # This fallback intentionally avoids OCR and never searches another row.
+        state = self.counter_state(button, allow_ocr=False)
+        changed = np.count_nonzero(self.counter_mask(button) != before.counter_mask)
+        complete = state == 'sold' and changed >= max(6, before.counter_mask.size * .015)
+        if complete:
+            logger.info(
+                '기존 이미지 검증 미확인 — 기록된 상품 행의 수량 1/1 → 0/1 변화로 구매 완료 확인'
+            )
+        if self._shop_debug is not None:
+            self._shop_debug.record(
+                'purchase_check',
+                result=bool(complete),
+                reason='exact_quantity_transition' if complete else 'exact_quantity_unconfirmed',
+                fallback=True,
+                trigger=trigger,
+                before='1/1',
+                after='0/1' if state == 'sold' else state,
+                changed_pixels=int(changed),
+                button_bounds=list(before.button_bounds),
+            )
+            if not complete:
+                self._shop_debug.evidence('exact_quantity_unconfirmed', before.button_image, button)
+        return complete
+
     @debug_timed('recognition')
     def purchase_complete(self, screen, before, threshold=.92):
         self.item_anchor_missing = False
@@ -223,6 +253,8 @@ class ShopPurchaseObserver:
                                 threshold=threshold, stable_inner=True,
                                 diagnostics=self._shop_debug)
         if item is None:
+            if self._exact_counter_transition(screen, before, 'same_item_not_found'):
+                return True
             self.item_anchor_missing = True
             if self._shop_debug is not None:
                 self._shop_debug.record('purchase_check', result=False, reason='same_item_not_found', same_item=False)
@@ -242,6 +274,8 @@ class ShopPurchaseObserver:
         nearby = self._button_near(screen, (bx, by, bw, bh))
         shape_score = nearby[0] if nearby is not None else -1.0
         if shape_score < .80:
+            if self._exact_counter_transition(screen, before, 'button_shape_unconfirmed'):
+                return True
             if self._shop_debug is not None:
                 self._shop_debug.record('purchase_check', result=False, reason='button_shape_unconfirmed', shape_score=shape_score)
                 self._shop_debug.evidence('button_shape_unconfirmed', before.button_image, screen[by:by+bh, bx:bx+bw])
@@ -252,6 +286,8 @@ class ShopPurchaseObserver:
         button = screen[by:by+bh, bx:bx+bw]
         state = self.counter_state(button, allow_ocr=True)
         if state != 'sold':
+            if state is None and self._exact_counter_transition(screen, before, 'counter_unreadable'):
+                return True
             if self._shop_debug is not None:
                 self._shop_debug.record('purchase_check', result=False, reason='counter_not_sold', state=state,
                                         same_item=True, shape_score=shape_score)

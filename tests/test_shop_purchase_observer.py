@@ -117,29 +117,27 @@ class ShopPurchaseObserverTests(ShopPurchaseFixtures, unittest.TestCase):
         self.assertTrue(self.observer.purchase_complete(row, baseline))
         self.assertIsNone(self.observer.ocr)
 
-    def test_inner_anchor_rejects_different_missing_covered_and_other_row_products(self):
+    def test_exact_quantity_fallback_never_uses_a_sold_counter_from_another_row(self):
         before = self.baseline()
-        scenes = []
-        for replacement in (np.zeros_like(self.icon), self.other_icon):
-            screen = self.scene(sold=True)
-            x, y, w, h = self.item
-            screen[y:y+h, x:x+w] = 0
-            self.put(screen, replacement, x, y)
-            scenes.append(screen)
-        # A copy of the real target plus a sold button on a different row must
-        # not rescue a missing target at the recorded slot.
-        screen = self.scene(sold=True)
+        screen = self.scene(sold=False)
         x, y, w, h = self.item
         screen[y:y+h, x:x+w] = 0
         self.put(screen, self.icon, x, y+100)
         self.put(screen, self.disabled, self.button[0], self.button[1]+100)
-        scenes.append(screen)
-        covered = self.scene(sold=True)
-        covered[200:310, 150:1150] = 35
-        scenes.append(covered)
-        for index, screen in enumerate(scenes):
-            with self.subTest(case=index):
-                self.assertFalse(self.observer.purchase_complete(screen, before))
+        self.assertFalse(self.observer.purchase_complete(screen, before))
+        self.assertIsNone(self.observer.ocr)
+
+    def test_exact_quantity_fallback_accepts_recorded_row_when_item_is_dimmed(self):
+        screen = self.scene(sold=True)
+        x, y, w, h = self.item
+        screen[y:y+h, x:x+w] = 0
+        self.assertTrue(self.observer.purchase_complete(screen, self.baseline()))
+        self.assertFalse(self.observer.item_anchor_missing)
+        self.assertIsNone(self.observer.ocr)
+
+    def test_exact_quantity_fallback_handles_unmatched_disabled_button_shape(self):
+        with patch.object(self.observer, '_button_near', return_value=(.57, self.button)):
+            self.assertTrue(self.observer.purchase_complete(self.scene(sold=True), self.baseline()))
         self.assertIsNone(self.observer.ocr)
 
     def test_unstable_icon_border_uses_inner_art_at_same_threshold(self):
@@ -162,14 +160,15 @@ class ShopPurchaseObserverTests(ShopPurchaseFixtures, unittest.TestCase):
         self.assertFalse(self.observer.purchase_complete(screen, self.baseline()))
         self.assertIsNone(self.observer.ocr)
 
-    def test_missing_or_different_product_and_covered_row_never_complete(self):
+    def test_exact_quantity_fallback_requires_a_changed_sold_counter(self):
         before = self.baseline()
         for replacement in (np.zeros_like(self.icon), self.other_icon):
-            screen = self.scene(sold=True)
+            screen = self.scene(sold=False)
             x, y, w, h = self.item
             screen[y:y+h, x:x+w] = 0
             self.put(screen, replacement, x, y)
             self.assertFalse(self.observer.purchase_complete(screen, before))
+        screen = self.scene(sold=True)
         screen[200:310, 150:1150] = 35
         self.assertFalse(self.observer.purchase_complete(screen, before))
         self.assertIsNone(self.observer.ocr)
@@ -203,8 +202,8 @@ class ShopPurchaseObserverTests(ShopPurchaseFixtures, unittest.TestCase):
 
 
 class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
-    def obscured(self):
-        screen = self.scene(sold=True)
+    def obscured(self, sold=True):
+        screen = self.scene(sold=sold)
         x,y,w,h = self.item
         screen[y:y+h,x:x+w] = 0
         return screen
@@ -239,18 +238,17 @@ class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
         self.assertEqual(sum(call.args == (0.5,) for call in sleep.call_args_list), 3)
 
     @patch('src.secret_shop_bot.time.sleep')
-    def test_overlay_waits_even_with_one_check_and_never_buys_again(self, sleep):
-        bot = self.make_bot([self.scene(), self.modal(), self.modal(),
-                             self.obscured(), self.obscured(), self.scene(sold=True)])
+    def test_exact_quantity_fallback_finishes_without_buying_again(self, sleep):
+        bot = self.make_bot([self.scene(), self.modal(), self.modal(), self.obscured()])
         self.assertTrue(bot._purchase_item('mystic_medal', self.item, 1))
-        self.assertEqual(bot.adb.captures, 6)
+        self.assertEqual(bot.adb.captures, 4)
         self.assertEqual(bot.stats['mystic_medal_bought'], 1)
         self.assertEqual(len(bot.adb.taps), 3)
-        self.assertEqual(sum(c.args == (1.0,) for c in sleep.call_args_list), 2)
+        self.assertEqual(sum(c.args == (1.0,) for c in sleep.call_args_list), 0)
 
     @patch('src.secret_shop_bot.time.sleep')
     def test_persistent_missing_item_is_bounded_and_never_counted_as_purchase(self, sleep):
-        bot = self.make_bot([self.scene(), self.modal(), self.modal()] + [self.obscured()]*4)
+        bot = self.make_bot([self.scene(), self.modal(), self.modal()] + [self.obscured(sold=False)]*4)
         self.assertFalse(bot._purchase_item('mystic_medal', self.item, 1))
         self.assertEqual(bot.adb.captures, 7)
         self.assertEqual(bot.stats['mystic_medal_bought'], 0)
@@ -266,7 +264,7 @@ class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
 
     @patch('src.secret_shop_bot.time.sleep')
     def test_capture_failure_after_overlay_does_not_reuse_retry_reason(self, sleep):
-        bot = self.make_bot([self.scene(), self.modal(), self.modal(), self.obscured(), None])
+        bot = self.make_bot([self.scene(), self.modal(), self.modal(), self.obscured(sold=False), None])
         self.assertFalse(bot._purchase_item('mystic_medal', self.item, 1))
         self.assertEqual(bot.adb.captures, 5)
         self.assertFalse(bot._purchase_item_obscured)
@@ -274,7 +272,7 @@ class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
 
     @patch('src.secret_shop_bot.time.sleep')
     def test_stop_during_overlay_wait_prevents_capture_and_input(self, sleep):
-        bot = self.make_bot([self.scene(), self.modal(), self.modal(), self.obscured()])
+        bot = self.make_bot([self.scene(), self.modal(), self.modal(), self.obscured(sold=False)])
         def stop_on_extra_wait(seconds):
             if seconds == 1.0:
                 bot.set_user_action('stop')
@@ -284,24 +282,26 @@ class ShopPurchaseFlowTests(ShopPurchaseFixtures, unittest.TestCase):
         self.assertEqual(len(bot.adb.taps), 2)
 
     @patch('src.secret_shop_bot.time.sleep')
-    def test_issue27_overlays_wait_for_restored_artwork_before_counting(self, sleep):
+    def test_issue27_overlays_complete_from_exact_quantity_without_extra_input(self, sleep):
         self.item = (567,106,69,61)
         self.button = (1062,138,183,53)
         self.icon = read_image(ROOT/'images/items/covenant_bookmark.png')
         for filename in ('issue27_overlay_a.png', 'issue27_overlay_b.png'):
             with self.subTest(filename=filename):
                 overlay = read_image(ROOT/'tests/fixtures/shop_purchase'/filename)
-                # No post-notification capture was supplied. Restore only the
-                # occluded icon to model the same row after the notification.
+                # Use the restored artwork only for the pre-purchase baseline.
+                # The overlay capture must complete from the exact 1/1 -> 0/1
+                # counter transition without another purchase input.
                 clear = overlay.copy()
                 self.put(clear, self.icon, 567,106)
                 initial = clear.copy()
                 self.put(initial, self.active, 1062,138)
-                bot = self.make_bot([initial, self.modal(), self.modal(), overlay, clear])
+                bot = self.make_bot([initial, self.modal(), self.modal(), overlay])
                 self.assertTrue(bot._purchase_item('covenant_bookmark', self.item, 1))
-                self.assertEqual(bot.adb.captures, 5)
+                self.assertEqual(bot.adb.captures, 4)
                 self.assertEqual(bot.stats['covenant_bookmark_bought'], 1)
                 self.assertEqual(len(bot.adb.taps), 3)
+                self.assertEqual(sum(c.args == (1.0,) for c in sleep.call_args_list), 0)
 
     def make_bot(self, frames):
         temp = tempfile.TemporaryDirectory()
