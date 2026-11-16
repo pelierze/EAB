@@ -17,7 +17,7 @@ import webbrowser
 from contextlib import contextmanager
 from pathlib import Path
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox, scrolledtext, simpledialog
 from PIL import Image, ImageDraw, ImageTk
 
 # 사운드 출력을 위한 패키지 (윈도우 전용)
@@ -185,6 +185,36 @@ class TextHandler(logging.Handler):
     def close(self):
         self._gui_closed = True
         super().close()
+
+
+class ShopResolutionDialog(simpledialog.Dialog):
+    def __init__(self, parent, size):
+        self.width, self.height = size
+        super().__init__(parent, title=i18n.tr("해상도 불일치"))
+
+    def body(self, master):
+        ttk.Label(
+            master,
+            text=i18n.tr(
+                "현재 감지된 해상도는 {w}×{h}입니다.\n"
+                "권장 해상도 1280×720과 달라 비밀상점 자동화가 오작동할 수 있습니다.",
+                w=self.width,
+                h=self.height,
+            ),
+            justify=tk.LEFT,
+            wraplength=420,
+        ).pack(padx=12, pady=10)
+
+    def buttonbox(self):
+        buttons = ttk.Frame(self)
+        buttons.pack(anchor=tk.E, padx=12, pady=(0, 12))
+        ttk.Button(buttons, text=i18n.tr("취소"), command=self.cancel).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(buttons, text=i18n.tr("계속하기"), command=self.ok).pack(side=tk.LEFT)
+        self.bind("<Escape>", self.cancel)
+
+    def apply(self):
+        self.result = True
+
 
 class SessionView:
     """하나의 앱플레이어/봇 세션을 관리합니다."""
@@ -1769,8 +1799,6 @@ class SessionView:
                 messagebox.showerror(i18n.tr("오류"), i18n.tr("장치(ADB/STOVE)가 연결되지 않았습니다."))
                 return
 
-            self.was_stopped_by_user = False
-
             try:
                 natural_refresh = self.natural_refresh_var.get()
                 refresh_count = 0 if natural_refresh else int(self.refresh_count_entry.get())
@@ -1812,11 +1840,16 @@ class SessionView:
 
             selected_macro = self._get_selected_macro()
             runner = selected_macro.get("runner", "secret_shop")
+            use_steps = runner == "steps" and not natural_refresh
+            if not use_steps and not self._confirm_shop_resolution():
+                return
+
+            self.was_stopped_by_user = False
             debug_mode = self.debug_mode_var.get()
             self.runtime_dir.mkdir(parents=True, exist_ok=True)
             automation_settings = self._build_shop_automation_settings()
 
-            if runner == "steps" and not natural_refresh:
+            if use_steps:
                 self.bot = JsonMacroEngine(
                     self.adb_controller,
                     macro_definition=selected_macro,
@@ -1847,6 +1880,21 @@ class SessionView:
             })
             self.bot_thread = threading.Thread(target=self._run_bot, args=(refresh_count, buy_count, natural_refresh), daemon=True)
             self.bot_thread.start()
+
+    def _confirm_shop_resolution(self):
+        device = self.adb_controller
+        capture_backend = getattr(device, "capture_backend", None)
+        if capture_backend is None:
+            size = device.get_capture_size()
+        else:
+            # STOVE matches against a normalized frame. Check the source window size.
+            size = capture_backend.get_raw_size()
+        if not size or min(size) <= 0:
+            logger.warning("비밀상점 시작 전 화면 해상도를 확인할 수 없습니다.")
+            return True
+        if size == WindowResizer.TARGET_SIZE:
+            return True
+        return ShopResolutionDialog(self.root.winfo_toplevel(), size).result is True
 
 
     def _start_penguin_bot(self):

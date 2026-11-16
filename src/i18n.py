@@ -253,6 +253,10 @@ _CATALOG: dict[str, dict[str, str]] = {
         "MuMu 앱플레이어 사용 (호환 드래그 사용)": "MuMu Player Mode (Compatible Drag)",
 
         # Secret Shop Settings
+        "해상도 불일치": "Resolution Mismatch",
+        "현재 감지된 해상도는 {w}×{h}입니다.\n권장 해상도 1280×720과 달라 비밀상점 자동화가 오작동할 수 있습니다.": "Detected resolution: {w}×{h}.\nSecret Shop automation may work incorrectly outside the recommended 1280×720 resolution.",
+        "취소": "Cancel",
+        "계속하기": "Continue",
         "매크로 설정": "Macro Settings",
         "리프레시 횟수:": "Refresh Count:",
         "회": "times",

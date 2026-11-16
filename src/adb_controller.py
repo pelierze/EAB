@@ -59,12 +59,14 @@ class ADBController:
         self.input_profile = normalized
         logger.info("ADB 입력 프로필 설정: %s", self.input_profile)
     
-    def _run_adb(self, args: list[str], text: bool = False) -> subprocess.CompletedProcess:
+    def _run_adb(self, args: list[str], text: bool = False, *, timeout: Optional[float] = None) -> subprocess.CompletedProcess:
         """Run adb without flashing a console window on Windows."""
         kwargs = {
             "capture_output": True,
             "text": text,
         }
+        if timeout is not None:
+            kwargs["timeout"] = timeout
 
         if os.name == "nt":
             startupinfo = subprocess.STARTUPINFO()
@@ -458,14 +460,26 @@ class ADBController:
             last_output = self._format_completed_output(result)
         return False, last_output
 
-    def capture_frame(self):
+    def capture_frame(self, *, timeout: Optional[float] = None):
         """Decode a frame in memory, without retaining a screenshot on disk."""
         import cv2
         import numpy as np
-        result = self._run_adb(["-s", self.device_id, "exec-out", "screencap", "-p"])
-        if result.returncode != 0 or not isinstance(result.stdout, bytes):
+        args = ["-s", self.device_id, "exec-out", "screencap", "-p"]
+        result = self._run_adb(args, timeout=timeout)
+        if result.returncode != 0 or not isinstance(result.stdout, bytes) or not result.stdout:
             return None
         return cv2.imdecode(np.frombuffer(result.stdout, dtype=np.uint8), cv2.IMREAD_COLOR)
+
+    def get_capture_size(self) -> Optional[Tuple[int, int]]:
+        """Measure the actual screenshot, independently of the input coordinate size."""
+        try:
+            frame = self.capture_frame(timeout=3)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        if frame is None or frame.size == 0:
+            return None
+        height, width = frame.shape[:2]
+        return width, height
 
     def screenshot(self, save_path: str) -> bool:
         """
